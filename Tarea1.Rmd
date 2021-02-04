@@ -42,31 +42,64 @@ Carga los datos en BenAndJerry.csv.
 
 ```{r }
 # Carga la base de datos
-base<-fread(list.files(pattern = '.csv'))
+setwd("C:/Users/rsf94/Google Drive/MAESTRÍA ITAM/2do semestre/eco_computacional/tarea1")
+base <- fread("BenAndJerry.csv")
 ```
 
 
 ### 1. Cuales son las columnas de la base? Muestra una tabla con ellas
+```{r }
+(columnas <- (as.data.frame(colnames(base))))
+```
 
 ### 2. A qué nivel está la base? Esto es, cuál es la variable que define la base de manera única. Si no la hay, crea una y muestra que es única a nivel de la base (Muestra el código)
+household_id + promotion_type
+
+```{r}
+
+```
 
 
 ### 3. Que variables tienen valores vacíos? Haz una tabla con el porcentaje de vacíos para las columnas que tengan al menos una observación vacía
+````{r}
+missing<-base %>% summarise_each(funs(100*mean(is.na(.))))
+missing <- round(missing,4)
+missing <- setNames(data.frame(t(missing[,-1])),missing[,1])
+names(missing)[1] <- "na_perc"
+(missing %>% filter(na_perc!=0))
 
+```
 
 ### 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
+````{r}
 
+
+```
 
 ### 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
+````{r}
 
+
+```
 
 
 ### 6. Hay alguna númerica que en verdad represente una categorica? Cuales? Cambialas a factor
+````{r}
 
+
+```
 
 ### 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades? 
+````{r}
+
+
+```
 
 ### 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
+````{r}
+
+
+```
 
 ## Exploración de los datos 
 
