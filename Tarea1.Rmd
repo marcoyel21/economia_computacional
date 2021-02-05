@@ -109,6 +109,11 @@ Sí
 
 ### 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
 ````{r}
+# precio total pagado
+base <- base %>% mutate(total_price=price_paid_deal+price_paid_non_deal)
+
+# precio unitario
+base <- base %>% mutate(unit_price= (total_price)/quantity)
 
 
 ```
@@ -134,23 +139,51 @@ Algo importante es que siempre debemos mirar primero las variables más relevant
 Importante: Las gráficas deben estar bien documentadas (título, ejes con etiquetas apropiadas, etc). Cualquier gráfica que no cumpla con estos requisitos les quitaré algunos puntos.
 
 ### 9. Cómo se ve la distribución del precio unitario y de la cantidad demandada. Haz un histograma.
+````{r}
+median_price <- quantile(base$unit_price)[3]
 
+ggplot(base)+
+  geom_histogram(aes(x=unit_price),alpha=0.9,col = 'black')+
+  geom_vline(xintercept = median_price,size=0.5,colour="red", linetype = "dashed")+
+  geom_text(aes(x=median_price+2.8, label=paste("Mediana =",median_price), y=4800),size=4, colour="red", vjust = -1, hjust = 1.2)+
+  theme_bw()+
+  labs(title="Histograma de precio unitario",x="Precio unitario",y="Frecuencia")
+
+  
+ggplot(base)+
+  geom_histogram(aes(x=quantity),binwidth=1,alpha=0.9,col = 'black')+
+  theme_bw()+
+  labs(title="Histograma de cantidad",x="Cantidad",y="Frecuencia")
+
+```
 
 ### 10. Grafica la $q(p)$. Que tipo de relación parecen tener? 
+````{r}
+ggplot(base)+
+  geom_point(aes(x=quantity,y=unit_price))
+```
 
 ### 11. Grafica la misma relación pero ahora entre $log(p+1)$ y $log(q+1)$
+````{r}
 
+```
 Usemos la transformación logarítmica a partir de este punto. Grafiquemos la demanda inversa. 
 
 ### 12. Grafica la curva de demanda por tamaño del helado. Parece haber diferencias en la elasticidad precio dependiendo de la presentación del helado? (2 pts)
+````{r}
 
+```
 
 ### 13. Grafica la curva de demanda por sabor. Crea una variable con los 3 sabores más populares y agruga el resto de los sabores como 'otros'. Parece haber diferencias en la elasticidad precio dependiendo del sabor?
+````{r}
 
+```
 ## Estimación
 
 ### 14. Estima la regresión de la curva de demanda de los helados. Reporta la tabla de la regresión
+````{r}
 
+```
 Algunos tips: 
 
 - No olvides borrar la variable que recien creamos de sabores. Incluirla (dado que es perfectamente colineal con flavor), sería una violación a supuesto GM 3 de la regresión. 
@@ -169,16 +202,28 @@ base$male_head_birth<-NULL
 ```
 
 ### 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
+````{r}
 
+```
 
 ### 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
+````{r}
+
+```
 
 ## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
+````{r}
+
+```
 
 
 ### 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR? 
 Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% mutate(ranking = row_number)`
+````{r}
 
+```
 
 ### 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
+````{r}
 
+```
