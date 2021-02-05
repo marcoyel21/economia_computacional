@@ -1,13 +1,14 @@
 ---
-title: "Economía Computacional: Tarea 1"
+title: 'Economía Computacional: Tarea 1'
 author: "Isidoro Garcia"
-
-date: "2021"
+date: '2021'
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    fig_width: 6
+    fig_height: 4
 fontsize: 10 pt
-output: 
-    pdf_document:
-        fig_width: 6
-        fig_height: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -31,6 +32,7 @@ library(RCT)
 library(knitr)
 library(lfe)
 library(broom)
+library(stargazer)
 ```
 
 En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró. 
@@ -79,11 +81,21 @@ names(missing)[1] <- "na_perc"
 ### 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
 ````{r}
 
+# opción a
+ stargazer(base,type="text", summary.logical=FALSE,digits=2)
+
+# opción b
+b<- summary_statistics(base,probs=c(0,0.05,0.25,0.5,0.75,0.9,0.95,1),na.rm=T)
+(b<- b %>% mutate_at(vars(-variable),funs(round(.,2))) %>%
+  rename(mín=4) %>%
+  rename(máx=11))
+
 
 ```
 
 
 ### 6. Hay alguna númerica que en verdad represente una categorica? Cuales? Cambialas a factor
+Sí
 ````{r}
 
 
