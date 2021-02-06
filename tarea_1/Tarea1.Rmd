@@ -307,7 +307,19 @@ base$male_head_birth<-NULL
 
 ### 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
 ````{r}
+(names(model_a))
 
+glance(model_a)
+
+RSS <- sum(model_a$residuals^2)
+TSS<- sum((base$unit_price-mean(base$unit_price))^2)
+n<- length(base$unit_price)
+k<- 1
+
+(F <- ((TSS-RSS)/k)/(RSS/(n-k-1)))
+
+summary(model_a)
+# sí es igual
 ```
 
 ### 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
