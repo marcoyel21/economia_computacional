@@ -348,6 +348,7 @@ beta2*(y/x)
 Tenemos 2, uno para $beta_0$ y otro para $\beta_1$
 OJO: CREO QUE SE REFIERE A OTRA COSA, HAY QUE CORRER REGRESION CON TOOOOOOODAS LAS VARAIABLES
 ````{r}
+valores_p <- summary(model_a2)$coefficients[,4]
 hist(summary(model_a2)$coefficients[,4])
 ```
 
@@ -355,7 +356,34 @@ hist(summary(model_a2)$coefficients[,4])
 ### 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR? 
 Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% mutate(ranking = row_number)`
 ````{r}
+# Función(vector de valores p, q)
 
+fdr <- function(valores_p,q){
+  valores_p <- valores_p[!is.na(valores_p)]
+  n <- length(valores_p)
+  
+  k <- rank (valores_p,ties.method="min")
+  t <- valores_p <= q*k/n
+  t[valores_p<max(valores_p[t])] <- TRUE
+  
+  orden <- order(valores_p)
+  plot(valores_p[orden])
+  lines(1:n, q*(1:n)/n)
+  
+  return(max(valores_p[t]))
+  
+}
+
+#prueba
+abc <- c(0.52, 0.07, 0.013, 0.0001, 0.26, 0.04, 0.01, 0.15, 0.03, 0.0002)
+
+
+fdr(abc,0.05)
+
+# alternativa
+fdr2 <- p.adjust(p=abc,method="BH")
+names(fdr2) <- fdr2 <=0.05
+fdr2
 ```
 
 ### 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
