@@ -2,27 +2,11 @@
 title: 'Economía Computacional: Tarea 1'
 author: "Isidoro Garcia"
 date: '2021'
-output:
-  html_document:
-    df_print: paged
-  pdf_document:
-    fig_width: 6
-    fig_height: 4
-fontsize: 10 pt
+output: pdf_document
+  
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-	echo = TRUE,
-	fig.height = 4,
-	fig.width = 6,
-	message = FALSE,
-	warning = FALSE,
-	cache = TRUE,
-	digits = 3,
-	width = 48
-)
- 
 ```
 
 ```{r liberias }
@@ -33,6 +17,8 @@ library(knitr)
 library(lfe)
 library(broom)
 library(stargazer)
+library(kableExtra)
+library(naniar)
 ```
 
 En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró. 
@@ -44,39 +30,58 @@ Carga los datos en BenAndJerry.csv.
 
 ```{r }
 # Carga la base de datos
-setwd("C:/Users/rsf94/Google Drive/MAESTRÍA ITAM/2do semestre/eco_computacional/tarea1")
-base <- fread("BenAndJerry.csv")
+base<-read.csv("BenAndJerry.csv")
 ```
 
 
 ### 1. Cuales son las columnas de la base? Muestra una tabla con ellas
 ```{r }
-(columnas <- (as.data.frame(colnames(base))))
+columnas <- (as.data.frame(colnames(base)))
+
+kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas"))
 ```
 
 ### 2. A qué nivel está la base? Esto es, cuál es la variable que define la base de manera única. Si no la hay, crea una y muestra que es única a nivel de la base (Muestra el código)
-household_id + promotion_type
+
+Así como está la base sin niguna modificación el nivel es la compra. Es decir, cada fila representa una transacción realizada por un hogar. Esto lo podriamos modificar para que la unidad sea el hogar o cualquier otra variable.
+
+No hay una variable explícita que identifique cada observación de manera única pero si hay una manera implícita y es el índice de cada fila. Sin embargo, podemos crear una variable que contenga la información del índice de fila.
+
 
 ```{r}
-
+base<- base %>% rowid_to_column("ID")
 ```
 
 
 ### 3. Que variables tienen valores vacíos? Haz una tabla con el porcentaje de vacíos para las columnas que tengan al menos una observación vacía
-````{r}
-missing<-base %>% summarise_each(funs(100*mean(is.na(.))))
-missing <- round(missing,4)
-missing <- setNames(data.frame(t(missing[,-1])),missing[,1])
-names(missing)[1] <- "na_perc"
-(missing %>% filter(na_perc!=0))
 
+````{r}
+kable( (base %>% select_if(~sum(is.na(.)) > 0) %>% miss_var_summary()), booktabs=T, align = 'c', col.names = c("Variable","Cantidad","%"))
 ```
 
 ### 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
+
+Pues dependiendo de la cantidad de valores vacíos, de si hay un patrón en los valores vacíos y las características de cada variable podemos proponer una estrategia, por ejemplo imputación o quitar esas observaciones. En este sentido tenemos que realizar un análisis por variable:
+
+**promotion_type**
 ````{r}
-
-
+summary(factor(base$promotion_type))
 ```
+En esta variable podría ser que los NAs nos indiquen que sencillamente no hubo ninguna promoción (y eso podría explicar que casi el 60% de sus valores sean NAs). En este caso podemos suponer eso e imputarle un valor de 5 o 0 a cada Na.
+
+````{r}
+base$promotion_type[is.na(base$promotion_type)] <- 5
+```
+
+**scantrack_market_identifier**
+
+````{r}
+summary(factor(base$scantrack_market_identifier))
+```
+En este caso es más complejo porque es muy probable que cada valor corresponda a un producto. En este caso, lo que podríamos hacer es ver si podemos inferir está información de otras varaibles, de lo contrario imputar sería una muy mala idea pues estaríamos creando ruido en nuestra información.
+
+
+
 
 ### 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
 ````{r}
