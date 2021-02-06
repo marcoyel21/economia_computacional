@@ -285,6 +285,10 @@ PRUEBA DE HIPOTESIS
 ````{r, results= 'asis'}
 model_a<-lm(unit_price~quantity,data = base)
 stargazer(model_a, type = "latex", title="Regresión", digits=1)
+
+model_a2<-lm(quantity~unit_price,data = base)
+stargazer(model_a2, type = "latex", title="Regresión", digits=1)
+
 ```
 CORREGIR
 
@@ -307,29 +311,44 @@ base$male_head_birth<-NULL
 
 ### 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
 ````{r}
-(names(model_a))
+# para model_a2
+(names(model_a2))
 
-glance(model_a)
+glance(model_a2)
 
-RSS <- sum(model_a$residuals^2)
-TSS<- sum((base$unit_price-mean(base$unit_price))^2)
+RSS <- sum(model_a2$residuals^2)
+TSS<- sum((base$quantity-mean(base$quantity))^2)
 n<- length(base$unit_price)
 k<- 1
 
 (F <- ((TSS-RSS)/k)/(RSS/(n-k-1)))
 
-summary(model_a)
+summary(model_a2)
 # sí es igual
 ```
 
 ### 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
-````{r}
+```{r}
 
+# para model_a2
+x <- mean(base$unit_price)
+y <- mean(base$quantity)
+beta <- model_a2$coefficients[2]
+
+elasticity <- beta * (x/y)
+# A primera vista sí es significativo
+paste("La elasticidad precio de la demanda es de",round(elasticity,2),"%")
+paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",round(elasticity,2),"%")
+
+beta2 <- model_a$coefficients[2]
+beta2*(y/x)
 ```
 
 ## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
+Tenemos 2, uno para $beta_0$ y otro para $\beta_1$
+OJO: CREO QUE SE REFIERE A OTRA COSA, HAY QUE CORRER REGRESION CON TOOOOOOODAS LAS VARAIABLES
 ````{r}
-
+hist(summary(model_a2)$coefficients[,4])
 ```
 
 
