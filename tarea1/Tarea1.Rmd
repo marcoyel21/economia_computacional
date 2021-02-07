@@ -1,0 +1,139 @@
+---
+title: "Economía Computacional: Tarea 1"
+author: "Isidoro Garcia"
+
+date: "2021"
+fontsize: 10 pt
+output: 
+    pdf_document:
+        fig_width: 6
+        fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.height = 4,
+	fig.width = 6,
+	message = FALSE,
+	warning = FALSE,
+	cache = TRUE,
+	digits = 3,
+	width = 48
+)
+ 
+```
+
+```{r liberias }
+library(tidyverse)
+library(data.table)
+library(RCT)
+library(knitr)
+library(lfe)
+library(broom)
+```
+
+En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró. 
+
+
+## Limpieza de datos
+
+Carga los datos en BenAndJerry.csv. 
+
+```{r }
+# Carga la base de datos
+base<-fread(list.files(pattern = '.csv'))
+```
+
+
+### 1. Cuales son las columnas de la base? Muestra una tabla con ellas
+
+### 2. A qué nivel está la base? Esto es, cuál es la variable que define la base de manera única. Si no la hay, crea una y muestra que es única a nivel de la base (Muestra el código)
+
+
+### 3. Que variables tienen valores vacíos? Haz una tabla con el porcentaje de vacíos para las columnas que tengan al menos una observación vacía
+
+
+### 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
+
+
+### 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
+
+
+
+### 6. Hay alguna númerica que en verdad represente una categorica? Cuales? Cambialas a factor
+
+
+### 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades? 
+
+### 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
+
+## Exploración de los datos 
+
+Intentaremos comprender la elasticidad precio de los helados. Para ello, debemos entender: 
+
+- La forma funcional base de la demanda (i.e. como se parecen relacionarse $q$ y $p$). 
+
+- Qué variables irían en el modelo de demanda y cuáles no para encontrar la elasticidad de manera 'insesgada'. 
+
+- Qué variables cambian la relacion de $q$ y $p$. Esto es, que variables alteran la elasticidad.
+
+Algo importante es que siempre debemos mirar primero las variables más relevantes de cerca y su relación en: 
+
+- Relación univariada
+
+- Relaciones bivariadas
+
+- Relaciones trivariadas
+
+Importante: Las gráficas deben estar bien documentadas (título, ejes con etiquetas apropiadas, etc). Cualquier gráfica que no cumpla con estos requisitos les quitaré algunos puntos.
+
+### 9. Cómo se ve la distribución del precio unitario y de la cantidad demandada. Haz un histograma.
+
+
+### 10. Grafica la $q(p)$. Que tipo de relación parecen tener? 
+
+### 11. Grafica la misma relación pero ahora entre $log(p+1)$ y $log(q+1)$
+
+Usemos la transformación logarítmica a partir de este punto. Grafiquemos la demanda inversa. 
+
+### 12. Grafica la curva de demanda por tamaño del helado. Parece haber diferencias en la elasticidad precio dependiendo de la presentación del helado? (2 pts)
+
+
+### 13. Grafica la curva de demanda por sabor. Crea una variable con los 3 sabores más populares y agruga el resto de los sabores como 'otros'. Parece haber diferencias en la elasticidad precio dependiendo del sabor?
+
+## Estimación
+
+### 14. Estima la regresión de la curva de demanda de los helados. Reporta la tabla de la regresión
+
+Algunos tips: 
+
+- No olvides borrar la variable que recien creamos de sabores. Incluirla (dado que es perfectamente colineal con flavor), sería una violación a supuesto GM 3 de la regresión. 
+
+- No olvides quitar `quantity`, `price_unit`, `price_deal` y otras variables que sirven como identificadora. Tambien quitar `fips_state_code` y `fips_county_code`.
+
+- Empecemos con una regresión que incluya a todas las variables. 
+
+
+Nota: La regresión en `R` entiende que si le metes variables de texto, debe convertirlas a un factor. En algunos otros algoritmos que veremos durante el curso, tendremos que convertir manualmente toda la base a una númerica. 
+
+Quitemos las fechas
+```{r}
+base$female_head_birth<-NULL
+base$male_head_birth<-NULL
+```
+
+### 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
+
+
+### 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
+
+## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
+
+
+### 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR? 
+Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% mutate(ranking = row_number)`
+
+
+### 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
+

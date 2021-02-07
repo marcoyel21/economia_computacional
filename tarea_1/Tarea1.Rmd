@@ -1,6 +1,6 @@
 ---
 title: 'Economía Computacional: Tarea 1'
-author: "Isidoro Garcia"
+author: "Alfredo Lefranc, Marco Ramos, Rafael Sandoval y Cynthia Valdivia"
 date: '2021'
 output: pdf_document
   
@@ -45,21 +45,54 @@ kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas"))
 
 ### 2. A qué nivel está la base? Esto es, cuál es la variable que define la base de manera única. Si no la hay, crea una y muestra que es única a nivel de la base (Muestra el código)
 
-Así como está la base sin niguna modificación el nivel es la compra. Es decir, cada fila representa una transacción realizada por un hogar. Esto lo podriamos modificar para que la unidad sea el hogar o cualquier otra variable.
+Así como está la base sin niguna modificación, el nivel es la compra. Es decir, cada fila representa una transacción realizada por un hogar. Esto lo podríamos modificar para que la unidad sea el hogar o cualquier otra variable.
 
-No hay una variable explícita que identifique cada observación de manera única pero si hay una manera implícita y es el índice de cada fila. Sin embargo, podemos crear una variable que contenga la información del índice de fila.
+No hay una variable explícita que identifique cada observación de manera única pero sí hay una manera implícita y es el índice de cada fila. De tal forma, podemos usar el identificador de y concatenarlo con una nueva variable para identificar la transacción por hogar para crear un identificador único a nivel de la base.
 
 
 ```{r}
-base<- base %>% rowid_to_column("ID")
+base2 <- base %>% group_by(household_id) %>% 
+          mutate(idper = sequence(n()))
+base$idper <- base2$idper
+
+base$id <- base$idper + base$household_id*100
+
 ```
 
 
 ### 3. Que variables tienen valores vacíos? Haz una tabla con el porcentaje de vacíos para las columnas que tengan al menos una observación vacía
 
-````{r}
-kable( (base %>% select_if(~sum(is.na(.)) > 0) %>% miss_var_summary()), booktabs=T, align = 'c', col.names = c("Variable","Cantidad","%"))
+Los NAs de las variables numéricas son identificables mediante un summary.
+````{r, eval=FALSE}
+summary(base)
+
 ```
+
+Las variables *promotion_type, scantrack_market_identifier, female_head_occupation* y *tv_items* tienen valores faltantes. Sin embargo, es posible que las variables de caracteres también tengan valores vacíos.
+
+```{r, include=FALSE}
+# subset de las variables de texto
+charvar <- select(base,c(6:8,32,33))
+
+# revisamos que no tengan valores vacíos
+table(charvar$size1_descr=="")
+table(charvar$flavor_descr=="")
+table(charvar$formula_descr=="")
+table(charvar$female_head_birth=="")
+table(charvar$male_head_birth=="")
+
+base$female_head_birth[base$female_head_birth==""]<- NA
+base$male_head_birth[base$male_head_birth==""]<-NA
+```
+
+Al revisar estas variables, notamos que *male_head_birth* y *female_head_birth* también tienen valores vacíos. En general encontramos lo siguiente:
+
+```{r}
+kable( (base %>% select_if(~sum(is.na(.)) > 0) %>% 
+          miss_var_summary()), booktabs=T, align = 'c',
+       col.names = c("Variable","Cantidad","%"))
+```
+
 
 ### 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
 
@@ -69,7 +102,7 @@ Pues dependiendo de la cantidad de valores vacíos, de si hay un patrón en los 
 ````{r}
 summary(factor(base$promotion_type))
 ```
-En esta variable podría ser que los NAs nos indiquen que sencillamente no hubo ninguna promoción (y eso podría explicar que casi el 60% de sus valores sean NAs). En este caso podemos suponer eso e imputarle un valor de 5 o 0 a cada Na.
+En esta variable podría ser que los NAs nos indiquen que sencillamente no hubo ninguna promoción (y eso podría explicar que casi el 60% de sus valores sean NAs). En este caso podemos suponer eso e imputarle un valor de 0 a cada `NA`.
 
 ````{r}
 base$promotion_type[is.na(base$promotion_type)] <- 0
@@ -90,35 +123,51 @@ susp<-base%>% select(fips_state_code,fips_county_code,type_of_residence,scantrac
 
 En este caso es más complejo porque es muy probable que cada valor corresponda a un producto, a una clasificación de cliente o a cualquier otra cosa. En este caso, lo que podríamos hacer es ver si podemos inferir está información de otras varaibles, de lo contrario imputar sería una muy mala idea pues estaríamos creando ruido en nuestra información. Investigando un poco nos dimos cuenta que se trata de una clasificación del posicionamiento en el mercado.
 
-**female_head_occupation**
+**female_head_occupation y female_head_birth**
 
-````{r}
-
-aux<-base %>% select(female_head_occupation,female_head_education,female_head_employment)%>%
+```{r}
+aux<-base %>% select(age_of_female_head,
+                     female_head_occupation,
+                     female_head_education,
+                     female_head_employment,
+                     female_head_birth) %>%
   filter (is.na(female_head_occupation))
-aux$female_head_education<-as.factor(aux$female_head_education)
-aux$female_head_employment<-as.factor(aux$female_head_employment)
 
 summary((aux))
-
+summary(aux$age_of_female_head[aux$female_head_birth==""])
 ```
 
-Notamos que todas las observaciones con valor faltante coinciden con los valores 0 de las columnas female_head_employment y female_head_education. Es muy probable que sean mujeres sin ocupación (tal vez ama de casa no lo están contemplando como ocupación). En este sentido crear una nueva categoría de mujeres con estás características con el número de 0 la cuál imputaremos a los valores faltantes.
+Explorando los datos, notamos que todos los NAs de las variables *female_head_occupation* y *female_head_birth* coinciden, y además corresponden a observaciones en que se registra una edad, educación y ocupación de la jefa del hogar de cero. Esto nos lleva a concluir que en los hogares que hicieron esas compras no hay una jefa de hogar femenina. En este sentido creamos una nueva categoría de ocupación de mujeres con estás características con el número 0, la cual imputamos a los valores faltantes. Por su parte, dejamos como NAs los valores faltantes de la variable *female_head_birth*.
 
 
 ````{r}
 base$female_head_occupation[is.na(base$female_head_occupation)] <- 0
-
 ```
+
+
+**male_head_birth**
+
+```{r}
+aux2<-base %>% select(age_of_male_head,
+                      male_head_occupation,
+                      male_head_education,
+                      male_head_employment,
+                      male_head_birth) %>%
+  filter (is.na(male_head_birth))
+
+summary((aux2))
+```
+Los valores faltantes de *male_head_birth* coinciden con ceros en edad, educación y empleo del jefe del hogar masculino, aunque curiosamente sí se tiene registro de su ocupación. Concluimos, como en el caso de las mujeres, que se trata de casos, en los que la compra corresponde a hogares sin un jefe del hogar masculino, y decidimos ignorar estos valores vacíos.
+
 
 **tv_items**
 
-En este caso, puede que la variable indíque una cantidad de *items* o bien que indique una categoría. En el caso primero, parecería que no contemplaron una cantidad de 0s o de más de 3, bien podríamos imputar el valor de 0. En el segundo caso, no tenemos manera de saber que tipo de categorías son, en ese caso no podríamos imputar tan facilmente: podríamos agregar un valor para identificarlas (como un 0) o bien simplemente prescindir de dichas observaciones (lo cuál no afectaría nuestro análisis debido a que son tan solo 34 observaciones).
+En este caso, puede que la variable indique una cantidad de *items* o bien que indique una categoría. En el caso primero, parecería que no contemplaron una cantidad de ceros o de más de 3, bien podríamos imputar el valor de 0. En el segundo caso, no tenemos manera de saber el tipo de categorías son, en ese caso no podríamos imputar tan facilmente: podríamos agregar un valor para identificarlas (como un 0) o bien simplemente prescindir de dichas observaciones (lo cuál no afectaría nuestro análisis debido a que son tan solo 34 observaciones). Optamos por imputarles el valor de cero, dado que esa opción es congruente sea la variable categórica o numérica.
 
 
 ````{r}
+base$tv_items[is.na(base$tv_items)] <- 0
 summary(factor(base$tv_items))
-
 ```
 
 ### 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
@@ -126,29 +175,55 @@ summary(factor(base$tv_items))
 Sin hacer ninguna adecuación en el tipo de variables, la tabla es la siguiente:
 
 ````{r}
-
-b<- summary_statistics(base,probs=c(0,0.05,0.25,0.5,0.75,0.9,0.95,1),na.rm=T)
+b <- read.csv("BenAndJerry.csv")
+b<- summary_statistics(b,probs=c(0,0.05,0.25,0.5,0.75,0.9,0.95,1),na.rm=T)
 b<- b %>% mutate_at(vars(-variable),funs(round(.,2))) %>%
   rename(mín=4) %>%
   rename(máx=11)
+
+options(scipen=999) # quitamos notación científica
 kable(b,booktabs=T, align = 'c')
-
-
 ```
 
+No obstante, algunas de estas variables en realidad no son numéricas, por lo que sus estadísticas descriptivas podrían ser engañosas.
 
 ### 6. Hay alguna númerica que en verdad represente una categorica? Cuales? Cambialas a factor
 
-Sin duda las siguientes variables son categóricas: *male_head_employment.female_head_employment,marital_status,male_head_occupation,female_head_occupation,household_composition,race,hispanic_origin,region,scantrack_market_identifier,fips_state_code,fips_county_code,type_of_residence, household_internet_connection*.
+```{r, include=FALSE}
+numericas<-base%>% select(where(is.numeric))
+summary(numericas)
+```
 
-Sin embargo, las siguientes podrían ser o no ser categóricas, tendríamos que hacer un breve análisis para determinar: *tv_items,kitchen_appliances,age_and_presence_of_children,male_head_education,female_head_education.*
+De las variables numéricas, por su nombre y rango de valores, podemos inferir que las siguientes son categóricas:
+*promotion_type, household_income, age_of_female_head, age_of_male_head, male_head_employment, female_head_employment, marital_status, male_head_occupation, female_head_occupation, household_composition, race, hispanic_origin, region, scantrack_market_identifier, fips_state_code, fips_county_code, type_of_residence* y *household_internet_connection*.
 
 
-
+Sin embargo, las siguientes podrían ser o no ser categóricas: *tv_items, kitchen_appliances, age_and_presence_of_children, male_head_education, female_head_education.*
 ````{r}
-variables_seguras<-c("male_head_employment","female_head_employment","marital_status","male_head_occupation","female_head_occupation","household_composition","race","hispanic_origin","region","scantrack_market_identifier","fips_state_code","fips_county_code","type_of_residence","household_internet_connection")
+variables_seguras<-c("promotion_type",
+                     "household_income",
+                     "age_of_female_head",
+                     "age_of_male_head",
+                     "male_head_employment",
+                     "female_head_employment",
+                     "marital_status",
+                     "male_head_occupation",
+                     "female_head_occupation",
+                     "household_composition",
+                     "race",
+                     "hispanic_origin",
+                     "region",
+                     "scantrack_market_identifier",
+                     "fips_state_code",
+                     "fips_county_code",
+                     "type_of_residence",
+                     "household_internet_connection")
 
-variables_no_seguras<-c("tv_items","kitchen_appliances","age_and_presence_of_children","male_head_education","female_head_education")
+variables_no_seguras<-c("tv_items",
+                        "kitchen_appliances",
+                        "age_and_presence_of_children",
+                        "male_head_education",
+                        "female_head_education")
 
 base[,variables_seguras] <- lapply(base[,variables_seguras] , factor)
 base[,variables_no_seguras] <- lapply(base[,variables_no_seguras] , factor)
@@ -167,14 +242,34 @@ base[,variables_numericas] <- lapply(base[,variables_numericas] , as.numeric)
 
 ### 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades? 
 
-````{r}
-numericas<-base%>% select(where(is.numeric))
-names(numericas) <- names(numericas)
-lapply(numericas,hist)
+````{r, warning=FALSE, message=FALSE}
+
+myhist <- function(yvar){
+  ggplot(numericas, aes_(x=as.name(yvar)))+
+    geom_histogram()+
+    ggtitle(paste0(as.name(yvar)))+
+    xlab("")+
+    ylab("")+
+    theme(axis.text.y = element_blank())
+}
+hists<- numericas %>% select(price_paid_deal,
+                             price_paid_non_deal,
+                             coupon_value,
+                             household_size:household_composition,
+                             scantrack_market_identifier,
+                             kitchen_appliances,
+                             tv_items) %>%
+        names() %>%
+        lapply(myhist)
+
+library(gridExtra)
+
+grid.arrange(grobs=hists[1:10],ncol=4)
+grid.arrange(grobs=hists[11:19],ncol=4)
 
 ```
 
-FALTA ANALISIS
+No. Las edades de los jefes del hogar y el ingreso del hogar tienen valores muy bajos, lo que nos hace pensar que estas variables son categóricas (transformadas en el inciso anterior).
 
 
 ### 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
