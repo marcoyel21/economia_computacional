@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/W32TeX) (preloaded format=pdflatex 2020.12.5)  7 FEB 2021 16:52
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020/W32TeX) (preloaded format=pdflatex 2020.12.5)  7 FEB 2021 21:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -830,7 +830,7 @@ t>
 File: Tarea1_files/figure-latex/unnamed-chunk-22-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-22-1.pdf>
 Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-22-1.pdf  used
- on input line 772.
+ on input line 776.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
 [11 <./Tarea1_files/figure-latex/unnamed-chunk-21-2.pdf>]
 <Tarea1_files/figure-latex/unnamed-chunk-23-1.pdf, id=194, 469.755pt x 325.215p
@@ -838,7 +838,7 @@ t>
 File: Tarea1_files/figure-latex/unnamed-chunk-23-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-23-1.pdf>
 Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-23-1.pdf  used
- on input line 789.
+ on input line 796.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
 [12 <./Tarea1_files/figure-latex/unnamed-chunk-22-1.pdf>]
 <Tarea1_files/figure-latex/unnamed-chunk-24-1.pdf, id=208, 469.755pt x 325.215p
@@ -846,55 +846,58 @@ t>
 File: Tarea1_files/figure-latex/unnamed-chunk-24-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-24-1.pdf>
 Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-24-1.pdf  used
- on input line 807.
+ on input line 819.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 807--809
-[][]
- []
-
 [13 <./Tarea1_files/figure-latex/unnamed-chunk-23-1.pdf>] [14 <./Tarea1_files/f
-igure-latex/unnamed-chunk-24-1.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf, id=233, 469.755pt x 325.215p
+igure-latex/unnamed-chunk-24-1.pdf>] [15]
+<Tarea1_files/figure-latex/unnamed-chunk-27-1.pdf, id=241, 469.755pt x 325.215p
 t>
-File: Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf Graphic file (type pdf)
-<use Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf>
-Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf  used
- on input line 894.
+File: Tarea1_files/figure-latex/unnamed-chunk-27-1.pdf Graphic file (type pdf)
+<use Tarea1_files/figure-latex/unnamed-chunk-27-1.pdf>
+Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-27-1.pdf  used
+ on input line 937.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 894--896
+Underfull \hbox (badness 10000) in paragraph at lines 937--941
 [][]
  []
 
-[15] [16 <./Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf>] [17pdfTeX warnin
-g (ext4): destination with the same identifier (name{table.1}) has been already
- used, duplicate ignored
+
+Underfull \vbox (badness 2065) detected at line 976
+ []
+
+[16 <./Tarea1_files/figure-latex/unnamed-chunk-27-1.pdf>]
+Underfull \vbox (badness 2221) detected at line 1023
+ []
+
+[17] [18pdfTeX warning (ext4): destination with the same identifier (name{table
+.1}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   
-l.1005 
-       pdfTeX warning (ext4): destination with the same identifier (name{table.
-2}) has been already used, duplicate ignored
+l.1106   N
+          o olvides quitar \texttt{quantity}, \texttt{price\_unit},pdfTeX warni
+ng (ext4): destination with the same identifier (name{table.2}) has been alread
+y used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   
-l.1005 
-       ] [18]
-<Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf, id=263, 469.755pt x 325.215p
+l.1106   N
+          o olvides quitar \texttt{quantity}, \texttt{price\_unit},] [19]
+<Tarea1_files/figure-latex/unnamed-chunk-33-1.pdf, id=276, 469.755pt x 325.215p
 t>
-File: Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf Graphic file (type pdf)
-<use Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf>
-Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf  used
- on input line 1157.
+File: Tarea1_files/figure-latex/unnamed-chunk-33-1.pdf Graphic file (type pdf)
+<use Tarea1_files/figure-latex/unnamed-chunk-33-1.pdf>
+Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-33-1.pdf  used
+ on input line 1270.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
-[19] [20 <./Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-32-1.pdf, id=282, 469.755pt x 325.215p
+[20] [21 <./Tarea1_files/figure-latex/unnamed-chunk-33-1.pdf>]
+<Tarea1_files/figure-latex/unnamed-chunk-34-1.pdf, id=295, 469.755pt x 325.215p
 t>
-File: Tarea1_files/figure-latex/unnamed-chunk-32-1.pdf Graphic file (type pdf)
-<use Tarea1_files/figure-latex/unnamed-chunk-32-1.pdf>
-Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-32-1.pdf  used
- on input line 1197.
+File: Tarea1_files/figure-latex/unnamed-chunk-34-1.pdf Graphic file (type pdf)
+<use Tarea1_files/figure-latex/unnamed-chunk-34-1.pdf>
+Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-34-1.pdf  used
+ on input line 1310.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
-[21 <./Tarea1_files/figure-latex/unnamed-chunk-32-1.pdf>] (./Tarea1.aux)
+[22 <./Tarea1_files/figure-latex/unnamed-chunk-34-1.pdf>] (./Tarea1.aux)
 Package rerunfilecheck Info: File `Tarea1.out' has not changed.
 (rerunfilecheck)             Checksum: E851D103E8E5D96EF678CC2CBE3A5E78;14994.
 
@@ -902,11 +905,11 @@ LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 14509 strings out of 481331
- 222900 string characters out of 5916230
- 589206 words of memory out of 5000000
+ 14512 strings out of 481331
+ 222927 string characters out of 5916230
+ 590206 words of memory out of 5000000
  30943 multiletter control sequences out of 15000+600000
- 451543 words of font info for 102 fonts, out of 8000000 for 9000
+ 451626 words of font info for 103 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  66i,11n,72p,1433b,472s stack positions out of 5000i,500n,10000p,200000b,80000s
 {c:/Users/fredy/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.e
@@ -928,10 +931,10 @@ ing/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb><c:/Users/fredy/AppData
 Data/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb><c:/Users/fred
 y/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb><c:/Users
 /fredy/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Tarea1.pdf (21 pages, 1787153 bytes).
+Output written on Tarea1.pdf (22 pages, 1811465 bytes).
 PDF statistics:
- 361 PDF objects out of 1000 (max. 8388607)
- 301 compressed objects within 4 object streams
- 68 named destinations out of 1000 (max. 500000)
+ 373 PDF objects out of 1000 (max. 8388607)
+ 312 compressed objects within 4 object streams
+ 69 named destinations out of 1000 (max. 500000)
  12515 words of extra memory for PDF output out of 14400 (max. 10000000)
 

@@ -322,22 +322,28 @@ ggplot(base)+
 
 ### 10. Grafica la $q(p)$. Que tipo de relación parecen tener? 
 
-Aunque parece haber una relación negativa, esta no es tan clara.
+Aunque parece haber una relación negativa, marcada por las compras de 1 a 4 productos, esta no es tan clara para mayores cantidades.
 
 ````{r}
 ggplot(base)+
-  geom_point(aes(x=quantity,y=unit_price))+ 
-  geom_smooth(formula=y~x,method=lm, color='1',aes(x = quantity, y = unit_price))
+  geom_point(aes(y=quantity, x=unit_price))+ 
+  geom_smooth(formula=y~x,method=lm, color='2',aes(y=quantity, x=unit_price))+
+  theme_bw()+
+  labs(title="Demanda de helados en función del precio",
+       x="Precio unitario",y="Cantidad demandada")
 ```
 
 ### 11. Grafica la misma relación pero ahora entre $log(p+1)$ y $log(q+1)$
 
-Cuando hacemos la transformación, la relación es más evidente:
+Cuando hacemos la transformación, la relación negativa es más evidente:
 
 ````{r}
 ggplot(base)+
-  geom_point(aes(x=log(quantity+1),y=log(unit_price+1)))+ 
-  geom_smooth(formula=y~x,method=lm, color='1',aes(x = log(quantity+1), y = log(unit_price+1)))
+  geom_point(aes(y=log(quantity+1),x=log(unit_price+1)))+ 
+  geom_smooth(formula=y~x,method=lm, color='1',aes(y = log(quantity+1), x = log(unit_price+1)))+
+  theme_bw()+
+  labs(title = "Elasticidad precio de la demanda de helados",
+       x="Precio unitario (log)", y="Cantidad demandada (log)")
 
 ```
 
@@ -345,13 +351,33 @@ ggplot(base)+
 
 ````{r}
 
-ggplot(data = base, aes(x=quantity, y=unit_price,col=as.factor(size1_descr))) +
-  geom_point() +
+ggplot(data = base, aes(y=log(quantity+1), x=log(unit_price+1),col=as.factor(size1_descr))) +
+  geom_point(size=1, alpha=0.5) +
   geom_smooth(method='lm',
               formula= y~(x),
-              se=FALSE, size=2)
+              se=FALSE, size=1)+
+  theme_bw()+
+  labs(title="Elasticidad precio demanda de helado por tamaño",
+      y="Cantidad demandada (log)",
+      x="Precio unitario (log)",
+      col="Tamaño")
+
 ````
-HACER UNA PRUEBA DE HIPOTESIS
+```{r}
+# Prueba de hipotesis
+elast16 <- lm(log(quantity+1)~log(unit_price+1), 
+              data=base[base$size1_descr=="16.0 MLOZ",])
+elast32 <- lm(log(quantity+1)~log(unit_price+1), 
+              data=base[base$size1_descr=="32.0 MLOZ",])
+a <- elast16$coefficients[2]-elast32$coefficients[2]
+b <- (vcov(elast16)[2,2] + vcov(elast32)[2,2]) %>% sqrt()
+
+# Estadístico t
+a/b
+
+```
+Al realizar una prueba de hipótesis si los coeficientes obtenidos son iguales, se obtiene un estadístico t de -3, por lo que la prueba se rechazaría en favor de la diferencia de éstos.
+
 
 ### 13. Grafica la curva de demanda por sabor. Crea una variable con los 3 sabores más populares y agruga el resto de los sabores como 'otros'. Parece haber diferencias en la elasticidad precio dependiendo del sabor?
 ````{r}
@@ -361,18 +387,64 @@ summary(factor(base$flavor_descr))
 Parece que los 3 sabores más populares son *CHERRY GRCA*, *CHC FUDGE BROWNIE* y *CHC CHIP C-DH*.
 
 ````{r}
-base<-base%>% mutate(sabores_pop= ifelse(flavor_descr=='CHERRY GRCA','CHERRY GRCA',
-(ifelse(flavor_descr=='CHC FUDGE BROWNIE','CHC FUDGE BROWNIE',
-(ifelse(flavor_descr=='CHC CHIP C-DH','CHC CHIP C-DH','otros'))))))
+base<-base%>% 
+  mutate(sabores_pop= ifelse(flavor_descr=='CHERRY GRCA','cherry grca',
+(ifelse(flavor_descr=='CHC FUDGE BROWNIE','chc fudge brownie',
+(ifelse(flavor_descr=='CHC CHIP C-DH','chc chip c-dh','otros'))))))
 
 
-ggplot(data = base, aes(x=quantity, y=unit_price,col=as.factor(sabores_pop))) +
-  geom_point() +
+ggplot(data = base, aes(y=log(quantity+1), 
+                        x=log(unit_price+1),
+                        col=as.factor(sabores_pop))) +
+  geom_point(size=1, alpha=0.3) +
   geom_smooth(method='lm',
               formula= y~(x),
-              se=FALSE, size=2)
+              se=FALSE, size=1)+
+  theme_bw()+
+  labs(title="Elasticidad precio demanda de helado por sabor",
+      y="Cantidad demandada (log)",
+      x="Precio unitario (log)",
+      col="Sabor")
+
 ```
-PRUEBA DE HIPOTESIS
+A diferencia de las muestras por tamaño del helado, las diferencias en la elasticidad precio demanda observadas para los sabores de helado aparentan ser muy pequeñas.
+
+```{r}
+
+echip <- lm(log(quantity+1)~log(unit_price+1), 
+            data=base[base$sabores_pop=="chc chip c-dh",])
+echerry <- lm(log(quantity+1)~log(unit_price+1), 
+              data=base[base$sabores_pop=="cherry grca",])
+efudge <- lm(log(quantity+1)~log(unit_price+1), 
+             data=base[base$sabores_pop=="chc fudge brownie",])
+eother <- lm(log(quantity+1)~log(unit_price+1), 
+             data=base[base$sabores_pop=="otros",])
+
+chipcherry <- (echip$coefficients[2]-echerry$coefficients[2])/
+               ((vcov(echip)[2,2] + vcov(echerry)[2,2]) %>% sqrt())
+chipfudge <- (echip$coefficients[2]-efudge$coefficients[2])/
+               ((vcov(echip)[2,2] + vcov(efudge)[2,2]) %>% sqrt())
+chipother <- (echip$coefficients[2]-eother$coefficients[2])/
+               ((vcov(echip)[2,2] + vcov(eother)[2,2]) %>% sqrt())
+cherryfudge <- (echerry$coefficients[2]-efudge$coefficients[2])/
+               ((vcov(echerry)[2,2] + vcov(efudge)[2,2]) %>% sqrt())
+cherryother <- (echerry$coefficients[2]-eother$coefficients[2])/
+               ((vcov(echerry)[2,2] + vcov(eother)[2,2]) %>% sqrt())
+fudgeother <- (efudge$coefficients[2]-eother$coefficients[2])/
+               ((vcov(efudge)[2,2] + vcov(eother)[2,2]) %>% sqrt())
+
+
+# Estadísticos t
+tstats <- list(chipcherry = chipcherry,
+               chipfudge = chipfudge,
+               chipother = chipother,
+               cherryfudge = cherryfudge,
+               cherryother = cherryother,
+               fudgeother = fudgeother)
+tstats
+```
+Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales a un nivel de significancia de 5%, se rechazan las de `chc chip c-dh` con `cherry grca` y la de `cherry grca` con `otros`. 
+
 
 ## Estimación
 
