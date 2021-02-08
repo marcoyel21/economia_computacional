@@ -458,7 +458,7 @@ base<- select (base,-c(sabores_pop))
 
 # convertimos sabores en dummies y ponemos como base los de vainilla
 base$flavor_descr <- relevel(factor(base$flavor_descr),"VAN")
-base$size1_descr <- factor(base$size1_descr,levels=1:2, labels=c("small","big")) 
+#base$size1_descr <- factor(base$size1_descr,levels=1:2, labels=c("small","big")) 
 
 # uso de cupon / no uso de cupon
 base$coupon <- factor(base$coupon_value>0)
@@ -476,11 +476,50 @@ levels(base$race) <- c("White","Black","Asian","Other")
 # hispano
 base$hispanic_origin <- factor(base$hispanic_origin==1)
 
- base_reg<- base[,c("flavor_descr","")]
+# fórmula
+base$formula_descr <- as.factor(base$formula_descr)
+
+# tamaño
+base$size1_descr <- as.factor(base$size1_descr)
+
+# tvs
+base$pay_tv <- base$tv_items>1
+
+# internet
+base$internet <- base$household_internet_connection==1
+
+base$log_price <- log(base$unit_price+1)
+
+ base_reg<- base[,c("quantity",
+                    "log_price",
+                    "flavor_descr",
+                    "size1_descr",
+                    "household_income",
+                    "household_size",
+                    "coupon",
+                    "region",
+                    "married",
+                    "race",
+                    "hispanic_origin",
+                    "promotion_type",
+                    "age_of_female_head",
+                    "age_of_male_head",
+                    "age_and_presence_of_children",
+                    "male_head_employment",
+                    "female_head_employment",
+                    "male_head_education","female_head_education",
+                    "male_head_occupation",
+                    "female_head_occupation",
+                    "household_composition",
+                    "type_of_residence",
+                    "kitchen_appliances",
+                    "pay_tv",
+                    "internet")]
 
 
-model_a2<-lm(quantity~unit_price,data = base)
-stargazer(model_a2, type = "latex", title="Regresión", digits=1)
+model_a2<-lm(log(quantity+1) ~ .,data = base_reg)
+summary(model_a2)
+stargazer(model_a2, type = "text", title="Regresión", digits=1)
 
 ```
 CORREGIR
@@ -512,12 +551,11 @@ glance(model_a2)
 RSS <- sum(model_a2$residuals^2)
 TSS<- sum((base$quantity-mean(base$quantity))^2)
 n<- length(base$unit_price)
-k<- 1
+k<- sum(!is.na(model_a2$coefficients))
 
 (F <- ((TSS-RSS)/k)/(RSS/(n-k-1)))
 
 summary(model_a2)
-# sí es igual
 ```
 
 ### 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
@@ -541,8 +579,8 @@ beta2*(y/x)
 Tenemos 2, uno para $beta_0$ y otro para $\beta_1$
 OJO: CREO QUE SE REFIERE A OTRA COSA, HAY QUE CORRER REGRESION CON TOOOOOOODAS LAS VARAIABLES
 ````{r}
-valores_p <- summary(model_a2)$coefficients[,4]
-hist(summary(model_a2)$coefficients[,4])
+valores_p <- summary(model_a2)$coefficients[2:k,4]
+hist(summary(model_a2)$coefficients[2:k,4])
 ```
 
 
@@ -553,31 +591,53 @@ Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% m
 
 fdr <- function(valores_p,q){
   valores_p <- valores_p[!is.na(valores_p)]
-  n <- length(valores_p)
+  n <<- length(valores_p)
   
   k <- rank (valores_p,ties.method="min")
   t <- valores_p <= q*k/n
   t[valores_p<max(valores_p[t])] <- TRUE
   
   orden <- order(valores_p)
+  valores_p_ordenados <<- valores_p[orden]
   plot(valores_p[orden])
-  lines(1:n, q*(1:n)/n)
-  
+  lines(1:n, q*(1:n)/n, col='red')
+
   return(max(valores_p[t]))
-  
 }
 
-#prueba
-abc <- c(0.52, 0.07, 0.013, 0.0001, 0.26, 0.04, 0.01, 0.15, 0.03, 0.0002)
 
 
-fdr(abc,0.05)
+q<- 0.05
+fdr(valores_p,q)
+
+fdr_save <- fdr(valores_p,q)
+
+
+plot(valores_p_ordenados,ylim=c(0,q+0.025),xlim=c(0,50))
+lines(1:n, q*(1:n)/n,col='red')
+abline(h = q)
+
+
+
+# prueba
+# abc <- c(0.52, 0.07, 0.013, 0.0001, 0.26, 0.04, 0.01, 0.15, 0.03, 0.0002)
 
 # alternativa
-fdr2 <- p.adjust(p=abc,method="BH")
+fdr2 <- p.adjust(p=valores_p,method="BH")
 names(fdr2) <- fdr2 <=0.05
 fdr2
 ```
+
+¿Cuántas variables salían significativas? ¿Cuántas salen con FDR?
+
+```{r}
+# Antes
+sum(valores_p<0.05)
+
+# Con FDR
+sum(valores_p<fdr_save)
+```
+
 
 ### 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
 ````{r}
