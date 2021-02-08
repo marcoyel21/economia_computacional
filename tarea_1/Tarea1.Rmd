@@ -453,6 +453,32 @@ Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad
 model_a<-lm(unit_price~quantity,data = base)
 stargazer(model_a, type = "latex", title="Regresión", digits=1)
 
+# quitamos columnas irrelevantes
+base<- select (base,-c(sabores_pop))
+
+# convertimos sabores en dummies y ponemos como base los de vainilla
+base$flavor_descr <- relevel(factor(base$flavor_descr),"VAN")
+base$size1_descr <- factor(base$size1_descr,levels=1:2, labels=c("small","big")) 
+
+# uso de cupon / no uso de cupon
+base$coupon <- factor(base$coupon_value>0)
+
+# región
+levels(base$region) <- c("East","Central","South","West")
+
+# estado civil
+base$married <- factor(base$marital_status==1)
+
+# raza
+base$race <- factor(base$race, levels= 1:4)
+levels(base$race) <- c("White","Black","Asian","Other")
+
+# hispano
+base$hispanic_origin <- factor(base$hispanic_origin==1)
+
+ base_reg<- base[,c("flavor_descr","")]
+
+
 model_a2<-lm(quantity~unit_price,data = base)
 stargazer(model_a2, type = "latex", title="Regresión", digits=1)
 
