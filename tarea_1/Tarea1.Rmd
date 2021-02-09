@@ -213,7 +213,7 @@ length(unique((susp$estado_condado)))
 
 ```
 
-Sin embargo, lo que podemos ver es analizar la variedad de categorías en cada estado. En este sentido, en la siguiente tabla agrupamos las categorías de *scantrack_market_identifier* de cada estado y la cantidad de observaciones que tuvo cada combinación. Como podemos observar, en realidad las categorías de cada estado son pocas, (en promedio 2.7 y con mayorías claras), por lo que bien podríamos imputar la moda. Sin embargo, no podríamos hacer algo más, si quisieramos mejorar la calidad de la imputación necesitariamos tener más información o más dimensiones (por ejemplo, la ubicación de los condados para calcular una correlación espacial).
+Sin embargo, lo que podemos ver es analizar la variedad de categorías en cada estado. En este sentido, en la siguiente tabla agrupamos las categorías de *scantrack_market_identifier* de cada estado y la cantidad de observaciones que tuvo cada combinación. Como podemos observar, en realidad las categorías de cada estado son pocas, (en promedio 2.7 y con mayorías claras), por lo que bien podríamos imputar la moda. Sin embargo, no podríamos hacer mucho más. Si quisiéramos mejorar la calidad de la imputación necesitaríamos tener más información o más dimensiones (por ejemplo, la ubicación de los condados para calcular una correlación espacial).
 
 
 ```{r,message=FALSE}
@@ -251,7 +251,7 @@ summary(aux$age_of_female_head[aux$female_head_birth==""])
 ```
 
 Explorando los datos, notamos que todos los NAs de las variables *female_head_occupation* y 
-*female_head_birth* coinciden, y además corresponden a observaciones en que se registra una edad, educación y ocupación de la jefa del hogar de cero. Esto nos lleva a concluir que en los hogares que hicieron esas compras no hay una jefa de hogar femenina. En este sentido creamos una nueva categoría de ocupación de mujeres con estás características con el número 0, la cual imputamos a los valores faltantes. Por su parte, dejamos como desconocidos los valores faltantes de la variable *female_head_birth* sin embargo les ponemos una etiqueta para no perder las observaciones
+*female_head_birth* coinciden, y además corresponden a observaciones en que se registra una edad, educación y ocupación de la jefa del hogar de cero. Esto nos lleva a concluir que en los hogares que hicieron esas compras no hay una jefa de hogar femenina. En este sentido creamos una nueva categoría de ocupación de mujeres con estas características con el número 0, la cual imputamos a los valores faltantes. Por su parte, dejamos como desconocidos los valores faltantes de la variable *female_head_birth* sin embargo les ponemos una etiqueta para no perder las observaciones
 
 ```{r}
 base$female_head_occupation[is.na(base$female_head_occupation)] <- 0
@@ -272,7 +272,7 @@ aux2<-base %>% select(age_of_male_head,
 summary((aux2))
 ```
 
-Los valores faltantes de *male_head_birth* coinciden con ceros en edad, educación y empleo del jefe del hogar masculino, aunque curiosamente sí se tiene registro de su ocupación. Concluimos, como en el caso de las mujeres, que se trata de casos, en los que la compra corresponde a hogares sin un jefe del hogar masculino, y decidimos ignorar estos valores vacíos (pero agregandoles una etiqueta para no perder las observaciones).
+Los valores faltantes de *male_head_birth* coinciden con ceros en edad, educación y empleo del jefe del hogar masculino, aunque curiosamente sí se tiene registro de su ocupación. Concluimos, como en el caso de las mujeres, que se trata de casos, en los que la compra corresponde a hogares sin un jefe del hogar masculino, y decidimos ignorar estos valores vacíos (pero agregándoles una etiqueta para no perder las observaciones).
 
 ````{r}
 base$male_head_birth[is.na(base$male_head_birth)] <- "unknown"
@@ -389,7 +389,7 @@ grid.arrange(grobs=hists[11:19],ncol=4)
 
 ```
 
-Definitvamente vemos comportamientos atípicos en las edades. Las de los jefes del hogar y el ingreso del hogar tienen valores muy bajos, lo que nos hace pensar que estas variables son categóricas (transformadas en el inciso anterior).
+Definitvamente vemos comportamientos atípicos en las edades. Las de los jefes del hogar y el ingreso del hogar tienen valores muy bajos, lo que nos hace pensar que estas variables son categóricas (transformadas en el inciso anterior). Por otra parte, es implausible que la educación de los jefes del hogar, masculino y femenino, conste de 0 a 6 años, razón por la cual también decidimos transformarlas a categóricas en el inciso anterior.
 
 
 ## 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
@@ -423,7 +423,7 @@ Importante: Las gráficas deben estar bien documentadas (título, ejes con etiqu
 
 ## 9. Cómo se ve la distribución del precio unitario y de la cantidad demandada. Haz un histograma.
 
-```{r, include=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
 library(ggthemes)
 
 median_price <- quantile(base$unit_price)[3]
@@ -446,7 +446,7 @@ ggplot(base)+
 
 Aunque parece haber una relación negativa, marcada por las compras de 1 a 4 productos, esta no es tan clara para mayores cantidades.
 
-```{r,include=FALSE}
+```{r,warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(base)+
   geom_point(aes(y=quantity, x=unit_price))+ 
   geom_smooth(formula=y~x,method=lm, color='2',aes(y=quantity, x=unit_price))+
@@ -459,7 +459,7 @@ ggplot(base)+
 
 Cuando hacemos la transformación, la relación negativa es más evidente:
 
-````{r,include=FALSE}
+````{r,warning=FALSE, message=FALSE, echo=FALSE}
 ggplot(base)+
   geom_point(aes(y=log(quantity+1),x=log(unit_price+1)))+ 
   geom_smooth(formula=y~x,method=lm, color='2',aes(y = log(quantity+1), x = log(unit_price+1)))+
@@ -471,7 +471,7 @@ ggplot(base)+
 
 ## 12. Grafica la curva de demanda por tamaño del helado. Parece haber diferencias en la elasticidad precio dependiendo de la presentación del helado? (2 pts)
 
-````{r,include=FALSE}
+````{r,warning=FALSE, message=FALSE, echo=FALSE}
 
 ggplot(data = base, aes(y=log(quantity+1), x=log(unit_price+1),col=as.factor(size1_descr))) +
   geom_point(size=1, alpha=0.5) +
@@ -488,24 +488,25 @@ ggplot(data = base, aes(y=log(quantity+1), x=log(unit_price+1),col=as.factor(siz
 
 De observar la gráfica, hay indicios de que es probable que ambas curvas sean diferentes. Sin embargo, para tener más argumentos planteamos la siguiente prueba de hipótesis:
 
-$$H_n:\beta_{1,16MLOZ}-\beta_{1,32MLOZ}=0$$
-$$H_a:\beta_{1,16MLOZ}-\beta_{1,32MLOZ} \neq0$$
+$$H_0:\beta_{3,32MLOZ}=0$$
+$$H_a:\beta_{3,32MLOZ} \neq0$$
+Donde el modelo a estimar es el siguiente:
+$$ log(q_i+1) = \beta_0 + \beta_1log(p_i+1) + \beta_232MLOZ + \beta_3log(p_i+1)32MLOZ_i + \upsilon_i$$
+
 
 ```{r}
 # Prueba de hipotesis
-elast16 <- lm(log(quantity+1)~log(unit_price+1), 
-              data=base[base$size1_descr=="16.0 MLOZ",])
-elast32 <- lm(log(quantity+1)~log(unit_price+1), 
-              data=base[base$size1_descr=="32.0 MLOZ",])
-a <- elast16$coefficients[2]-elast32$coefficients[2]
-b <- (vcov(elast16)[2,2] + vcov(elast32)[2,2]) %>% sqrt()
+elast_size <- lm(log(quantity+1)~log(unit_price+1)*size1_descr, 
+              data=base)
 
-# Estadístico t
-a/b
+hip_size <- c(0,0,0,1)
+
+library(car)
+linearHypothesis(elast_size,hip_size, rhs = NULL, white.adjust="hc1")
 
 ```
 
-Al realizar la prueba de hipótesis se obtiene un estadístico t de -3, por lo que se rechazaría la hipótesis nula en favor de la alternativa (que son diferentes de manera significativa).
+Al realizar la prueba de hipótesis se obtiene un valor p de 0.03, por lo que se rechazaría la hipótesis nula con un nivel de significancia de 5% en favor de la alternativa (que son diferentes de manera significativa).
 
 
 ## 13. Grafica la curva de demanda por sabor. Crea una variable con los 3 sabores más populares y agruga el resto de los sabores como 'otros'. Parece haber diferencias en la elasticidad precio dependiendo del sabor?
@@ -548,54 +549,68 @@ ggplot(data = base, aes(y=log(quantity+1),
 ```
 A primera vista, parece que las 4 curvas están muy empalmadas y parece que tienen una pendiente y ordenada al origen similar. A diferencia del caso del tamaño del helado, las diferencias en la elasticidad precio demanda observadas para los sabores de helado aparentan ser muy pequeñas. Sin embargo, realizamos las siguientes pruebas de hipótesis para tener una conclusión más certera:
 
-$$H_n:\beta_i-\beta_j=0$$
-$$H_a:\beta_i-\beta_j \neq0$$
-donde evaluamos una prueba para cada combinación de modelos, en total realizamos 6 pruebas.
+$$H_0:\beta_j=0$$
+$$H_a:\beta_j \neq0$$
+donde evaluamos una prueba para el coeficiente de cada interacción de términos ($\beta_5, \beta_6$ y $\beta_7$), con base en el siguiente modelo:
+
+\begin{align*} 
+log(q_i+1) = \beta_0 + \beta_1log(p_i+1) + \beta_2chc_chip_c-dh + \beta_3chc_fudge_brownie + \\  \beta_4cherry_grca + \beta_5log(p_i+1)chc_chip_c-dh + \beta_6log(p_i+1)chc_fudge_brownie + \\  \beta_7log(p_i+1)cherry_grca + \upsilon_i
+\end{align*}
 
 
 ```{r}
 
-echip <- lm(log(quantity+1)~log(unit_price+1), 
-            data=base[base$sabores_pop=="chc chip c-dh",])
-echerry <- lm(log(quantity+1)~log(unit_price+1), 
-              data=base[base$sabores_pop=="cherry grca",])
-efudge <- lm(log(quantity+1)~log(unit_price+1), 
-             data=base[base$sabores_pop=="chc fudge brownie",])
-eother <- lm(log(quantity+1)~log(unit_price+1), 
-             data=base[base$sabores_pop=="otros",])
+elast_sabores <- lm(log(quantity+1)~log(unit_price+1)*relevel(as.factor(sabores_pop),ref='otros'),
+                    data=base)
 
-chipcherry <- (echip$coefficients[2]-echerry$coefficients[2])/
-               ((vcov(echip)[2,2] + vcov(echerry)[2,2]) %>% sqrt())
-chipfudge <- (echip$coefficients[2]-efudge$coefficients[2])/
-               ((vcov(echip)[2,2] + vcov(efudge)[2,2]) %>% sqrt())
-chipother <- (echip$coefficients[2]-eother$coefficients[2])/
-               ((vcov(echip)[2,2] + vcov(eother)[2,2]) %>% sqrt())
-cherryfudge <- (echerry$coefficients[2]-efudge$coefficients[2])/
-               ((vcov(echerry)[2,2] + vcov(efudge)[2,2]) %>% sqrt())
-cherryother <- (echerry$coefficients[2]-eother$coefficients[2])/
-               ((vcov(echerry)[2,2] + vcov(eother)[2,2]) %>% sqrt())
-fudgeother <- (efudge$coefficients[2]-eother$coefficients[2])/
-               ((vcov(efudge)[2,2] + vcov(eother)[2,2]) %>% sqrt())
+hipchip <- c(0,0,0,0,0,1,0,0)
+hipfudge <- c(0,0,0,0,0,0,1,0)
+hipcherry <- c(0,0,0,0,0,0,0,1)
 
+linearHypothesis(elast_sabores,hipchip, rhs = NULL, white.adjust="hc1")
+linearHypothesis(elast_sabores,hipfudge, rhs = NULL, white.adjust="hc1")
+linearHypothesis(elast_sabores,hipcherry, rhs = NULL, white.adjust="hc1")
 
-# Estadísticos t
-tstats <- list(chipcherry = chipcherry,
-               chipfudge = chipfudge,
-               chipother = chipother,
-               cherryfudge = cherryfudge,
-               cherryother = cherryother,
-               fudgeother = fudgeother)
-tstats
 ```
 
+Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales, solamente se rechaza la de *cherry grca* con un $p-value$ de 1.6%. Es decir, la elasticidad precio demanda de los helados *cherry grca* tiene un comportamiento diferenciado del resto de los sabores, y lo mismo no se puede decir para los otros dos sabores más populares. 
 
-Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales a un nivel de significancia de 5%, solamente se rechazan las de *chc chip c-dh* con *cherry grca* y la de *cherry grca* con *otros*. Es decir, para el resto de las combinaciones de sabores, no podemos rechazar (con el 95% de confianza) que las elasticidades son iguales. 
+Por último, también observamos las diferencias entre los tres sabores más populares. Para hacer esto, usamos el mismo modelo para evaluar las hipótesis de diferencias en los coeficientes de interacciones de los tres sabores más populares:
+$$ H_0: \beta_j - \beta_k = 0 $$
+$$ H_a: \beta_j - \beta_k \neq 0$$
+```{r}
+hipcherryfudge <- c(0,0,0,0,0,0,1,-1)
+hipcherrychip <- c(0,0,0,0,0,1,0,-1)
+hipchipfudge <- c(0,0,0,0,0,1,-1,0)
 
+linearHypothesis(elast_sabores,hipchipfudge, rhs = NULL, white.adjust="hc1")
+linearHypothesis(elast_sabores,hipcherryfudge, rhs = NULL, white.adjust="hc1")
+linearHypothesis(elast_sabores,hipcherrychip, rhs = NULL, white.adjust="hc1")
 
+```
+Estas pruebas no se rechazan a un nivel de significancia de 5%.
 
 # Estimación
 
 ## 14. Estima la regresión de la curva de demanda de los helados. Reporta la tabla de la regresión
+
+Algunos tips: 
+
+- No olvides borrar la variable que recien creamos de sabores. Incluirla (dado que es perfectamente colineal con flavor), sería una violación a supuesto GM 3 de la regresión. 
+
+- No olvides quitar `quantity`, `price_unit`, `price_deal` y otras variables que sirven como identificadora. Tambien quitar `fips_state_code` y `fips_county_code`.
+
+- Empecemos con una regresión que incluya a todas las variables. 
+
+
+Nota: La regresión en `R` entiende que si le metes variables de texto, debe convertirlas a un factor. En algunos otros algoritmos que veremos durante el curso, tendremos que convertir manualmente toda la base a una númerica. 
+
+Quitemos las fechas
+```{r}
+base$female_head_birth<-NULL
+base$male_head_birth<-NULL
+```
+
 
 En primer lugar estimamos el modelo más sencillo posible.
 ```{r, results= 'asis'}
@@ -603,12 +618,9 @@ model_a<-lm(unit_price~quantity,data = base)
 stargazer(model_a, type = "latex", title="Regresión", digits=1,header=FALSE)
 ```
 
-En segundo lugar, estimamos el modelo con todas las variables. En el siguiente código mostramos el proceso previo a la estimación. 
+En segundo lugar, estimamos el modelo con todas las variables, siguiendo los tips. En el siguiente código mostramos el proceso previo a la estimación. 
 
 ```{r}
-# quitamos columnas irrelevantes
-base<- select (base,-c(sabores_pop))
-
 # convertimos sabores en dummies y ponemos como base los de vainilla
 base$flavor_descr <- relevel(factor(base$flavor_descr),"VAN")
 #base$size1_descr <- factor(base$size1_descr,levels=1:2, labels=c("small","big")) 
@@ -642,6 +654,13 @@ base$pay_tv <- base$tv_items>1
 base$internet <- base$household_internet_connection==1
 
 base$log_price <- log(base$unit_price+1)
+
+# quitamos columnas irrelevantes y que sirven como identificadoras
+#base_reg <- select (base,-c(sabores_pop,
+#                            quantity, 
+#                            unit_price, price_paid_deal, price_paid_non_deal
+#                            id, id_trans, household_id,
+#                            fips_county_code, fips_state_code))
 
  base_reg<- base[,c("quantity",
                     "log_price",
@@ -678,22 +697,6 @@ Por cuestiones de espacio y de comodidad lectora, los resultados los publicamos 
 
 CORREGIR
 
-Algunos tips: 
-
-- No olvides borrar la variable que recien creamos de sabores. Incluirla (dado que es perfectamente colineal con flavor), sería una violación a supuesto GM 3 de la regresión. 
-
-- No olvides quitar `quantity`, `price_unit`, `price_deal` y otras variables que sirven como identificadora. Tambien quitar `fips_state_code` y `fips_county_code`.
-
-- Empecemos con una regresión que incluya a todas las variables. 
-
-
-Nota: La regresión en `R` entiende que si le metes variables de texto, debe convertirlas a un factor. En algunos otros algoritmos que veremos durante el curso, tendremos que convertir manualmente toda la base a una númerica. 
-
-Quitemos las fechas
-```{r}
-base$female_head_birth<-NULL
-base$male_head_birth<-NULL
-```
 
 
 ## 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
