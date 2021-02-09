@@ -1,66 +1,146 @@
 ---
-title: 'Economía Computacional: Tarea 1'
-author: "Alfredo Lefranc, Marco Ramos, Rafael Sandoval y Cynthia Valdivia"
-date: '2021'
-output: pdf_document
-  
+output:
+  pdf_document:
+  geometry: margin=1in
+fontsize: 11pt
+header-includes :
+  \usepackage{geometry}
+  \usepackage{graphicx}
+  \tolerance=1
+  \hyphenpenalty=10000
+  \hbadness=10000
+  \linespread{1.2}
+  \usepackage[justification=centering, font=bf, labelsep=period, skip=5pt]{caption} 
+  \usepackage{titling}
+  \usepackage{babel}
+  \usepackage{fancyhdr}
+  \pagestyle{fancy}
+  \fancyhead[L]{Maestría en Economía Aplicada}
+  \fancyhead[R]{ITAM}
+
 ---
+\begin{titlepage}
+\begin{center}
+
+\textsc{\Large Instituto Tecnológico Autónomo de México}\\[2em]
+
+\textbf{\LARGE Economía Computacional}\\[2em]
+
+
+\textsc{\LARGE }\\[1em]
+
+
+\textsc{\large Tarea 1 }\\[1em]
+
+\textsc{\LARGE }\\[1em]
+
+\textsc{\large }\\[1em]
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\large }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Prof. Isidoro García Urquieta}\\[1em]
+
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Alfredo Lefranc Flores}\\[1em]
+
+\textsc{\large 144346}\\[1em]
+
+\textsc{\LARGE Cynthia Raquel Valdivia Tirado }\\[1em]
+
+\textsc{\large 81358}\\[1em]
+
+\textsc{\LARGE Rafael Sandoval Fernández}\\[1em]
+
+\textsc{\large 143689}\\[1em]
+
+\textsc{\LARGE Marco Antonio Ramos Juárez}\\[1em]
+
+\textsc{\large 142244}\\[1em]
+
+\end{center}
+
+\vspace*{\fill}
+\textsc{Ciudad de México \hspace*{\fill} 2021}
+
+\end{titlepage}
+
+
+\newpage
+
+
+\tableofcontents
+
+\newpage
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = F)
 ```
 
-```{r liberias , message=FALSE}
-library(tidyverse)
-library(data.table)
+En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró. 
+
+
+# Limpieza de datos
+
+Carga los datos en BenAndJerry.csv. 
+
+```{r,message=FALSE }
+
+# Carga las librerias
+library(ggplot2)
+library(dplyr)
 library(RCT)
 library(knitr)
-library(lfe)
 library(broom)
 library(stargazer)
 library(kableExtra)
 library(naniar)
-library(nnet)
-```
 
-En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró. 
-
-
-## Limpieza de datos
-
-Carga los datos en BenAndJerry.csv. 
-
-```{r }
 # Carga la base de datos
 base<-read.csv("BenAndJerry.csv")
+
 ```
 
 
-### 1. Cuales son las columnas de la base? Muestra una tabla con ellas
-```{r }
+## 1. Cuales son las columnas de la base? Muestra una tabla con ellas
+
+```{r,results='asis'}
 columnas <- (as.data.frame(colnames(base)))
 
-kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas"))
+kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas")) %>%
+  kable_styling(position = "center")
 ```
 
-### 2. A qué nivel está la base? Esto es, cuál es la variable que define la base de manera única. Si no la hay, crea una y muestra que es única a nivel de la base (Muestra el código)
+## 2. A qué nivel está la base? Esto es, cuál es la variable que define la base de manera única. Si no la hay, crea una y muestra que es única a nivel de la base (Muestra el código)
 
-Así como está la base sin niguna modificación, el nivel es la compra. Es decir, cada fila representa una transacción realizada por un hogar. Esto lo podríamos modificar para que la unidad sea el hogar o cualquier otra variable.
+Así como está la base sin niguna modificación, el nivel es la compra. Es decir, cada fila representa una transacción realizada por un hogar. Esto lo podríamos modificar para que la unidad sea el hogar o cualquier otra variable. Sin embargo, notamos que hay una cantidad alta de filas que están repetidas.
+```{r}
+sum(as.numeric(duplicated(base)))
+```
 
-No hay una variable explícita que identifique cada observación de manera única pero sí hay una manera implícita y es el índice de cada fila. De tal forma, podemos usar el identificador de y concatenarlo con una nueva variable para identificar la transacción por hogar para crear un identificador único a nivel de la base.
+Esto puede deberse a un error de registro o a que el mismo hogar previamente registrado realizó la misma compra más de una vez. Por lo pronto asumirémos lo segundo.
 
+En cuanto a la segunda parte de la pregunta, no hay una variable explícita que identifique cada observación de manera única pero sí hay una manera implícita y es el índice de cada fila. En este sentido, una manera fácil de crear una variable idenfiticadora sería simplemente crear una variable que "clone" el indice de cada fila. Por otro lado, una alternativa más nutritiva para el análisis de datos sería crear alguna variable que combine información del identificador del hogar y del número de transacción. Para esto podemos concatenar el identificador de cada hogar con una variable que lleva el conteo del número de transacciones que cada hogar lleva separadas con un guión, de la siguiente manera: 
+
+$$id=household\_id-conteo\_transacción$$
 
 ```{r}
-base2 <- base %>% group_by(household_id) %>% 
-          mutate(idper = sequence(n()))
-base$idper <- base2$idper
+base <- base %>% group_by(household_id) %>% 
+          mutate(id_trans = sequence(n())) %>% ungroup()
+base$id<-paste(base$household_id, base$id_trans, sep="-")
 
-base$id <- base$idper + base$household_id*100
+#Ejemplo:
+head(base$id)
 
 ```
 
 
-### 3. Que variables tienen valores vacíos? Haz una tabla con el porcentaje de vacíos para las columnas que tengan al menos una observación vacía
+
+## 3. Que variables tienen valores vacíos? Haz una tabla con el porcentaje de vacíos para las columnas que tengan al menos una observación vacía
 
 Los NAs de las variables numéricas son identificables mediante un summary.
 ````{r, eval=FALSE}
@@ -87,16 +167,18 @@ base$male_head_birth[base$male_head_birth==""]<-NA
 
 Al revisar estas variables, notamos que *male_head_birth* y *female_head_birth* también tienen valores vacíos. En general encontramos lo siguiente:
 
+
 ```{r}
 kable( (base %>% select_if(~sum(is.na(.)) > 0) %>% 
           miss_var_summary()), booktabs=T, align = 'c',
-       col.names = c("Variable","Cantidad","%"))
+       col.names = c("Variale", "Cantidad","%"),digits = 2)%>%
+  kable_styling(position = "center")
 ```
 
 
-### 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
+## 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
 
-Pues dependiendo de la cantidad de valores vacíos, de si hay un patrón en los valores vacíos y las características de cada variable podemos proponer una estrategia, por ejemplo imputación o quitar esas observaciones. En este sentido tenemos que realizar un análisis por variable:
+Pues dependiendo de la cantidad de valores vacíos, de las características de cada variable y de que exista algún patrón en los valores podemos proponer una estrategia, por ejemplo imputación o simplemente quitar esas observaciones. En este sentido tenemos que realizar un análisis por variable:
 
 **promotion_type**
 ````{r}
@@ -104,28 +186,59 @@ summary(factor(base$promotion_type))
 ```
 En esta variable podría ser que los NAs nos indiquen que sencillamente no hubo ninguna promoción (y eso podría explicar que casi el 60% de sus valores sean NAs). En este caso podemos suponer eso e imputarle un valor de 0 a cada `NA`.
 
-````{r}
+```{r}
 base$promotion_type[is.na(base$promotion_type)] <- 0
 ```
 
 **scantrack_market_identifier**
 
-````{r}
+```{r}
 summary(factor(base$scantrack_market_identifier))
 
 ```
 
-````{r}
-susp<-base%>% select(fips_state_code,fips_county_code,type_of_residence,scantrack_market_identifier)
+
+En este caso es más complejo porque es muy probable que cada valor corresponda a un producto, a una clasificación de cliente o a cualquier otra cosa. En este caso, lo que podríamos hacer es ver si podemos inferir está información de otras variables, de lo contrario imputar sería una muy mala idea pues estaríamos creando ruido en nuestra información. Investigando un poco nos dimos cuenta que se trata de una clasificación del posicionamiento en el mercado. En este sentido, es probable que depende del lugar geográfico. Por ello, decidimos investigar si existe una relación entre la variable scantrack_market_identifier y las variables que indican al estado, condado y tipo de residencia.
+
+En primer lugar notamos que cada combinación de estado con condado solo permite una categoría de scantrack_market_identifier, en este sentido nuestra intuición era correcta. El problema es que los valores faltantes abarcan condados completos, es decir que en dichos condados no hay ninguna observación con scantrack_market_identifier, por lo que no podemos saber en realidad cuál categoría debería tener.
+
+```{r, message=FALSE}
+susp<-base%>% select(fips_state_code,fips_county_code,
+                     scantrack_market_identifier)%>%
+  mutate(estado_condado=paste(fips_state_code,"-",fips_county_code))%>%
+  group_by(estado_condado,scantrack_market_identifier)%>%
+  summarize(n())
+head(susp)
+length(unique((susp$estado_condado)))
 
 ```
 
+Sin embargo, lo que podemos ver es analizar la variedad de categorías en cada estado. En este sentido, en la siguiente tabla agrupamos las categorías de *scantrack_market_identifier* de cada estado y la cantidad de observaciones que tuvo cada combinación. Como podemos observar, en realidad las categorías de cada estado son pocas, (en promedio 2.7 y con mayorías claras), por lo que bien podríamos imputar la moda. Sin embargo, no podríamos hacer algo más, si quisieramos mejorar la calidad de la imputación necesitariamos tener más información o más dimensiones (por ejemplo, la ubicación de los condados para calcular una correlación espacial).
 
-En este caso es más complejo porque es muy probable que cada valor corresponda a un producto, a una clasificación de cliente o a cualquier otra cosa. En este caso, lo que podríamos hacer es ver si podemos inferir está información de otras varaibles, de lo contrario imputar sería una muy mala idea pues estaríamos creando ruido en nuestra información. Investigando un poco nos dimos cuenta que se trata de una clasificación del posicionamiento en el mercado.
+
+```{r,message=FALSE}
+susp_2<-base%>% select(fips_state_code,scantrack_market_identifier)%>% 
+  group_by(fips_state_code,scantrack_market_identifier)%>%
+  
+  summarize(n()) 
+head(susp_2)
+
+```
+```{r}
+susp_2<-base%>% select(fips_state_code,scantrack_market_identifier)%>%
+  group_by(fips_state_code,scantrack_market_identifier)%>%
+  
+  summarize(n()) %>% ungroup() %>%
+  group_by(fips_state_code)%>%
+  
+  summarize(n())
+head(susp_2)
+mean(susp_2$`n()`)
+```
 
 **female_head_occupation y female_head_birth**
 
-```{r}
+```{r, message=FALSE}
 aux<-base %>% select(age_of_female_head,
                      female_head_occupation,
                      female_head_education,
@@ -137,11 +250,12 @@ summary((aux))
 summary(aux$age_of_female_head[aux$female_head_birth==""])
 ```
 
-Explorando los datos, notamos que todos los NAs de las variables *female_head_occupation* y *female_head_birth* coinciden, y además corresponden a observaciones en que se registra una edad, educación y ocupación de la jefa del hogar de cero. Esto nos lleva a concluir que en los hogares que hicieron esas compras no hay una jefa de hogar femenina. En este sentido creamos una nueva categoría de ocupación de mujeres con estás características con el número 0, la cual imputamos a los valores faltantes. Por su parte, dejamos como NAs los valores faltantes de la variable *female_head_birth*.
+Explorando los datos, notamos que todos los NAs de las variables *female_head_occupation* y 
+*female_head_birth* coinciden, y además corresponden a observaciones en que se registra una edad, educación y ocupación de la jefa del hogar de cero. Esto nos lleva a concluir que en los hogares que hicieron esas compras no hay una jefa de hogar femenina. En este sentido creamos una nueva categoría de ocupación de mujeres con estás características con el número 0, la cual imputamos a los valores faltantes. Por su parte, dejamos como desconocidos los valores faltantes de la variable *female_head_birth* sin embargo les ponemos una etiqueta para no perder las observaciones
 
-
-````{r}
+```{r}
 base$female_head_occupation[is.na(base$female_head_occupation)] <- 0
+base$female_head_birth[is.na(base$female_head_birth)] <- "unknown"
 ```
 
 
@@ -157,7 +271,12 @@ aux2<-base %>% select(age_of_male_head,
 
 summary((aux2))
 ```
-Los valores faltantes de *male_head_birth* coinciden con ceros en edad, educación y empleo del jefe del hogar masculino, aunque curiosamente sí se tiene registro de su ocupación. Concluimos, como en el caso de las mujeres, que se trata de casos, en los que la compra corresponde a hogares sin un jefe del hogar masculino, y decidimos ignorar estos valores vacíos.
+
+Los valores faltantes de *male_head_birth* coinciden con ceros en edad, educación y empleo del jefe del hogar masculino, aunque curiosamente sí se tiene registro de su ocupación. Concluimos, como en el caso de las mujeres, que se trata de casos, en los que la compra corresponde a hogares sin un jefe del hogar masculino, y decidimos ignorar estos valores vacíos (pero agregandoles una etiqueta para no perder las observaciones).
+
+````{r}
+base$male_head_birth[is.na(base$male_head_birth)] <- "unknown"
+```
 
 
 **tv_items**
@@ -170,7 +289,7 @@ base$tv_items[is.na(base$tv_items)] <- 0
 summary(factor(base$tv_items))
 ```
 
-### 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
+## 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
 
 Sin hacer ninguna adecuación en el tipo de variables, la tabla es la siguiente:
 
@@ -182,23 +301,22 @@ b<- b %>% mutate_at(vars(-variable),funs(round(.,2))) %>%
   rename(máx=11)
 
 options(scipen=999) # quitamos notación científica
-kable(b,booktabs=T, align = 'c')
+kable(b,booktabs=T, align = 'c')%>%
+  kable_styling(position = "center")%>% 
+  kable_styling(latex_options="scale_down")
 ```
 
 No obstante, algunas de estas variables en realidad no son numéricas, por lo que sus estadísticas descriptivas podrían ser engañosas.
 
-### 6. Hay alguna númerica que en verdad represente una categorica? Cuales? Cambialas a factor
+## 6. Hay alguna númerica que en verdad represente una categorica? Cuales? Cambialas a factor
 
 ```{r, include=FALSE}
 numericas<-base%>% select(where(is.numeric))
 summary(numericas)
 ```
 
-De las variables numéricas, por su nombre y rango de valores, podemos inferir que las siguientes son categóricas:
-*promotion_type, household_income, age_of_female_head, age_of_male_head, male_head_employment, female_head_employment, marital_status, male_head_occupation, female_head_occupation, household_composition, race, hispanic_origin, region, scantrack_market_identifier, fips_state_code, fips_county_code, type_of_residence* y *household_internet_connection*.
+De las variables numéricas, por su nombre y rango de valores, podemos inferir que algunas son categóricas con seguridad y algunas otras pueden o no ser categóricas. En este sentido en el siguiente código realizamos el análisis de la situación y convertimos a las variables categóricas pertinentes.
 
-
-Sin embargo, las siguientes podrían ser o no ser categóricas: *tv_items, kitchen_appliances, age_and_presence_of_children, male_head_education, female_head_education.*
 ````{r}
 variables_seguras<-c("promotion_type",
                      "household_income",
@@ -234,15 +352,17 @@ summary(base[,variables_no_seguras])
 
 Parece que *tv_items, kitchen_appliances, age_and_presence_of_children* no son categóricas después de todo. Las regresamos a numéricas otra vez, Por el contrario *male_head_education* y *female_head_education* parece que sí son categóricas.
 
-````{r}
-variables_numericas<-c("tv_items","kitchen_appliances","age_and_presence_of_children")
+```{r}
+variables_numericas<-c("tv_items",
+                       "kitchen_appliances",
+                       "age_and_presence_of_children")
 base[,variables_numericas] <- lapply(base[,variables_numericas] , as.numeric)
 ```
 
 
-### 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades? 
+## 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades? 
 
-````{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE}
 
 myhist <- function(yvar){
   ggplot(numericas, aes_(x=as.name(yvar)))+
@@ -269,11 +389,11 @@ grid.arrange(grobs=hists[11:19],ncol=4)
 
 ```
 
-No. Las edades de los jefes del hogar y el ingreso del hogar tienen valores muy bajos, lo que nos hace pensar que estas variables son categóricas (transformadas en el inciso anterior).
+Definitvamente vemos comportamientos atípicos en las edades. Las de los jefes del hogar y el ingreso del hogar tienen valores muy bajos, lo que nos hace pensar que estas variables son categóricas (transformadas en el inciso anterior).
 
 
-### 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
-````{r}
+## 8. Finalmente, crea una variable que sea el precio total pagado y el precio unitario
+```{r}
 # precio total pagado
 base <- base %>% mutate(total_price=price_paid_deal+price_paid_non_deal)
 # precio unitario
@@ -281,7 +401,7 @@ base <- base %>% mutate(unit_price= (total_price)/quantity)
 ```
 
 
-## Exploración de los datos 
+# Exploración de los datos 
 
 Intentaremos comprender la elasticidad precio de los helados. Para ello, debemos entender: 
 
@@ -301,8 +421,11 @@ Algo importante es que siempre debemos mirar primero las variables más relevant
 
 Importante: Las gráficas deben estar bien documentadas (título, ejes con etiquetas apropiadas, etc). Cualquier gráfica que no cumpla con estos requisitos les quitaré algunos puntos.
 
-### 9. Cómo se ve la distribución del precio unitario y de la cantidad demandada. Haz un histograma.
-````{r}
+## 9. Cómo se ve la distribución del precio unitario y de la cantidad demandada. Haz un histograma.
+
+```{r, include=FALSE}
+library(ggthemes)
+
 median_price <- quantile(base$unit_price)[3]
 
 ggplot(base)+
@@ -310,59 +433,64 @@ ggplot(base)+
   geom_vline(xintercept = median_price,size=0.5,colour="red", linetype = "dashed")+
   geom_text(aes(x=median_price+2.8, label=paste("Mediana =",median_price), y=4800),size=4, colour="red", vjust = -1, hjust = 1.2)+
   theme_bw()+
-  labs(title="Histograma de precio unitario",x="Precio unitario",y="Frecuencia")
-
+  labs(title="Histograma de precio unitario",x="Precio unitario",y="Frecuencia")+ theme_economist() + scale_fill_economist()
   
 ggplot(base)+
   geom_histogram(aes(x=quantity),binwidth=1,alpha=0.9,col = 'black')+
   theme_bw()+
-  labs(title="Histograma de cantidad",x="Cantidad",y="Frecuencia")
+  labs(title="Histograma de cantidad",x="Cantidad",y="Frecuencia")+ theme_economist() + scale_fill_economist()
 
 ```
 
-### 10. Grafica la $q(p)$. Que tipo de relación parecen tener? 
+## 10. Grafica la $q(p)$. Que tipo de relación parecen tener? 
 
 Aunque parece haber una relación negativa, marcada por las compras de 1 a 4 productos, esta no es tan clara para mayores cantidades.
 
-````{r}
+```{r,include=FALSE}
 ggplot(base)+
   geom_point(aes(y=quantity, x=unit_price))+ 
   geom_smooth(formula=y~x,method=lm, color='2',aes(y=quantity, x=unit_price))+
   theme_bw()+
   labs(title="Demanda de helados en función del precio",
-       x="Precio unitario",y="Cantidad demandada")
+       x="Precio unitario",y="Cantidad demandada")+ theme_economist() + scale_fill_economist()
 ```
 
-### 11. Grafica la misma relación pero ahora entre $log(p+1)$ y $log(q+1)$
+## 11. Grafica la misma relación pero ahora entre $log(p+1)$ y $log(q+1)$
 
 Cuando hacemos la transformación, la relación negativa es más evidente:
 
-````{r}
+````{r,include=FALSE}
 ggplot(base)+
   geom_point(aes(y=log(quantity+1),x=log(unit_price+1)))+ 
-  geom_smooth(formula=y~x,method=lm, color='1',aes(y = log(quantity+1), x = log(unit_price+1)))+
+  geom_smooth(formula=y~x,method=lm, color='2',aes(y = log(quantity+1), x = log(unit_price+1)))+
   theme_bw()+
   labs(title = "Elasticidad precio de la demanda de helados",
-       x="Precio unitario (log)", y="Cantidad demandada (log)")
+       x="Precio unitario (log)", y="Cantidad demandada (log)")+ theme_economist() + scale_fill_economist()
 
 ```
 
-### 12. Grafica la curva de demanda por tamaño del helado. Parece haber diferencias en la elasticidad precio dependiendo de la presentación del helado? (2 pts)
+## 12. Grafica la curva de demanda por tamaño del helado. Parece haber diferencias en la elasticidad precio dependiendo de la presentación del helado? (2 pts)
 
-````{r}
+````{r,include=FALSE}
 
 ggplot(data = base, aes(y=log(quantity+1), x=log(unit_price+1),col=as.factor(size1_descr))) +
   geom_point(size=1, alpha=0.5) +
-  geom_smooth(method='lm',
+  geom_smooth(aes(group=size1_descr), method='lm',
               formula= y~(x),
               se=FALSE, size=1)+
   theme_bw()+
   labs(title="Elasticidad precio demanda de helado por tamaño",
       y="Cantidad demandada (log)",
       x="Precio unitario (log)",
-      col="Tamaño")
+      col="Tamaño")+ theme_economist() + scale_fill_economist()
 
 ````
+
+De observar la gráfica, hay indicios de que es probable que ambas curvas sean diferentes. Sin embargo, para tener más argumentos planteamos la siguiente prueba de hipótesis:
+
+$$H_n:\beta_{1,16MLOZ}-\beta_{1,32MLOZ}=0$$
+$$H_a:\beta_{1,16MLOZ}-\beta_{1,32MLOZ} \neq0$$
+
 ```{r}
 # Prueba de hipotesis
 elast16 <- lm(log(quantity+1)~log(unit_price+1), 
@@ -376,15 +504,23 @@ b <- (vcov(elast16)[2,2] + vcov(elast32)[2,2]) %>% sqrt()
 a/b
 
 ```
-Al realizar una prueba de hipótesis si los coeficientes obtenidos son iguales, se obtiene un estadístico t de -3, por lo que la prueba se rechazaría en favor de la diferencia de éstos.
+
+Al realizar la prueba de hipótesis se obtiene un estadístico t de -3, por lo que se rechazaría la hipótesis nula en favor de la alternativa (que son diferentes de manera significativa).
 
 
-### 13. Grafica la curva de demanda por sabor. Crea una variable con los 3 sabores más populares y agruga el resto de los sabores como 'otros'. Parece haber diferencias en la elasticidad precio dependiendo del sabor?
-````{r}
-summary(factor(base$flavor_descr))
+## 13. Grafica la curva de demanda por sabor. Crea una variable con los 3 sabores más populares y agruga el resto de los sabores como 'otros'. Parece haber diferencias en la elasticidad precio dependiendo del sabor?
+
+El primer paso es averiguar cuáles son estos 3 sabores más populares. Para ello elaboramos la siguiente tabla:
+
+````{r, include=FALSE}
+kable(head(base%>% select(flavor_descr)%>% group_by(flavor_descr)%>%
+  summarize(n())%>% arrange(desc(`n()`))),col.names = c("Sabor","Observaciones"),booktabs=T)%>%
+  kable_styling(position = "center")
 ```
 
 Parece que los 3 sabores más populares son *CHERRY GRCA*, *CHC FUDGE BROWNIE* y *CHC CHIP C-DH*.
+
+El siguiente paso es crear la variable que distinga entre estos 3 sabores y agrupe al resto para después graficar y hacer una prueba de hipótesis:
 
 ````{r}
 base<-base%>% 
@@ -392,7 +528,10 @@ base<-base%>%
 (ifelse(flavor_descr=='CHC FUDGE BROWNIE','chc fudge brownie',
 (ifelse(flavor_descr=='CHC CHIP C-DH','chc chip c-dh','otros'))))))
 
+````
 
+
+````{r, include=FALSE}
 ggplot(data = base, aes(y=log(quantity+1), 
                         x=log(unit_price+1),
                         col=as.factor(sabores_pop))) +
@@ -404,10 +543,15 @@ ggplot(data = base, aes(y=log(quantity+1),
   labs(title="Elasticidad precio demanda de helado por sabor",
       y="Cantidad demandada (log)",
       x="Precio unitario (log)",
-      col="Sabor")
+      col="Sabor")+ theme_economist() + scale_fill_economist()
 
 ```
-A diferencia de las muestras por tamaño del helado, las diferencias en la elasticidad precio demanda observadas para los sabores de helado aparentan ser muy pequeñas.
+A primera vista, parece que las 4 curvas están muy empalmadas y parece que tienen una pendiente y ordenada al origen similar. A diferencia del caso del tamaño del helado, las diferencias en la elasticidad precio demanda observadas para los sabores de helado aparentan ser muy pequeñas. Sin embargo, realizamos las siguientes pruebas de hipótesis para tener una conclusión más certera:
+
+$$H_n:\beta_i-\beta_j=0$$
+$$H_a:\beta_i-\beta_j \neq0$$
+donde evaluamos una prueba para cada combinación de modelos, en total realizamos 6 pruebas.
+
 
 ```{r}
 
@@ -443,16 +587,25 @@ tstats <- list(chipcherry = chipcherry,
                fudgeother = fudgeother)
 tstats
 ```
-Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales a un nivel de significancia de 5%, se rechazan las de `chc chip c-dh` con `cherry grca` y la de `cherry grca` con `otros`. 
 
 
-## Estimación
+Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales a un nivel de significancia de 5%, solamente se rechazan las de *chc chip c-dh* con *cherry grca* y la de *cherry grca* con *otros*. Es decir, para el resto de las combinaciones de sabores, no podemos rechazar (con el 95% de confianza) que las elasticidades son iguales. 
 
-### 14. Estima la regresión de la curva de demanda de los helados. Reporta la tabla de la regresión
-````{r, results= 'asis'}
+
+
+# Estimación
+
+## 14. Estima la regresión de la curva de demanda de los helados. Reporta la tabla de la regresión
+
+En primer lugar estimamos el modelo más sencillo posible.
+```{r, results= 'asis'}
 model_a<-lm(unit_price~quantity,data = base)
-stargazer(model_a, type = "latex", title="Regresión", digits=1)
+stargazer(model_a, type = "latex", title="Regresión", digits=1,header=FALSE)
+```
 
+En segundo lugar, estimamos el modelo con todas las variables. En el siguiente código mostramos el proceso previo a la estimación. 
+
+```{r}
 # quitamos columnas irrelevantes
 base<- select (base,-c(sabores_pop))
 
@@ -515,13 +668,14 @@ base$log_price <- log(base$unit_price+1)
                     "kitchen_appliances",
                     "pay_tv",
                     "internet")]
-
-
 model_a2<-lm(log(quantity+1) ~ .,data = base_reg)
-summary(model_a2)
-stargazer(model_a2, type = "text", title="Regresión", digits=1)
-
 ```
+
+
+Por cuestiones de espacio y de comodidad lectora, los resultados los publicamos [***en este enlace***](https://rpubs.com/marcoyel21/723339).
+
+
+
 CORREGIR
 
 Algunos tips: 
@@ -541,24 +695,36 @@ base$female_head_birth<-NULL
 base$male_head_birth<-NULL
 ```
 
-### 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
+
+## 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
+
+En cuanto a elementos del objeto (tanto de variables como del modelo en general):
+
 ````{r}
-# para model_a2
-(names(model_a2))
-
+tidy(model_a2)
 glance(model_a2)
+```
 
+
+En cuanto a la prueba F, recordemos que:
+
+$$F=\frac{\frac{TSS-RSS}{k}}{\frac{RSS}{n-k-1}}$$
+
+y en r la podemos calcular de la siguiente forma.
+
+````{r}
 RSS <- sum(model_a2$residuals^2)
 TSS<- sum((base$quantity-mean(base$quantity))^2)
 n<- length(base$unit_price)
 k<- sum(!is.na(model_a2$coefficients))
-
 (F <- ((TSS-RSS)/k)/(RSS/(n-k-1)))
-
-summary(model_a2)
 ```
 
-### 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
+
+## 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
+
+**#COMENTARIO FALTA LA SIGNIFICANCIA (sugerencia hacer una prueba t como la que hicimos anteriormente)**
+
 ```{r}
 
 # para model_a2
@@ -569,24 +735,45 @@ beta <- model_a2$coefficients[2]
 elasticity <- beta * (x/y)
 # A primera vista sí es significativo
 paste("La elasticidad precio de la demanda es de",round(elasticity,2),"%")
-paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",round(elasticity,2),"%")
+paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",
+      round(elasticity,2),"%")
 
 beta2 <- model_a$coefficients[2]
 beta2*(y/x)
 ```
 
-## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
-Tenemos 2, uno para $beta_0$ y otro para $\beta_1$
-OJO: CREO QUE SE REFIERE A OTRA COSA, HAY QUE CORRER REGRESION CON TOOOOOOODAS LAS VARAIABLES
-````{r}
-valores_p <- summary(model_a2)$coefficients[2:k,4]
-hist(summary(model_a2)$coefficients[2:k,4])
+# 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
+
+
+**#COMENTARIO CORREGIR ESTE ANALISIS**
+
+```{r}
+pvalues<-as.data.frame(tidy(model_a2))
+colSums(is.na(pvalues))
+nrow(pvalues)
+```
+Tenemos 155 p values (de 161 variables más la ordenada al origen menos 6 variables colineales)
+
+
+```{r, include=FALSE}
+
+ggplot(pvalues, aes(x=p.value)) + 
+ geom_histogram(aes(y=..density..), bins=155, colour="black", fill="white")+
+  theme_bw()+
+  geom_vline(xintercept = .05,size=0.5,colour="red", linetype = "dashed")+
+  geom_text(aes(x=.28, label=paste("p value =",.05), y=15),size=4, colour="red", vjust = -1, hjust = 1.2)+
+  labs(title="Histograma de p values") +theme_economist() + scale_fill_economist()
+              
 ```
 
 
-### 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR? 
+# 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR? 
 Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% mutate(ranking = row_number)`
-````{r}
+
+**#COMENTARIO mejroar graficas (hacer con gg plot y agregar tema y labels)**
+
+```{r}
+valores_p <- summary(model_a2)$coefficients[,4]
 # Función(vector de valores p, q)
 
 fdr <- function(valores_p,q){
@@ -604,7 +791,6 @@ fdr <- function(valores_p,q){
 
   return(max(valores_p[t]))
 }
-
 
 
 q<- 0.05
@@ -625,11 +811,11 @@ abline(h = q)
 # alternativa
 fdr2 <- p.adjust(p=valores_p,method="BH")
 names(fdr2) <- fdr2 <=0.05
-fdr2
 ```
 
 ¿Cuántas variables salían significativas? ¿Cuántas salen con FDR?
 
+Antes 57 variables salían significativas, después, tan solo 27.
 ```{r}
 # Antes
 sum(valores_p<0.05)
@@ -639,7 +825,7 @@ sum(valores_p<fdr_save)
 ```
 
 
-### 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
+# 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
 ````{r}
 
 ```
