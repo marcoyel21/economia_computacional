@@ -788,7 +788,7 @@ ggplot(data =fdr, aes(x=indice,y=p.value))+
   geom_point()+
   geom_abline(slope=q/length(orden$p.value),col='red')+
   theme_bw()+
-  labs(title="Histograma de p values") + theme_economist() + scale_fill_economist()
+  labs(title="Ajuste FDR") + theme_economist() + scale_fill_economist()
 
 
 # con zoom
@@ -796,7 +796,7 @@ ggplot(data =fdr, aes(x=indice,y=p.value))+
   geom_point()+
   geom_abline(slope=q/length(orden$p.value),col='red')+
   theme_bw()+
-  labs(title="Histograma de p values (zoom in p<0.05)") + theme_economist() + scale_fill_economist()+
+  labs(title="Ajuste FDR (zoom in p<0.05)") + theme_economist() + scale_fill_economist()+
   ylim(c(0,0.05))
 
 
@@ -827,5 +827,41 @@ sum(pvalues$p.value<=pestrella)
 ````{r}
 q <- 0.05
 
+  bonferroni <- pvalues %>% arrange(p.value) %>% 
+    mutate(indice = 1:length(p.value)) %>%
+    mutate(`alpha/(m+1-k)`= q /(length(p.value)+1-indice)) %>%
+    mutate(significancia = p.value <= `alpha/(m+1-k)`)
+  
+  sum(bonferroni$significancia=='TRUE')
+   
+  # Tenemos únicamente 11 variables que resultan ser significativas con el ajuste de Holm-Bonferroni
+  
+  
+corte <- bonferroni %>% filter(significancia == 'FALSE')
+corte <- min(corte$`alpha/(m+1-k)`)
 
-```
+ggplot(data =bonferroni, aes(x=indice,y=p.value))+
+  geom_point()+
+  geom_hline(yintercept = corte,col='red')+
+  theme_bw()+
+  labs(title="Ajuste Holm-Bonferroni") + theme_economist() + scale_fill_economist()
+
+
+# con zoom
+ggplot(data =bonferroni, aes(x=indice,y=p.value))+
+  geom_point()+
+  geom_hline(yintercept= corte,col='red')+
+  theme_bw()+
+  labs(title="Ajuste Holm-Bonferroni (zoom p<0.05)") + theme_economist() + scale_fill_economist()+
+  ylim(c(0,0.05))
+
+
+# comparación FDR vs. Holm-Bonferroni
+ggplot()+
+  geom_point(data=fdr, aes(x=indice,y=p.value))+
+  geom_abline(slope=q/length(orden$p.value),col='red')+
+  geom_point()+
+  geom_hline(aes(x=indice,y=p.value, linetype="H-B"),yintercept= corte,col='blue',show.legend=TRUE)+
+  labs(title="Ajuste FDR vs. Holm-Bonferroni (zoom p<0.05)") + theme_economist() + scale_fill_economist()+
+  ylim(c(0,0.05))
+    ```
