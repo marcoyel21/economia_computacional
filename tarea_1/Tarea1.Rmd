@@ -782,8 +782,6 @@ k<- sum(!is.na(model_a2$coefficients))
 
 ## 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
 
-**#COMENTARIO FALTA LA SIGNIFICANCIA (sugerencia hacer una prueba t como la que hicimos anteriormente)**
-
 ```{r}
 
 # para model_a2
@@ -794,6 +792,11 @@ beta <- model_a2$coefficients[2]
 elasticity <- beta
 # Significancia
 paste("Dado que el p-Value es",tidy(model_a2)$p.value[2],", podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo")
+
+# Significancia b)
+
+paste("Como el estadístico t es",tidy(model_a2)$statistic[2],"podemos rechazar la Hipótesis nula para cualquier nivel de significancia")
+
 
 # Interpretación
 paste("La elasticidad precio de la demanda es de",round(elasticity,2),"%")
@@ -925,3 +928,15 @@ ggplot()+
   theme_economist() + scale_fill_economist()+
   ylim(c(0,0.05))
     ```
+    
+Tenemos únicamente 11 variables que resultan ser significativas con el ajuste de Holm-Bonferroni. Como vimos en clase el ajuste Holm-Bonferroni es más estricto que el ajuste FDR. Controla más por el error tipo 1. A continuación, se muestran las variables que resultan ser significativas para cada ajuste:
+```{r}
+# Sin ajuste
+sum(pvalues$p.value<=0.05)
+
+# Con ajuste FDR
+sum(pvalues$p.value<=pestrella)
+
+# Con ajuste Holm-Bonferroni
+sum(bonferroni$significancia=='TRUE')
+```
