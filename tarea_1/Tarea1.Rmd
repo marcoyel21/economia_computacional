@@ -479,14 +479,12 @@ ggplot(base)+
   geom_vline(xintercept = median_price,size=0.5,colour="red", linetype = "dashed")+
   geom_text(aes(x=median_price+2.8, label=paste("Mediana =",median_price),
                 y=4800),size=4, colour="red", vjust = -1, hjust = 1.2)+
-  theme_bw()+
-  labs(title="Histograma de precio unitario",x="Precio unitario",y="Frecuencia")+
+  labs(title="Histograma del precio unitario del helado",x="Precio unitario",y="Frecuencia")+
   theme_economist() + scale_fill_economist()
   
 ggplot(base)+
   geom_histogram(aes(x=quantity),binwidth=1,alpha=0.9,col = 'black')+
-  theme_bw()+
-  labs(title="Histograma de cantidad",x="Cantidad",y="Frecuencia")+ 
+  labs(title="Histograma de la cantidad de helados comprados",x="Cantidad",y="Frecuencia")+ 
   theme_economist() + scale_fill_economist()
 
 ```
@@ -499,7 +497,6 @@ Aunque parece haber una relación negativa, marcada por las compras de 1 a 4 pro
 ggplot(base)+
   geom_point(aes(y=quantity, x=unit_price))+ 
   geom_smooth(formula=y~x,method=lm, color='2',aes(y=quantity, x=unit_price))+
-  theme_bw()+
   labs(title="Demanda de helados en función del precio",
        x="Precio unitario",y="Cantidad demandada")+ 
   theme_economist() + scale_fill_economist()
@@ -514,8 +511,7 @@ ggplot(base)+
   geom_point(aes(y=log(quantity+1),x=log(unit_price+1)))+ 
   geom_smooth(formula=y~x,method=lm, color='2',
               aes(y = log(quantity+1), x = log(unit_price+1)))+
-  theme_bw()+
-  labs(title = "Elasticidad precio de la demanda de helados",
+  labs(title = "Demanda de helados (log) en función del precio (log)",
        x="Precio unitario (log)", y="Cantidad demandada (log)")+ 
   theme_economist() + scale_fill_economist()
 
@@ -530,8 +526,7 @@ ggplot(data = base, aes(y=log(quantity+1), x=log(unit_price+1),
   geom_smooth(aes(group=size1_descr), method='lm',
               formula= y~(x),
               se=FALSE, size=1)+
-  theme_bw()+
-  labs(title="Elasticidad precio demanda de helado por tamaño",
+  labs(title="Demanda (log) de helado por tamaño",
       y="Cantidad demandada (log)",
       x="Precio unitario (log)",
       col="Tamaño")+
@@ -595,8 +590,7 @@ ggplot(data = base, aes(y=log(quantity+1),
   geom_smooth(method='lm',
               formula= y~(x),
               se=FALSE, size=1)+
-  theme_bw()+
-  labs(title="Elasticidad precio demanda de helado por sabor",
+  labs(title="Demanda (log) de helado por sabor",
       y="Cantidad demandada (log)",
       x="Precio unitario (log)",
       col="Sabor")+ theme_economist() + scale_fill_economist()
@@ -644,7 +638,7 @@ linearHypothesis(elast_sabores,hipcherryfudge, rhs = NULL, white.adjust="hc1")
 linearHypothesis(elast_sabores,hipcherrychip, rhs = NULL, white.adjust="hc1")
 
 ```
-Estas pruebas no se rechazan a un nivel de significancia de 5%.
+Estas pruebas no se rechazan a un nivel de significancia de 5, lo que indica que, vistas por separado, las demandas de helados sabor *cherry grca*, *chc fudge brownie* y *chc chip c-dh* no son distintas entre sí.
 
 # Estimación
 
@@ -667,10 +661,9 @@ base$female_head_birth<-NULL
 base$male_head_birth<-NULL
 ```
 
-
 En primer lugar estimamos el modelo más sencillo posible.
 ```{r, results= 'asis'}
-model_a<-lm(unit_price~quantity,data = base)
+model_a<-lm(quantity~unit_price,data = base)
 stargazer(model_a, type = "latex", title="Regresión", digits=1,header=FALSE)
 ```
 
@@ -679,7 +672,6 @@ En segundo lugar, estimamos el modelo con todas las variables, siguiendo los tip
 ```{r}
 # convertimos sabores en dummies y ponemos como base los de vainilla
 base$flavor_descr <- relevel(factor(base$flavor_descr),"VAN")
-#base$size1_descr <- factor(base$size1_descr,levels=1:2, labels=c("small","big")) 
 
 # uso de cupon / no uso de cupon
 base$coupon <- factor(base$coupon_value>0)
@@ -711,13 +703,12 @@ base$internet <- base$household_internet_connection==1
 
 base$log_price <- log(base$unit_price+1)
 
-# quitamos columnas irrelevantes y que sirven como identificadoras
-#base_reg <- select (base,-c(sabores_pop,
-#                            quantity, 
-#                            unit_price, price_paid_deal, price_paid_non_deal
-#                            id, id_trans, household_id,
-#                            fips_county_code, fips_state_code))
+# quitamos columnas irrelevantes y que sirven como identificadoras, como
+# sabores_pop, price_paid_deal, price_paid_non_deal, total_price
+# id, id_trans, household_id,
+# fips_county_code, fips_state_code)
 
+# guardamos la selección final de variables en una nueva base
  base_reg<- base[,c("quantity",
                     "log_price",
                     "flavor_descr",
@@ -743,42 +734,57 @@ base$log_price <- log(base$unit_price+1)
                     "kitchen_appliances",
                     "tvs",
                     "internet")]
+ 
+# estimamos el modelo
 model_a2<-lm(log(quantity+1) ~ .,data = base_reg)
 ```
-
 
 Por cuestiones de espacio y de comodidad lectora, los resultados los publicamos [***en este enlace***](https://rpubs.com/marcoyel21/723339).
 
 
-
-CORREGIR
-
-
-
 ## 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
 
-En cuanto a elementos del objeto (tanto de variables como del modelo en general):
+En cuanto a elementos del objeto, se guardan los coeficientes de las 161 variables regresoras (incluyendo las omitidas por colinealidad), junto con su error estándar, estadístico t y valor-p. Esta información puede ser accesada de la siguiente forma:
 
 ````{r}
 tidy(model_a2)
+```
+
+En cuanto a los elementos del modelo en general, R guarda diversos estimados:
+
+```{f}
 glance(model_a2)
 ```
+
+Adicionalmente, pueden consultarse: 
+
++ vectores del tamaño de las 21974 filas de la base con los residuales, valores predichos, 
++ los grados de libertad (k, incluyendo el intercepto) y el residual de los mismos (n-k)
++ los elementos auxiliares usador por R para llegar a la solución de la regresión mediante descomposición QR.
++ el comando y la fórmula del modelo
++ una lista de las variables tomadas como categóricas con más de dos niveles, así como el número de niveles de cada una de ellas
++ una lista de las variables dicotómicas
++ las proyecciones ortogonales en los subespacios producidos por la descomposición QR (_effects_).
++ un vector de enteros que indica la columna a la que corresponde cada regresor del modelo.
 
 
 En cuanto a la prueba F, recordemos que:
 
 $$F=\frac{\frac{TSS-RSS}{k}}{\frac{RSS}{n-k-1}}$$
 
-y en r la podemos calcular de la siguiente forma.
+y en R la podemos calcular de la siguiente forma.
 
 ````{r}
-RSS <- sum(model_a2$residuals^2)
-TSS<- sum((base$quantity-mean(base$quantity))^2)
+base<-base%>% mutate(y=log(quantity+1), pred=predict(model_a2))
+RSS <- sum((base$y-base$pre)^2)
+TSS<- sum((base$y-mean(base$y))^2)
 n<- length(base$unit_price)
 k<- sum(!is.na(model_a2$coefficients))
-(F <- ((TSS-RSS)/k)/(RSS/(n-k-1)))
+#como nuestra k incluye el intercepto, modificamos un poco la formula
+(F <- ((TSS-RSS)/(k-1))/(RSS/(n-k)))
 ```
 
+El valor coincide con el estadístico F que arroja R.
 
 ## 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
 
@@ -790,20 +796,27 @@ y <- mean(base$quantity)
 beta <- model_a2$coefficients[2]
 
 elasticity <- beta
-# Significancia
-paste("Dado que el p-Value es",tidy(model_a2)$p.value[2],", podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo")
 
-# Significancia b)
-
-paste("Como el estadístico t es",tidy(model_a2)$statistic[2],"podemos rechazar la Hipótesis nula para cualquier nivel de significancia")
-
-
-# Interpretación
-paste("La elasticidad precio de la demanda es de",round(elasticity,2),"%")
-paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",
-      round(elasticity,2),"%")
-
+#p-value
+tidy(model_a2)$p.value[2] %>% round(2)
 ```
+
+Dado que el p-value es un valor muy cercano a cero, podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo.
+
+```{r}
+# Significancia b)
+tidy(model_a2)$statistic[2]
+```
+
+Como el estadístico t es -17.1, podemos rechazar la Hipótesis nula para cualquier nivel de significancia.
+
+```{r}
+# Elasticidad
+round(elasticity,2)
+```
+
+La elasticidad precio de la demanda evaluada en la media es de -0.17. Por lo tanto, ante un aumento de 1% en el precio, la cantidad demandada se reduce en 0.17%.
+
 
 ## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
 
@@ -811,21 +824,24 @@ paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",
 pvalues<-as.data.frame(tidy(model_a2))
 pvalues <- pvalues %>% filter(p.value != "NA") %>% select(p.value)%>%
   arrange(desc(p.value))
-colSums(!is.na(pvalues))
+
 nrow(pvalues)
 
 ```
-Tenemos 155 p values
+
+Tenemos 155 _p-values_.
 
 
 ```{r,  out.width = '70%',fig.align = "center"}
 
 ggplot(pvalues, aes(x=p.value)) + 
  geom_histogram(aes(y=..density..), bins=70, colour="black", fill="white")+
-  theme_bw()+
   geom_vline(xintercept = .05,size=0.5,colour="red", linetype = "dashed")+
-  geom_text(aes(x=.28, label=paste("p value =",.05), y=10),size=4, colour="red", vjust = -1, hjust = 1.2)+
-  labs(title="Histograma de p values") +theme_economist() + scale_fill_economist()
+  geom_text(aes(x=.28, label=paste("p value =",.05), y=10),
+            size=4, colour="red", vjust = -1, hjust = 1.2)+
+  labs(title="Histograma de p values") +
+  theme_economist() +
+  scale_fill_economist()
               
 ```
 
@@ -837,7 +853,7 @@ Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% m
 ```{r, out.width = '70%',fig.align = "center"}
 
 # FDR
-q <- 0.05
+q <- 0.1
   fdr <- pvalues %>% arrange(p.value) %>% 
     mutate(indice = 1:length(p.value)) %>%
     mutate(`q*k/n` = q*(indice/length(p.value))) %>%
@@ -847,16 +863,18 @@ q <- 0.05
 ggplot(data =fdr, aes(x=indice,y=p.value))+
   geom_point()+
   geom_abline(slope=q/length(pvalues$p.value),col='red')+
-  theme_bw()+
-  labs(title="Ajuste FDR") + theme_economist() + scale_fill_economist()
+  labs(title="Ajuste FDR") + 
+  theme_economist() + 
+  scale_fill_economist()
 
 
 # con zoom
 ggplot(data =fdr, aes(x=indice,y=p.value))+
   geom_point()+
   geom_abline(slope=q/length(pvalues$p.value),col='red')+
-  theme_bw()+
-  labs(title="Ajuste FDR (zoom in p<0.05)") + theme_economist() + scale_fill_economist()+
+  labs(title="Ajuste FDR (zoom in p<0.05)") + 
+  theme_economist() + 
+  scale_fill_economist()+
   ylim(c(0,0.05))
 
 
@@ -870,7 +888,7 @@ ggplot(data =fdr, aes(x=indice,y=p.value))+
 
 ¿Cuántas variables salían significativas? ¿Cuántas salen con FDR?
 
-Antes 58 variables salían significativas. Después, con FDR solo 29.
+Antes 56 variables salían significativas. Después, con FDR sólo 44.
 ```{r}
 # Antes
 sum(pvalues$p.value<=0.05)
@@ -885,7 +903,7 @@ sum(pvalues$p.value<=pestrella)
 
 ## 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
 ````{r, out.width = '70%',fig.align = "center"}
-q <- 0.05
+q <- 0.1
   bonferroni <- pvalues %>% arrange(p.value) %>% 
     mutate(indice = 1:length(p.value)) %>%
     mutate(`alpha/(m+1-k)`= q /(length(p.value)+1-indice)) %>%
@@ -893,25 +911,18 @@ q <- 0.05
  
   sum(bonferroni$significancia=='TRUE')
    
-  # Tenemos únicamente 11 variables que resultan ser significativas con el ajuste de Holm-Bonferroni
+  # Tenemos únicamente 12 variables que resultan ser significativas 
+  # con el ajuste de Holm-Bonferroni
   
   
 corte <- bonferroni %>% filter(significancia == 'FALSE')
 corte <- min(corte$`alpha/(m+1-k)`)
 
-ggplot(data =bonferroni, aes(x=indice,y=p.value))+
-  geom_point()+
-  geom_hline(yintercept = corte,col='red')+
-  theme_bw()+
-  labs(title="Ajuste Holm-Bonferroni")+
-  theme_economist() + scale_fill_economist()
 
-
-# con zoom
+# Gráfica con zoom
 ggplot(data =bonferroni, aes(x=indice,y=p.value))+
   geom_point()+
   geom_hline(yintercept= corte,col='red')+
-  theme_bw()+
   labs(title="Ajuste Holm-Bonferroni (zoom p<0.05)")+
   theme_economist() + scale_fill_economist()+
   ylim(c(0,0.05))
@@ -924,12 +935,12 @@ ggplot()+
   geom_point()+
   geom_hline(aes(x=indice,y=p.value, linetype="H-B"),
              yintercept= corte,col='blue',show.legend=TRUE)+
-  labs(title="Ajuste FDR vs. Holm-Bonferroni (zoom p<0.05)") +
+  labs(title="Ajuste FDR (rojo) vs. Holm-Bonferroni (azul) (zoom p<0.05)") +
   theme_economist() + scale_fill_economist()+
   ylim(c(0,0.05))
     ```
     
-Tenemos únicamente 11 variables que resultan ser significativas con el ajuste de Holm-Bonferroni. Como vimos en clase el ajuste Holm-Bonferroni es más estricto que el ajuste FDR. Controla más por el error tipo 1. A continuación, se muestran las variables que resultan ser significativas para cada ajuste:
+Tenemos únicamente 12 variables que resultan ser significativas con el ajuste de Holm-Bonferroni. Como vimos en clase, el ajuste Holm-Bonferroni es más estricto que el ajuste FDR. Controla más por el error tipo 1. A continuación, se muestran las variables que resultan ser significativas para cada ajuste:
 ```{r}
 # Sin ajuste
 sum(pvalues$p.value<=0.05)
