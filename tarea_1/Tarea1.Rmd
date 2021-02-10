@@ -751,9 +751,6 @@ Por cuestiones de espacio y de comodidad lectora, los resultados los publicamos 
 
 
 
-CORREGIR
-
-
 
 ## 15 (2 pts). Cuales son los elementos que guarda el objecto de la regresión? Listalos. Cual es el F-test de la regresión? Escribe la prueba de manera matemática (i.e. como la vimos en clase). (Tip: `summary(fit)` te arroja algo del F-test)
 
@@ -769,7 +766,7 @@ En cuanto a la prueba F, recordemos que:
 
 $$F=\frac{\frac{TSS-RSS}{k}}{\frac{RSS}{n-k-1}}$$
 
-y en r la podemos calcular de la siguiente forma.
+y en r la podemos calcular de la siguiente forma. 
 
 ````{r}
 RSS <- sum(model_a2$residuals^2)
@@ -779,6 +776,7 @@ k<- sum(!is.na(model_a2$coefficients))
 (F <- ((TSS-RSS)/k)/(RSS/(n-k-1)))
 ```
 
+Debido a que el valor es 1463.597 evidentemente rechazamos la hipótesis nula de que todas las $\beta$ son cero.
 
 ## 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
 
@@ -791,35 +789,38 @@ beta <- model_a2$coefficients[2]
 
 elasticity <- beta
 # Significancia
-paste("Dado que el p-Value es",tidy(model_a2)$p.value[2],", podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo")
+tidy(model_a2)$p.value[2]
 
 # Significancia b)
-
-paste("Como el estadístico t es",tidy(model_a2)$statistic[2],"podemos rechazar la Hipótesis nula para cualquier nivel de significancia")
-
+tidy(model_a2)$statistic[2]
 
 # Interpretación
-paste("La elasticidad precio de la demanda es de",round(elasticity,2),"%")
-paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",
-      round(elasticity,2),"%")
+round(elasticity,2)
+round(elasticity,2)
 
 ```
+
+Dado que el p-Value es menor a .001, podemos rechazar la Hipótesis nula ($\beta=0$) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo. De manera, paralela, como el estadístico t es menor a -17 podemos rechazar la Hipótesis nula para cualquier nivel de significancia.
+
+Finalmente, la elasticidad precio de la demanda es de -.17%, esto quiere decir que ante un aumento de 1% en el precio, la cantidad demandada se reduce en -.17%.
 
 ## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
 
 ```{r}
+#Creo un dataframe con los pvalues del modelo
 pvalues<-as.data.frame(tidy(model_a2))
+#Quito los pvalues que aparecen como NAs
 pvalues <- pvalues %>% filter(p.value != "NA") %>% select(p.value)%>%
   arrange(desc(p.value))
 colSums(!is.na(pvalues))
 nrow(pvalues)
 
 ```
-Tenemos 155 p values
+
+Tenemos 155 p values. Notamos que el principio deberíamos tener más pero debido a la colinealidad perfecta entre algunas variables (por ejemplo las relacionadas con male_head y female_head), se redujeron de 161 a 155.
 
 
 ```{r,  out.width = '70%',fig.align = "center"}
-
 ggplot(pvalues, aes(x=p.value)) + 
  geom_histogram(aes(y=..density..), bins=70, colour="black", fill="white")+
   theme_bw()+
@@ -893,7 +894,8 @@ q <- 0.05
  
   sum(bonferroni$significancia=='TRUE')
    
-  # Tenemos únicamente 11 variables que resultan ser significativas con el ajuste de Holm-Bonferroni
+  # Tenemos únicamente 11 variables que resultan ser significativas con el ajuste 
+  #de Holm-Bonferroni
   
   
 corte <- bonferroni %>% filter(significancia == 'FALSE')
