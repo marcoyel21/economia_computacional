@@ -629,14 +629,14 @@ base$flavor_descr <- relevel(factor(base$flavor_descr),"VAN")
 base$coupon <- factor(base$coupon_value>0)
 
 # región
-levels(base$region) <- c("East","Central","South","West")
+levels(base$region) <- c("Region1","Region2","Region3","Region4")
 
 # estado civil
 base$married <- factor(base$marital_status==1)
 
 # raza
 base$race <- factor(base$race, levels= 1:4)
-levels(base$race) <- c("White","Black","Asian","Other")
+levels(base$race) <- c("Race1","Race2","Race3","Race4")
 
 # hispano
 base$hispanic_origin <- factor(base$hispanic_origin==1)
@@ -648,7 +648,7 @@ base$formula_descr <- as.factor(base$formula_descr)
 base$size1_descr <- as.factor(base$size1_descr)
 
 # tvs
-base$pay_tv <- base$tv_items>1
+base$tvs <- base$tv_items>1
 
 # internet
 base$internet <- base$household_internet_connection==1
@@ -685,7 +685,7 @@ base$log_price <- log(base$unit_price+1)
                     "household_composition",
                     "type_of_residence",
                     "kitchen_appliances",
-                    "pay_tv",
+                    "tvs",
                     "internet")]
 model_a2<-lm(log(quantity+1) ~ .,data = base_reg)
 ```
@@ -735,27 +735,26 @@ x <- mean(base$unit_price)
 y <- mean(base$quantity)
 beta <- model_a2$coefficients[2]
 
-elasticity <- beta * (x/y)
-# A primera vista sí es significativo
+elasticity <- beta
+# Significancia
+paste("Dado que el p-Value es",tidy(model_a2)$p.value[2],", podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo")
+
+# Interpretación
 paste("La elasticidad precio de la demanda es de",round(elasticity,2),"%")
 paste("Ante un aumento de 1% en el precio, la cantidad demandada se reduce en",
       round(elasticity,2),"%")
 
-beta2 <- model_a$coefficients[2]
-beta2*(y/x)
 ```
 
 # 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
 
-
-**#COMENTARIO CORREGIR ESTE ANALISIS**
-
 ```{r}
 pvalues<-as.data.frame(tidy(model_a2))
-colSums(is.na(pvalues))
+pvalues <- pvalues %>% filter(p.value != "NA") %>% select(p.value)
+colSums(!is.na(pvalues))
 nrow(pvalues)
 ```
-Tenemos 155 p values (de 161 variables más la ordenada al origen menos 6 variables colineales)
+Tenemos 155 p values
 
 
 ```{r, include=FALSE}
@@ -776,59 +775,57 @@ Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% m
 **#COMENTARIO mejroar graficas (hacer con gg plot y agregar tema y labels)**
 
 ```{r}
-valores_p <- summary(model_a2)$coefficients[,4]
-# Función(vector de valores p, q)
 
-fdr <- function(valores_p,q){
-  valores_p <- valores_p[!is.na(valores_p)]
-  n <<- length(valores_p)
+# FDR
+q <- 0.05
+  fdr <- pvalues %>% arrange(p.value) %>% 
+    mutate(indice = 1:length(p.value)) %>%
+    mutate(`q*k/n` = q*(indice/length(p.value))) %>%
+    mutate(significancia = p.value <= `q*k/n`)
   
-  k <- rank (valores_p,ties.method="min")
-  t <- valores_p <= q*k/n
-  t[valores_p<max(valores_p[t])] <- TRUE
-  
-  orden <- order(valores_p)
-  valores_p_ordenados <<- valores_p[orden]
-  plot(valores_p[orden])
-  lines(1:n, q*(1:n)/n, col='red')
 
-  return(max(valores_p[t]))
-}
+ggplot(data =fdr, aes(x=indice,y=p.value))+
+  geom_point()+
+  geom_abline(slope=q/length(orden$p.value),col='red')+
+  theme_bw()+
+  labs(title="Histograma de p values") + theme_economist() + scale_fill_economist()
 
 
-q<- 0.05
-fdr(valores_p,q)
-
-fdr_save <- fdr(valores_p,q)
-
-
-plot(valores_p_ordenados,ylim=c(0,q+0.025),xlim=c(0,50))
-lines(1:n, q*(1:n)/n,col='red')
-abline(h = q)
-
+# con zoom
+ggplot(data =fdr, aes(x=indice,y=p.value))+
+  geom_point()+
+  geom_abline(slope=q/length(orden$p.value),col='red')+
+  theme_bw()+
+  labs(title="Histograma de p values (zoom in p<0.05)") + theme_economist() + scale_fill_economist()+
+  ylim(c(0,0.05))
 
 
 # prueba
 # abc <- c(0.52, 0.07, 0.013, 0.0001, 0.26, 0.04, 0.01, 0.15, 0.03, 0.0002)
 
 # alternativa
-fdr2 <- p.adjust(p=valores_p,method="BH")
-names(fdr2) <- fdr2 <=0.05
+# fdr2 <- p.adjust(p=pvalues$p.value,method="BH")
+# names(fdr2) <- fdr2 <=0.05
 ```
 
 ¿Cuántas variables salían significativas? ¿Cuántas salen con FDR?
 
-Antes 57 variables salían significativas, después, tan solo 27.
+Antes 56 variables salían significativas. Después, con FDR solo 30.
 ```{r}
 # Antes
-sum(valores_p<0.05)
+sum(pvalues$p.value<=0.05)
 
 # Con FDR
-sum(valores_p<fdr_save)
+pestrella <- fdr %>% filter(significancia == 'TRUE')
+pestrella <- max(pestrella$`q*k/n`)
+
+sum(pvalues$p.value<=pestrella)
 ```
 
 
 # 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
 ````{r}
+q <- 0.05
+
 
 ```
