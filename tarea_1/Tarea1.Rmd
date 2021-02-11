@@ -10,7 +10,7 @@ header-includes :
   \hyphenpenalty=10000
   \hbadness=10000
   \linespread{1.2}
-  \usepackage[justification=centering, font=bf, labelsep=period, skip=5pt]{caption} 
+  \usepackage[justification=centering, font=bf, labelsep=period, skip=5pt]{caption}
   \usepackage{titling}
   \usepackage{babel}
   \usepackage{fancyhdr}
@@ -81,12 +81,12 @@ header-includes :
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = F)
 ```
 
-En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró. 
+En esta tarea pondrán en práctica los conceptos de High Dimensional Inference y Regresión. La base de datos muestra las compras de helados Ben & Jerry. Cada fila es una compra. Cada columna es una característica del helado comprado o de la persona que compró.
 
 
 # Limpieza de datos
 
-Carga los datos en BenAndJerry.csv. 
+Carga los datos en BenAndJerry.csv.
 
 ```{r,message=FALSE }
 
@@ -125,18 +125,18 @@ sum(as.numeric(duplicated(base)))
 
 Esto puede deberse a un error de registro o a que el mismo hogar previamente registrado realizó la misma compra más de una vez. Por lo pronto asumirémos lo segundo.
 
-En cuanto a la segunda parte de la pregunta, no hay una variable explícita que identifique cada observación de manera única pero sí hay una manera implícita y es el índice de cada fila. En este sentido, una manera fácil de crear una variable idenfiticadora sería simplemente crear una variable que "clone" el indice de cada fila. Por otro lado, una alternativa más nutritiva para el análisis de datos sería crear alguna variable que combine información del identificador del hogar y del número de transacción. Para esto podemos concatenar el identificador de cada hogar con una variable que lleva el conteo del número de transacciones que cada hogar lleva separadas con un guión, de la siguiente manera: 
+En cuanto a la segunda parte de la pregunta, no hay una variable explícita que identifique cada observación de manera única pero sí hay una manera implícita y es el índice de cada fila. En este sentido, una manera fácil de crear una variable idenfiticadora sería simplemente crear una variable que "clone" el indice de cada fila. Por otro lado, una alternativa más nutritiva para el análisis de datos sería crear alguna variable que combine información del identificador del hogar y del número de transacción. Para esto podemos concatenar el identificador de cada hogar con una variable que lleva el conteo del número de transacciones que cada hogar lleva separadas con un guión, de la siguiente manera:
 
 $$id=household\_id-conteo\_transacción$$
 
 ```{r}
-base <- base %>% group_by(household_id) %>% 
+base <- base %>% group_by(household_id) %>%
           mutate(id_trans = sequence(n())) %>% ungroup()
 base$id<-paste(base$household_id, base$id_trans, sep="-")
 
 #Ejemplo:
 kable(head(base$id), col.names = c("Ejemplo"), booktabs=T)%>%
-  
+
   kable_styling(position = "center",latex_options = "repeat_header")
 
 ```
@@ -171,14 +171,14 @@ Al revisar estas variables, notamos que *male_head_birth* y *female_head_birth* 
 
 
 ```{r}
-kable( (base %>% select_if(~sum(is.na(.)) > 0) %>% 
+kable( (base %>% select_if(~sum(is.na(.)) > 0) %>%
           miss_var_summary()), booktabs=T, align = 'c',
        col.names = c("Variale", "Cantidad","%"),digits = 2)%>%
   kable_styling(position = "center")
 ```
 
 
-## 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta. 
+## 4. Haz algo con los valores vacíos (Se deben reemplazar por algún valor? Eliminar de la base?). Justifica tu respuesta.
 
 Pues dependiendo de la cantidad de valores vacíos, de las características de cada variable y de que exista algún patrón en los valores podemos proponer una estrategia, por ejemplo imputación o simplemente quitar esas observaciones. En este sentido tenemos que realizar un análisis por variable:
 
@@ -210,7 +210,7 @@ susp<-base%>% select(fips_state_code,fips_county_code,
   mutate(estado_condado=paste(fips_state_code,"-",fips_county_code))%>%
   group_by(estado_condado,scantrack_market_identifier)%>%
   summarize(n())
-kable(head(susp),booktabs=T, 
+kable(head(susp),booktabs=T,
       col.names = c("Ejemplo Estado-Condado","scantrack_market_identifier",
                     "Observaciones"))%>%
   kable_styling(position = "center",latex_options = "repeat_header")
@@ -223,11 +223,11 @@ Sin embargo, podemos analizar la variedad de categorías en cada estado. En este
 
 
 ```{r,message=FALSE}
-susp_2<-base%>% select(fips_state_code,scantrack_market_identifier)%>% 
+susp_2<-base%>% select(fips_state_code,scantrack_market_identifier)%>%
   group_by(fips_state_code,scantrack_market_identifier)%>%
-  summarize(n()) 
+  summarize(n())
 
-kable(head(susp_2,10),booktabs=T, 
+kable(head(susp_2,10),booktabs=T,
       col.names = c("Ejemplo Estado","scantrack_market_identifier",
                     "Observaciones"))%>%
   kable_styling(position = "center",latex_options = "repeat_header")
@@ -238,12 +238,12 @@ kable(head(susp_2,10),booktabs=T,
 ```{r}
 susp_2<-base%>% select(fips_state_code,scantrack_market_identifier)%>%
   group_by(fips_state_code,scantrack_market_identifier)%>%
-  
+
   summarize(n()) %>% ungroup() %>%
   group_by(fips_state_code)%>%
   summarize(n())
 
-kable(head(susp_2,10),booktabs=T, 
+kable(head(susp_2,10),booktabs=T,
       col.names = c("Ejemplo Estado",
                     "cantidad de scantrack_market_identifier diferentes"))%>%
   kable_styling(position = "center",latex_options = "repeat_header")
@@ -252,19 +252,19 @@ kable(head(susp_2,10),booktabs=T,
 mean(susp_2$`n()`)
 ```
 
-En conclusión, la mejor imputación posible es imputar la moda por estado, aunque no es la imputación que qusieramos. Sin embargo, debido a que son el 18% de las observaciones, es preferible intentar conservarlas a simplemente descartarlas. 
+En conclusión, la mejor imputación posible es imputar la moda por estado, aunque no es la imputación que qusieramos. Sin embargo, debido a que son el 18% de las observaciones, es preferible intentar conservarlas a simplemente descartarlas.
 
 
 ```{r, message=FALSE}
 #Imputación de la moda
 
-#Creo mi tabla de modas 
+#Creo mi tabla de modas
 llave_imputaciones<-base %>% select(fips_state_code,scantrack_market_identifier)%>%
-  group_by(fips_state_code) %>% count(scantrack_market_identifier) %>% top_n(1) %>% 
-  rename(moda=scantrack_market_identifier) 
+  group_by(fips_state_code) %>% count(scantrack_market_identifier) %>% top_n(1) %>%
+  rename(moda=scantrack_market_identifier)
 llave_imputaciones$n<-NULL
 
-#Imputo 
+#Imputo
 base<-merge(base,llave_imputaciones, by = "fips_state_code")
 base<-base%>%mutate(scantrack_market_identifier=
       ifelse(is.na(scantrack_market_identifier),moda,scantrack_market_identifier))
@@ -297,7 +297,7 @@ summary((aux))
 summary(aux$age_of_female_head[aux$female_head_birth==""])
 ```
 
-Explorando los datos, notamos que todos los NAs de las variables *female_head_occupation* y 
+Explorando los datos, notamos que todos los NAs de las variables *female_head_occupation* y
 *female_head_birth* coinciden, y además corresponden a observaciones en que se registra una edad, educación y ocupación de la jefa del hogar de cero. Esto nos lleva a concluir que en los hogares que hicieron esas compras no hay una jefa de hogar femenina. En este sentido creamos una nueva categoría de ocupación de mujeres con estas características con el número 0, la cual imputamos a los valores faltantes. Por su parte, dejamos como desconocidos los valores faltantes de la variable *female_head_birth* sin embargo les ponemos una etiqueta para no perder las observaciones
 
 ```{r}
@@ -336,7 +336,7 @@ base$tv_items[is.na(base$tv_items)] <- 0
 summary(factor(base$tv_items))
 ```
 
-## 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max). 
+## 5. Muestra una tabla de estadisticas descriptivas de la base. Esta debe tener cada columna númerica con algunas estadísticas descriptivas (N, media, min, p05, p25, p50, p75, p90, p95, max).
 
 Sin hacer ninguna adecuación en el tipo de variables, la tabla es la siguiente:
 
@@ -349,7 +349,7 @@ b<- b %>% mutate_at(vars(-variable),funs(round(.,2))) %>%
 
 options(scipen=999) # quitamos notación científica
 kable(b,booktabs=T, align = 'c')%>%
-  kable_styling(position = "center")%>% 
+  kable_styling(position = "center")%>%
   kable_styling(latex_options="scale_down")
 ```
 
@@ -407,7 +407,7 @@ base[,variables_numericas] <- lapply(base[,variables_numericas] , as.numeric)
 ```
 
 
-## 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades? 
+## 7. Revisa la distribución de algunas variables. Todas tienen sentido? Por ejemplo, las edades?
 
 ```{r, warning=FALSE, message=FALSE}
 
@@ -448,17 +448,17 @@ base <- base %>% mutate(unit_price= (total_price)/quantity)
 ```
 
 
-# Exploración de los datos 
+# Exploración de los datos
 
-Intentaremos comprender la elasticidad precio de los helados. Para ello, debemos entender: 
+Intentaremos comprender la elasticidad precio de los helados. Para ello, debemos entender:
 
-- La forma funcional base de la demanda (i.e. como se parecen relacionarse $q$ y $p$). 
+- La forma funcional base de la demanda (i.e. como se parecen relacionarse $q$ y $p$).
 
-- Qué variables irían en el modelo de demanda y cuáles no para encontrar la elasticidad de manera 'insesgada'. 
+- Qué variables irían en el modelo de demanda y cuáles no para encontrar la elasticidad de manera 'insesgada'.
 
 - Qué variables cambian la relacion de $q$ y $p$. Esto es, que variables alteran la elasticidad.
 
-Algo importante es que siempre debemos mirar primero las variables más relevantes de cerca y su relación en: 
+Algo importante es que siempre debemos mirar primero las variables más relevantes de cerca y su relación en:
 
 - Relación univariada
 
@@ -481,24 +481,24 @@ ggplot(base)+
                 y=4800),size=4, colour="red", vjust = -1, hjust = 1.2)+
   labs(title="Histograma del precio unitario del helado",x="Precio unitario",y="Frecuencia")+
   theme_economist() + scale_fill_economist()
-  
+
 ggplot(base)+
   geom_histogram(aes(x=quantity),binwidth=1,alpha=0.9,col = 'black')+
-  labs(title="Histograma de la cantidad de helados comprados",x="Cantidad",y="Frecuencia")+ 
+  labs(title="Histograma de la cantidad de helados comprados",x="Cantidad",y="Frecuencia")+
   theme_economist() + scale_fill_economist()
 
 ```
 
-## 10. Grafica la $q(p)$. Que tipo de relación parecen tener? 
+## 10. Grafica la $q(p)$. Que tipo de relación parecen tener?
 
 Aunque parece haber una relación negativa, marcada por las compras de 1 a 4 productos, esta no es tan clara para mayores cantidades.
 
 ```{r, out.width = '70%',fig.align = "center"}
 ggplot(base)+
-  geom_point(aes(y=quantity, x=unit_price))+ 
+  geom_point(aes(y=quantity, x=unit_price))+
   geom_smooth(formula=y~x,method=lm, color='2',aes(y=quantity, x=unit_price))+
   labs(title="Demanda de helados en función del precio",
-       x="Precio unitario",y="Cantidad demandada")+ 
+       x="Precio unitario",y="Cantidad demandada")+
   theme_economist() + scale_fill_economist()
 ```
 
@@ -508,11 +508,11 @@ Cuando hacemos la transformación, la relación negativa es más evidente:
 
 ````{r, out.width = '70%',fig.align = "center"}
 ggplot(base)+
-  geom_point(aes(y=log(quantity+1),x=log(unit_price+1)))+ 
+  geom_point(aes(y=log(quantity+1),x=log(unit_price+1)))+
   geom_smooth(formula=y~x,method=lm, color='2',
               aes(y = log(quantity+1), x = log(unit_price+1)))+
   labs(title = "Demanda de helados (log) en función del precio (log)",
-       x="Precio unitario (log)", y="Cantidad demandada (log)")+ 
+       x="Precio unitario (log)", y="Cantidad demandada (log)")+
   theme_economist() + scale_fill_economist()
 
 ```
@@ -544,7 +544,7 @@ $$ log(q_i+1) = \beta_0 + \beta_1log(p_i+1) + \beta_232MLOZ + \beta_3log(p_i+1)3
 
 ```{r}
 # Prueba de hipotesis
-elast_size <- lm(log(quantity+1)~log(unit_price+1)*size1_descr, 
+elast_size <- lm(log(quantity+1)~log(unit_price+1)*size1_descr,
               data=base)
 
 hip_size <- c(0,0,0,1)
@@ -574,7 +574,7 @@ Parece que los 3 sabores más populares son *CHERRY GRCA*, *CHC FUDGE BROWNIE* y
 El siguiente paso es crear la variable que distinga entre estos 3 sabores y agrupe al resto para después graficar y hacer una prueba de hipótesis:
 
 ````{r}
-base<-base%>% 
+base<-base%>%
   mutate(sabores_pop= ifelse(flavor_descr=='CHERRY GRCA','cherry grca',
 (ifelse(flavor_descr=='CHC FUDGE BROWNIE','chc fudge brownie',
 (ifelse(flavor_descr=='CHC CHIP C-DH','chc chip c-dh','otros'))))))
@@ -583,7 +583,7 @@ base<-base%>%
 
 
 ````{r, out.width = '70%',fig.align = "center"}
-ggplot(data = base, aes(y=log(quantity+1), 
+ggplot(data = base, aes(y=log(quantity+1),
                         x=log(unit_price+1),
                         col=as.factor(sabores_pop))) +
   geom_point(size=1, alpha=0.3) +
@@ -602,7 +602,7 @@ $$H_0:\beta_j=0$$
 $$H_a:\beta_j \neq0$$
 donde evaluamos una prueba para el coeficiente de cada interacción de términos ($\beta_5, \beta_6$ y $\beta_7$), con base en el siguiente modelo:
 
-\begin{align*} 
+\begin{align*}
 log(q_i+1) = \beta_0 + \beta_1log(p_i+1) + \beta_2chc_chip_c-dh + \beta_3chc_fudge_brownie + \\  \beta_4cherry_grca + \beta_5log(p_i+1)chc_chip_c-dh + \beta_6log(p_i+1)chc_fudge_brownie + \\  \beta_7log(p_i+1)cherry_grca + \upsilon_i
 \end{align*}
 
@@ -623,7 +623,7 @@ linearHypothesis(elast_sabores,hipcherry, rhs = NULL, white.adjust="hc1")
 
 ```
 
-Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales, solamente se rechaza la de *cherry grca* con un $p-value$ de 1.6%. Es decir, la elasticidad precio demanda de los helados *cherry grca* tiene un comportamiento diferenciado del resto de los sabores, y lo mismo no se puede decir para los otros dos sabores más populares. 
+Al evaluar la hipótesis nula de si los coeficientes estimados de la elasticidad precio demanda entre las submuestras contempladas eran iguales, solamente se rechaza la de *cherry grca* con un $p-value$ de 1.6%. Es decir, la elasticidad precio demanda de los helados *cherry grca* tiene un comportamiento diferenciado del resto de los sabores, y lo mismo no se puede decir para los otros dos sabores más populares.
 
 Por último, también observamos las diferencias entre los tres sabores más populares. Para hacer esto, usamos el mismo modelo para evaluar las hipótesis de diferencias en los coeficientes de interacciones de los tres sabores más populares:
 $$ H_0: \beta_j - \beta_k = 0 $$
@@ -644,16 +644,16 @@ Estas pruebas no se rechazan a un nivel de significancia de 5, lo que indica que
 
 ## 14. Estima la regresión de la curva de demanda de los helados. Reporta la tabla de la regresión
 
-Algunos tips: 
+Algunos tips:
 
-- No olvides borrar la variable que recien creamos de sabores. Incluirla (dado que es perfectamente colineal con flavor), sería una violación a supuesto GM 3 de la regresión. 
+- No olvides borrar la variable que recien creamos de sabores. Incluirla (dado que es perfectamente colineal con flavor), sería una violación a supuesto GM 3 de la regresión.
 
 - No olvides quitar `quantity`, `price_unit`, `price_deal` y otras variables que sirven como identificadora. Tambien quitar `fips_state_code` y `fips_county_code`.
 
-- Empecemos con una regresión que incluya a todas las variables. 
+- Empecemos con una regresión que incluya a todas las variables.
 
 
-Nota: La regresión en `R` entiende que si le metes variables de texto, debe convertirlas a un factor. En algunos otros algoritmos que veremos durante el curso, tendremos que convertir manualmente toda la base a una númerica. 
+Nota: La regresión en `R` entiende que si le metes variables de texto, debe convertirlas a un factor. En algunos otros algoritmos que veremos durante el curso, tendremos que convertir manualmente toda la base a una númerica.
 
 Quitemos las fechas
 ```{r}
@@ -667,7 +667,7 @@ model_a<-lm(quantity~unit_price,data = base)
 stargazer(model_a, type = "latex", title="Regresión", digits=1,header=FALSE)
 ```
 
-En segundo lugar, estimamos el modelo con todas las variables, siguiendo los tips. En el siguiente código mostramos el proceso previo a la estimación. 
+En segundo lugar, estimamos el modelo con todas las variables, siguiendo los tips. En el siguiente código mostramos el proceso previo a la estimación.
 
 ```{r}
 # convertimos sabores en dummies y ponemos como base los de vainilla
@@ -734,7 +734,7 @@ base$log_price <- log(base$unit_price+1)
                     "kitchen_appliances",
                     "tvs",
                     "internet")]
- 
+
 # estimamos el modelo
 model_a2<-lm(log(quantity+1) ~ .,data = base_reg)
 ```
@@ -756,9 +756,9 @@ En cuanto a los elementos del modelo en general, R guarda diversos estimados:
 glance(model_a2)
 ```
 
-Adicionalmente, pueden consultarse: 
+Adicionalmente, pueden consultarse:
 
-+ vectores del tamaño de las 21974 filas de la base con los residuales, valores predichos, 
++ vectores del tamaño de las 21974 filas de la base con los residuales, valores predichos,
 + los grados de libertad (k, incluyendo el intercepto) y el residual de los mismos (n-k)
 + los elementos auxiliares usador por R para llegar a la solución de la regresión mediante descomposición QR.
 + el comando y la fórmula del modelo
@@ -784,9 +784,9 @@ k<- sum(!is.na(model_a2$coefficients))
 (F <- ((TSS-RSS)/(k-1))/(RSS/(n-k)))
 ```
 
-El valor coincide con el estadístico F que arroja R.
+El valor coincide con el estadístico F que arroja R. Debido a que el valor es 1463.597 evidentemente rechazamos la hipótesis nula de que todas las $\beta$ son cero.
 
-## 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente 
+## 16. Cuál es la elasticidad precio de los helados Ben and Jerry ? Es significativo? Interpreta el coeficiente
 
 ```{r}
 
@@ -796,6 +796,7 @@ y <- mean(base$quantity)
 beta <- model_a2$coefficients[2]
 
 elasticity <- beta
+
 
 #p-value
 tidy(model_a2)$p.value[2] %>% round(2)
@@ -810,31 +811,48 @@ tidy(model_a2)$statistic[2]
 
 Como el estadístico t es -17.1, podemos rechazar la Hipótesis nula para cualquier nivel de significancia.
 
+# Significancia
+tidy(model_a2)$p.value[2]
+
+# Significancia b)
+tidy(model_a2)$statistic[2]
+
+# Interpretación
+round(elasticity,2)
+round(elasticity,2)
+
+
 ```{r}
 # Elasticidad
 round(elasticity,2)
 ```
 
+
 La elasticidad precio de la demanda evaluada en la media es de -0.17. Por lo tanto, ante un aumento de 1% en el precio, la cantidad demandada se reduce en 0.17%.
 
+Dado que el p-Value es menor a .001, podemos rechazar la Hipótesis nula ($\beta=0$) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo. De manera, paralela, como el estadístico t es menor a -17 podemos rechazar la Hipótesis nula para cualquier nivel de significancia.
 
-## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values. 
+Finalmente, la elasticidad precio de la demanda es de -.17%, esto quiere decir que ante un aumento de 1% en el precio, la cantidad demandada se reduce en .17%.
+
+## 17. Cuántos p-values tenemos en la regresión. Haz un histograma de los p-values.
 
 ```{r}
+#Creo un dataframe con los pvalues del modelo
 pvalues<-as.data.frame(tidy(model_a2))
-pvalues <- pvalues %>% filter(p.value != "NA") %>% select(p.value)%>%
+#Quito los pvalues que aparecen como NAs
+pvalues <- pvalues %>% filter(p.value != "NA") %>% 
+  select(term,p.value)%>%
   arrange(desc(p.value))
 
 nrow(pvalues)
 
 ```
 
-Tenemos 155 _p-values_.
+Tenemos 155 p values. Notamos que el principio deberíamos tener más pero debido a la colinealidad perfecta entre algunas variables (por ejemplo las relacionadas con male_head y female_head), se redujeron de 161 a 155.
 
 
 ```{r,  out.width = '70%',fig.align = "center"}
-
-ggplot(pvalues, aes(x=p.value)) + 
+ggplot(pvalues, aes(x=p.value)) +
  geom_histogram(aes(y=..density..), bins=70, colour="black", fill="white")+
   geom_vline(xintercept = .05,size=0.5,colour="red", linetype = "dashed")+
   geom_text(aes(x=.28, label=paste("p value =",.05), y=10),
@@ -842,11 +860,11 @@ ggplot(pvalues, aes(x=p.value)) +
   labs(title="Histograma de p values") +
   theme_economist() +
   scale_fill_economist()
-              
+
 ```
 
 
-## 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR? 
+## 18 (4pts). Realiza un ajuste FDR a una $q=0.10$. Grafica el procedimiento (con y sin zoom-in a p-values<0.05). Cuantas variables salían significativas con $\alpha = 0.05$? Cuantas salen con FDR?
 Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% mutate(ranking = row_number)`
 
 
@@ -854,17 +872,17 @@ Tip: crea el ranking de cada p-value como `resultados %>% arrange(p.value) %>% m
 
 # FDR
 q <- 0.1
-  fdr <- pvalues %>% arrange(p.value) %>% 
+  fdr <- pvalues %>% arrange(p.value) %>%
     mutate(indice = 1:length(p.value)) %>%
     mutate(`q*k/n` = q*(indice/length(p.value))) %>%
     mutate(significancia = p.value <= `q*k/n`)
-  
+
 
 ggplot(data =fdr, aes(x=indice,y=p.value))+
   geom_point()+
   geom_abline(slope=q/length(pvalues$p.value),col='red')+
-  labs(title="Ajuste FDR") + 
-  theme_economist() + 
+  labs(title="Ajuste FDR") +
+  theme_economist() +
   scale_fill_economist()
 
 
@@ -872,8 +890,8 @@ ggplot(data =fdr, aes(x=indice,y=p.value))+
 ggplot(data =fdr, aes(x=indice,y=p.value))+
   geom_point()+
   geom_abline(slope=q/length(pvalues$p.value),col='red')+
-  labs(title="Ajuste FDR (zoom in p<0.05)") + 
-  theme_economist() + 
+  labs(title="Ajuste FDR (zoom in p<0.05)") +
+  theme_economist() +
   scale_fill_economist()+
   ylim(c(0,0.05))
 
@@ -904,17 +922,17 @@ sum(pvalues$p.value<=pestrella)
 ## 19 (2pts). Repite el ejercicio pero ahora con Holm-Bonferroni. Comparalo vs FDR. En este caso cuantas variables son significativas?  Haz la grafica comparativa (solo con zoom-in)
 ````{r, out.width = '70%',fig.align = "center"}
 q <- 0.1
-  bonferroni <- pvalues %>% arrange(p.value) %>% 
+  bonferroni <- pvalues %>% arrange(p.value) %>%
     mutate(indice = 1:length(p.value)) %>%
     mutate(`alpha/(m+1-k)`= q /(length(p.value)+1-indice)) %>%
     mutate(significancia = p.value <= `alpha/(m+1-k)`)
- 
+
   sum(bonferroni$significancia=='TRUE')
-   
-  # Tenemos únicamente 12 variables que resultan ser significativas 
+
+  # Tenemos únicamente 12 variables que resultan ser significativas
   # con el ajuste de Holm-Bonferroni
-  
-  
+
+
 corte <- bonferroni %>% filter(significancia == 'FALSE')
 corte <- min(corte$`alpha/(m+1-k)`)
 
@@ -939,15 +957,32 @@ ggplot()+
   theme_economist() + scale_fill_economist()+
   ylim(c(0,0.05))
     ```
-    
+
 Tenemos únicamente 12 variables que resultan ser significativas con el ajuste de Holm-Bonferroni. Como vimos en clase, el ajuste Holm-Bonferroni es más estricto que el ajuste FDR. Controla más por el error tipo 1. A continuación, se muestran las variables que resultan ser significativas para cada ajuste:
 ```{r}
-# Sin ajuste
-sum(pvalues$p.value<=0.05)
 
-# Con ajuste FDR
-sum(pvalues$p.value<=pestrella)
 
-# Con ajuste Holm-Bonferroni
-sum(bonferroni$significancia=='TRUE')
+coefs <- merge(fdr,bonferroni,by=c("term","p.value")) %>%
+          mutate(significancia_clasica = case_when(p.value<0.05 ~ TRUE,
+                                                   TRUE~ FALSE)) %>%
+          arrange(p.value)
+
+
+coefs <- coefs %>% 
+  select(term,p.value,significancia.y,significancia.x,significancia_clasica)
+coefs$p.value <- round(coefs$p.value,5)
+names(coefs) <- c("término","p_value","bonferroni","fdr","significancia_clasica")
+
+coefs <- coefs[(coefs$fdr==TRUE | 
+                  coefs$bonferroni==TRUE | 
+                  coefs$significancia_clasica==TRUE),]
+
+kable(coefs,
+  col.names = 
+    c("Término","p-value","Bonferroni","FDR","Por significancia"),booktabs=T)%>%
+  kable_styling(position = "center")
 ```
+
+Como comentario final, era de esperarse que el precio fuera la variable con mayor significancia y que se incluyera bajo los tres criterios de selección. Otras variables con alto poder explicativo fueron algunos sabores de helado, dos tipos de promoción, la edad y presencia de hijos y características del hogar y su composición. 
+
+
