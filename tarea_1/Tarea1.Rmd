@@ -805,22 +805,11 @@ tidy(model_a2)$p.value[2] %>% round(2)
 Dado que el p-value es un valor muy cercano a cero, podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo.
 
 ```{r}
-# Significancia b)
+# Significancia t
 tidy(model_a2)$statistic[2]
 ```
 
 Como el estadístico t es -17.1, podemos rechazar la Hipótesis nula para cualquier nivel de significancia.
-
-# Significancia
-tidy(model_a2)$p.value[2]
-
-# Significancia b)
-tidy(model_a2)$statistic[2]
-
-# Interpretación
-round(elasticity,2)
-round(elasticity,2)
-
 
 ```{r}
 # Elasticidad

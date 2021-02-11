@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.2.8)  10 FEB 2021 22:27
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.2.8)  10 FEB 2021 22:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -689,7 +689,7 @@ pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has
 been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.23 ...section}{Interpretación}{33}{section*.32}
+l.23 ...ativa (solo con zoom-in)}{36}{section*.32}
                                                   % [1])
 \tf@toc=\write5
 \openout5 = `Tarea1.toc'.
@@ -917,14 +917,14 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [15]
-<Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf, id=245, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf, id=230, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf>
 Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-26-1.pdf  used
  on input line 966.
 (pdftex.def)             Requested size: 469.75386pt x 325.2142pt.
-<Tarea1_files/figure-latex/unnamed-chunk-26-2.pdf, id=246, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-26-2.pdf, id=231, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-26-2.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-26-2.pdf>
@@ -977,7 +977,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [17 <./Tarea1_files/figure-latex/unnamed-chunk-26-2.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-28-1.pdf, id=268, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-28-1.pdf, id=253, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-28-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-28-1.pdf>
@@ -993,7 +993,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [18 <./Tarea1_files/figure-latex/unnamed-chunk-28-1.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-28-2.pdf, id=284, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-28-2.pdf, id=269, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-28-2.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-28-2.pdf>
@@ -1002,7 +1002,7 @@ Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-28-2.pdf  used
 (pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <12> on input line 1067.
-<Tarea1_files/figure-latex/unnamed-chunk-29-1.pdf, id=285, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-29-1.pdf, id=270, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-29-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-29-1.pdf>
@@ -1018,7 +1018,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [19 <./Tarea1_files/figure-latex/unnamed-chunk-28-2.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-30-1.pdf, id=303, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-30-1.pdf, id=288, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-30-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-30-1.pdf>
@@ -1035,7 +1035,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 [20 <./Tarea1_files/figure-latex/unnamed-chunk-29-1.pdf> <./Tarea1_files/figure
 -latex/unnamed-chunk-30-1.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf, id=328, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf, id=313, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-31-1.pdf>
@@ -1065,7 +1065,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [22]
-<Tarea1_files/figure-latex/unnamed-chunk-35-1.pdf, id=350, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-35-1.pdf, id=335, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-35-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-35-1.pdf>
@@ -1283,6 +1283,13 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [32]
+<Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf, id=397, 469.755pt x 325.215p
+t>
+File: Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf Graphic file (type pdf)
+<use Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf>
+Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf  used
+ on input line 1794.
+(pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1292,17 +1299,36 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [33]
-<Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf, id=421, 469.755pt x 325.215p
-t>
-File: Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf Graphic file (type pdf)
-<use Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf>
-Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf  used
- on input line 1809.
-(pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
-
-Overfull \hbox (14.84198pt too wide) in paragraph at lines 1818--1820
+Overfull \hbox (14.84198pt too wide) in paragraph at lines 1803--1805
 \T1/lmr/m/n/10.95 Tip: crea el ranking de cada p-value como \T1/lmtt/m/n/10.95 
 resultados %>% arrange(p.value) %>% mutate(ranking
+ []
+
+<Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf, id=403, 469.755pt x 325.215p
+t>
+File: Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf Graphic file (type pdf)
+<use Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf>
+Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf  used
+ on input line 1825.
+(pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller to compensate:
+
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[34 <./Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf>]
+<Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf, id=416, 469.755pt x 325.215p
+t>
+File: Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf Graphic file (type pdf)
+<use Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf>
+Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf  used
+ on input line 1840.
+(pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
+
+Underfull \vbox (badness 7888) detected at line 1851
  []
 
 
@@ -1313,31 +1339,9 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[34 <./Tarea1_files/figure-latex/unnamed-chunk-48-1.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf, id=433, 469.755pt x 325.215p
-t>
-File: Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf Graphic file (type pdf)
-<use Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf>
-Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf  used
- on input line 1840.
-(pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
-<Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf, id=434, 469.755pt x 325.215p
-t>
-File: Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf Graphic file (type pdf)
-<use Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf>
-Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf  used
- on input line 1855.
-(pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller to compensate:
-
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[35 <./Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf>]
-Overfull \hbox (2.86073pt too wide) in paragraph at lines 1901--1901
+[35 <./Tarea1_files/figure-latex/unnamed-chunk-49-1.pdf> <./Tarea1_files/figure
+-latex/unnamed-chunk-49-2.pdf>]
+Overfull \hbox (2.86073pt too wide) in paragraph at lines 1886--1886
 \T1/lmr/bx/n/12 FDR. En este caso cuantas variables son significativas? Haz la 
 grafica comparativa
  []
@@ -1350,29 +1354,20 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[36 <./Tarea1_files/figure-latex/unnamed-chunk-49-2.pdf>]
-<Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf, id=457, 469.755pt x 325.215p
+[36]
+<Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf, id=439, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf>
 Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf  used
- on input line 1939.
+ on input line 1924.
 (pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller to compensate:
-
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[37]
-<Tarea1_files/figure-latex/unnamed-chunk-51-2.pdf, id=462, 469.755pt x 325.215p
+<Tarea1_files/figure-latex/unnamed-chunk-51-2.pdf, id=440, 469.755pt x 325.215p
 t>
 File: Tarea1_files/figure-latex/unnamed-chunk-51-2.pdf Graphic file (type pdf)
 <use Tarea1_files/figure-latex/unnamed-chunk-51-2.pdf>
 Package pdftex.def Info: Tarea1_files/figure-latex/unnamed-chunk-51-2.pdf  used
- on input line 1956.
+ on input line 1941.
 (pdftex.def)             Requested size: 328.82626pt x 227.64894pt.
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -1382,8 +1377,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[38 <./Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf> <./Tarea1_files/figure
--latex/unnamed-chunk-51-2.pdf>]
+[37 <./Tarea1_files/figure-latex/unnamed-chunk-51-1.pdf>]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1392,7 +1386,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[39]
+[38 <./Tarea1_files/figure-latex/unnamed-chunk-51-2.pdf>]
 Overfull \vbox (352.2317pt too high) has occurred while \output is active []
 
 
@@ -1403,7 +1397,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[40]
+[39]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1412,15 +1406,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[41] (./Tarea1.aux)
+[40] (./Tarea1.aux)
 Package rerunfilecheck Info: File `Tarea1.out' has not changed.
-(rerunfilecheck)             Checksum: DA43CB7A7FC8F041EC7F0DC8E614307E;15371.
+(rerunfilecheck)             Checksum: FAAD90ECD017C8613905A612E13EA2DD;15009.
  ) 
 Here is how much of TeX's memory you used:
- 14774 strings out of 481232
- 227942 string characters out of 5913656
- 580585 words of memory out of 5000000
- 31315 multiletter control sequences out of 15000+600000
+ 14761 strings out of 481232
+ 227767 string characters out of 5913656
+ 580463 words of memory out of 5000000
+ 31309 multiletter control sequences out of 15000+600000
  468724 words of font info for 71 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  71i,12n,74p,1433b,483s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -1445,10 +1439,10 @@ oyel21/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/marco
 yel21/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></Users/marco
 yel21/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/marco
 yel21/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Tarea1.pdf (42 pages, 1805478 bytes).
+Output written on Tarea1.pdf (41 pages, 1802848 bytes).
 PDF statistics:
- 578 PDF objects out of 1000 (max. 8388607)
- 487 compressed objects within 5 object streams
- 104 named destinations out of 1000 (max. 500000)
- 266 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 555 PDF objects out of 1000 (max. 8388607)
+ 465 compressed objects within 5 object streams
+ 97 named destinations out of 1000 (max. 500000)
+ 242 words of extra memory for PDF output out of 10000 (max. 10000000)
 
