@@ -30,9 +30,10 @@ header-includes :
 \textsc{\LARGE }\\[1em]
 
 
-\textsc{\large Tarea 1 }\\[1em]
+\textsc{\LARGE Tarea 1 }\\[1em]
+\textsc{\large }\\[1em]
+\textsc{\LARGE Equipo 7 }\\[1em]
 
-\textsc{\LARGE }\\[1em]
 
 \textsc{\large }\\[1em]
 \textsc{\LARGE }\\[1em]
@@ -805,22 +806,11 @@ tidy(model_a2)$p.value[2] %>% round(2)
 Dado que el p-value es un valor muy cercano a cero, podemos rechazar la Hipótesis nula (beta=0) prácticamente para cualquier nivel de significancia y el coeficiente (elasticidad) es estadísticamente significativo.
 
 ```{r}
-# Significancia b)
+# Significancia t
 tidy(model_a2)$statistic[2]
 ```
 
 Como el estadístico t es -17.1, podemos rechazar la Hipótesis nula para cualquier nivel de significancia.
-
-# Significancia
-tidy(model_a2)$p.value[2]
-
-# Significancia b)
-tidy(model_a2)$statistic[2]
-
-# Interpretación
-round(elasticity,2)
-round(elasticity,2)
-
 
 ```{r}
 # Elasticidad
@@ -960,8 +950,6 @@ ggplot()+
 
 Tenemos únicamente 12 variables que resultan ser significativas con el ajuste de Holm-Bonferroni. Como vimos en clase, el ajuste Holm-Bonferroni es más estricto que el ajuste FDR. Controla más por el error tipo 1. A continuación, se muestran las variables que resultan ser significativas para cada ajuste:
 ```{r}
-
-
 coefs <- merge(fdr,bonferroni,by=c("term","p.value")) %>%
           mutate(significancia_clasica = case_when(p.value<0.05 ~ TRUE,
                                                    TRUE~ FALSE)) %>%
@@ -979,8 +967,9 @@ coefs <- coefs[(coefs$fdr==TRUE |
 
 kable(coefs,
   col.names = 
-    c("Término","p-value","Bonferroni","FDR","Por significancia"),booktabs=T)%>%
-  kable_styling(position = "center")
+    c("Término","p-value","Bonferroni","FDR","Por significancia"),booktabs=T,
+  longtable=T)%>%
+  kable_styling(position = "center",latex_options = "repeat_header")
 ```
 
 Como comentario final, era de esperarse que el precio fuera la variable con mayor significancia y que se incluyera bajo los tres criterios de selección. Otras variables con alto poder explicativo fueron algunos sabores de helado, dos tipos de promoción, la edad y presencia de hijos y características del hogar y su composición. 
