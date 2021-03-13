@@ -3,7 +3,7 @@
 
 # Carga las librerias
 library(dplyr)
-library(broom)
+library(tidyr)
 library(stargazer)
 library(kableExtra)
 
@@ -12,15 +12,27 @@ library(kableExtra)
 base<- mtcars
 
 # Guarda las columnas
-columnas <- (as.data.frame(colnames(base)))
+columnas <- colnames(base) %>% as.data.frame()
 
 # Crea una tabla
-kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas"), longtable=T) %>%
-  kable_styling(position = "center",latex_options = "repeat_header")
+kable(columnas, booktabs=F, align = 'c', col.names = c("Columnas"), longtable=T) %>%
+  kable_styling(position = "center")
 
 # Algunos datos de interes
-sum(as.numeric(duplicated(base)))
-summary(base)
+library(dagitty)
+
+diagram <-dagitty('dag{
+"Tech Frontier in the US" [pos="1,2"]
+"Close contact with US" [pos="1,1"]
+"Cell phone adoption" [pos="1,0"]
+"Tech Frontier in the US"->"Close contact with US"->"Cell phone adoption"
+}')
+
+library(ggdag)
+ggdag_classic(diagram,
+              size=4)+
+  theme_dag_gray()
+    
 
 diagrama_rafa <-dagitty('dag{
 "Tech Frontera in the US" [pos="1,2"]
