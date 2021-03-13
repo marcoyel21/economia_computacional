@@ -22,3 +22,14 @@ kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas"), longtable=T)
 sum(as.numeric(duplicated(base)))
 summary(base)
 
+diagrama_rafa <-dagitty('dag{
+"Tech Frontera in the US" [pos="1,2"]
+"Close contact with America" [pos="1,1"]
+"Cell phone adoption" [pos="1,0"]
+"Tech Frontier in the US"->"Close contact with US"->"Cell phone adoption"
+}')
+
+library(ggdag)
+ggdag_classic(diagram,
+              size=4)+
+  theme_dag_gray()
