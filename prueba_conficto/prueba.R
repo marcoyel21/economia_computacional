@@ -15,8 +15,8 @@ base<- mtcars
 columnas <- colnames(base) %>% as.data.frame()
 
 # Crea una tabla
-kable(columnas, booktabs=F, align = 'c', col.names = c("Columnas"), longtable=T) %>%
-  kable_styling(position = "center")
+kable(columnas, booktabs=T, align = 'c', col.names = c("Columnas"), longtable=T) %>%
+  kable_styling(position = "left")
 
 # Algunos datos de interes
 library(dagitty)
@@ -34,3 +34,9 @@ ggdag_classic(diagram,
   theme_dag_gray()
     
 
+
+
+# lineas nuevas
+a <- c("uno","dos","tres")
+b <- c(1,2,3)
+df <- data.frame(a,b)
