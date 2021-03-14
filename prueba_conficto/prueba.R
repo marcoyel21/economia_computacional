@@ -1,4 +1,4 @@
-# Script de prueba para probar solución de conflictos en Github
+# Script de prueba para probar soluciï¿½n de conflictos en Github
 
 
 # Carga las librerias
@@ -32,11 +32,21 @@ library(ggdag)
 ggdag_classic(diagram,
               size=4)+
   theme_dag_gray()
-    
 
 
+diagrama_rafa <-dagitty('dag{
+"Tech Frontera in the US" [pos="1,2"]
+"Close contact with America" [pos="1,1"]
+"Cell phone adoption" [pos="1,0"]
+"Tech Frontier in the US"->"Close contact with US"->"Cell phone adoption"
+}')
 
-# lineas nuevas
-a <- c("uno","dos","tres")
-b <- c(1,2,3)
-df <- data.frame(a,b)
+library(ggdag)
+ggdag_classic(diagram,
+              size=4)+
+  theme_dag_gray()
+
+  # lineas nuevas
+  a <- c("uno","dos","tres")
+  b <- c(1,2,3)
+  df <- data.frame(a,b)
