@@ -13,7 +13,8 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
 ```
 
 ```{r, warning=FALSE}
-library(tidyverse)
+#library(tidyverse)
+library(dplyr)
 library(data.table)
 library(broom)
 library(knitr)
@@ -23,7 +24,7 @@ library(gamlr)
 library(ranger)
 library(tree)
 library(parallel)
-library(tidymodels)
+#library(tidymodels)
 ```
 
 
@@ -55,14 +56,124 @@ Los dotos los pueden encontrar en `Cell2Cell.Rdata`. En el archivo `Cell2Cell-Da
 
 Cargemos los datos
 ```{r }
-load('Bases input/Cell2Cell.Rdata')
+load('Cell2Cell.Rdata') %>% as.data.frame()
+
 
 ```
 
 ### 1. Qué variables tienen missing values? Toma alguna decisión con los missing values. Justifica tu respuesta
 
+```{r}
+# columnas con NAs
+cols_con_nas <- names(which(colSums(is.na(cell2cell)) > 0))
+
+df_nas <- cell2cell %>% select(all_of(cols_con_nas)) %>% as.data.frame()
+summary(df_nas)
+```
+
+Lista de las variables con valores faltantes. Todas son numéricas. Podríamos hacer imputación.
+
+
+```{r}
+
+# numero de filas con NAs
+cell2cell[!complete.cases(cell2cell),] %>% nrow()
+
+# correlaciones entre variables con NAs
+x <- as.data.frame(abs(is.na(cell2cell))) 
+# Extrae las variables que tienen algunas celdas con NAs
+y <- x[which(sapply(x, sd) > 0)] 
+# la sd va a ser positiva para variables que tengan NAs
+
+# Da la correación un valor alto positivo significa que desaparecen juntas.
+cor(y) 
+
+# Visualización de los NAs
+library("VIM")
+#aggr(cell2cell, plot=FALSE, prop=FALSE, numbers=TRUE)
+
+
+```
+Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden.Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Además, se puede ver en la matriz que los valores faltantes del primer grupo de variables coincide en un 65% con los valores faltantes de changem y changer. Para estos casos, se tiene valores faltantes en 8 de 68 variables, el 11.7% de los datos.
+
+Esto en general nos dice que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
+
+Podemos imputar la media a aquellas variables que parezcan tener una distribución normal.
+
+```{r}
+library(ggplot2)
+myhist <- function(yvar){
+  ggplot(df_nas, aes_(x=as.name(yvar)))+
+    geom_histogram()+
+    ggtitle(paste0(as.name(yvar)))+
+    xlab("")+
+    ylab("")+
+    theme(axis.text.y = element_blank())
+}
+hists<- df_nas %>%
+        names() %>%
+        lapply(myhist)
+
+library(gridExtra)
+
+grid.arrange(grobs=hists,ncol=4)
+```
+
+Viendo su distribución, parece que las variables mou, recchrge, eqpdays
+
+
+```{r}
+# se define una funcion para imputar por valor central
+imputar_valor_central <- function(data, var_list) {
+  # Función para imputar valores centrales, media en numéricos y moda en categoricos 
+  # Inputs:
+  # data - El tibble de algas
+  # colnames - El array de las columnas que se desea imputar
+  # 
+  # Outputs
+  # dataframe con imputaciones centrales
+  
+  if (missing(var_list)){
+    var_list <- colnames(data)
+  } 
+  
+  #Dividir entre numericas y categoricas
+  data_columnas <- data %>% 
+    dplyr::select(all_of(var_list)) %>% as.data.frame()
+  var_numericas <- dplyr::select_if(data_columnas, is.numeric) %>% names()
+  var_categoricas <- dplyr::select_if(data_columnas, is.character) %>% colnames()
+  
+  #Imputar
+  algas_data_imputacion_central  <-
+    data.frame(data) %>%
+    # variables numéricas (media)
+    mutate_at(
+      vars(var_numericas),
+      funs(ifelse(is.na(.), median(., na.rm = T), .))) %>%
+    # variables categóricas (moda)
+    mutate_at(
+      vars(var_categoricas),
+      funs(as.ordered(ifelse(is.na(.), moda(.), as.character(.)))))
+  
+  return(algas_data_imputacion_central)
+  
+  
+}
+
+# se aplica la funcion al conjunto de datos
+df_nas2 <- imputar_valor_central(df_nas)
+
+summary(df_nas2)
+
+```
+
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?  
+
+
+
+
+Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base balanceada y que los modelos a estimar tengan mayor poder predictivo.
 
 
 ### 3. (2 pts) Divide tu base en entrenamiento y validación (80/20). Además, considera hacer oversampling (SMOTE) o undersampling. (Tip: Recuerda que el objetivo final es tener muestra ~balanceada en el traning set. En el validation la distribución debe ser la original)
