@@ -1,30 +1,128 @@
 ---
-title: "Predicción de Abandono"
-author: "Isidoro Garcia"
-date: "2021"
-output: pdf_document
-urlcolor: blue
-graphics: yes
+output:
+  pdf_document:
+  geometry: margin=1in
+fontsize: 11pt
+header-includes :
+  \usepackage{geometry}
+  \usepackage{graphicx}
+  \tolerance=1
+  \hyphenpenalty=10000
+  \hbadness=10000
+  \linespread{1.2}
+  \usepackage[justification=centering, font=bf, labelsep=period, skip=5pt]{caption}
+  \usepackage{titling}
+  \usepackage{babel}
+  \usepackage{fancyhdr}
+  \pagestyle{fancy}
+  \fancyhead[L]{Maestría en Economía Aplicada}
+  \fancyhead[R]{ITAM}
+
 ---
+\begin{titlepage}
+\begin{center}
+
+\textsc{\Large Instituto Tecnológico Autónomo de México}\\[2em]
+
+\textbf{\LARGE Economía Computacional}\\[2em]
+
+
+\textsc{\LARGE }\\[1em]
+
+
+\textsc{\LARGE Tarea 2 }\\[1em]
+\textsc{\large }\\[1em]
+\textsc{\LARGE Equipo 7 }\\[1em]
+
+
+\textsc{\large }\\[1em]
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\large }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Prof. Isidoro García Urquieta}\\[1em]
+
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Alfredo Lefranc Flores}\\[1em]
+
+\textsc{\large 144346}\\[1em]
+
+\textsc{\LARGE Cynthia Raquel Valdivia Tirado }\\[1em]
+
+\textsc{\large 81358}\\[1em]
+
+\textsc{\LARGE Rafael Sandoval Fernández}\\[1em]
+
+\textsc{\large 143689}\\[1em]
+
+\textsc{\LARGE Marco Antonio Ramos Juárez}\\[1em]
+
+\textsc{\large 142244}\\[1em]
+
+\textsc{\LARGE Francisco Velazquez Guadarrama}\\[1em]
+
+
+\end{center}
+
+\vspace*{\fill}
+\textsc{Ciudad de México \hspace*{\fill} 2021}
+
+\end{titlepage}
+
+
+\newpage
+
+
+\tableofcontents
+
+\newpage
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
                       fig.width = 7, fig.height = 4, fig.align = "right")
 ```
 
-```{r, warning=FALSE}
-#library(tidyverse)
-library(dplyr)
-library(data.table)
-library(broom)
-library(knitr)
-library(lubridate)
-library(RCT)
-library(gamlr)
-library(ranger)
-library(tree)
-library(parallel)
-#library(tidymodels)
+```{r,message=FALSE }
+
+packages <- c(
+  "tidyverse",
+  "data.table",
+  'broom',
+  'knitr',
+  'lubridate',
+  'RCT',
+  'gamlr',
+  'ranger',
+  'tree',
+  'parallel',
+  'tidymodels',
+  'naniar',
+  'kableExtra'
+  )
+
+# instala los que no tengas
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# cargar paquetes
+lapply(packages,
+       library,
+       character.only = TRUE)
+
+# funciones
+
+check_nas <- function(df){
+  df %>%
+    select_if(~sum(is.na(.)) > 0) %>%
+    miss_var_summary()
+}
+
 ```
 
 
@@ -36,15 +134,15 @@ Cell2Cell es una compañía de teléfonos celulares que intenta mitigar el aband
 
 Las preguntas que contestaremos son:
 
-1. Se puede predecir el abandono con los datos que nos compartieron? 
+1. Se puede predecir el abandono con los datos que nos compartieron?
 
-2. Cuáles son las variables que explican en mayor medida el abandono? 
+2. Cuáles son las variables que explican en mayor medida el abandono?
 
 3. Qué incentivos da Cell2Cell a sus usarios para prevenir el abandono?
 
 4. Cuál es el valor de una estrategia de prevención de abandono focalizada y cómo difiere entre los segmentos de los usuarios? Qué usuarios deberían de recibir incentivos de prevención? Qué montos de incentivos
 
-Nota: Voy a evaluar las tareas con base en la respuesta a cada pregunta. Como hay algunas preguntas que no tienen una respuesta clara, al final ponderaré de acuerdo al poder predictivo de su modelo vs las respuestas sugeridas. 
+Nota: Voy a evaluar las tareas con base en la respuesta a cada pregunta. Como hay algunas preguntas que no tienen una respuesta clara, al final ponderaré de acuerdo al poder predictivo de su modelo vs las respuestas sugeridas.
 
 
 
@@ -52,22 +150,35 @@ Nota: Voy a evaluar las tareas con base en la respuesta a cada pregunta. Como ha
 
 ## Datos
 
-Los dotos los pueden encontrar en `Cell2Cell.Rdata`. En el archivo `Cell2Cell-Database-Documentation.xlsx` pueden encontrar documentación de la base de datos. 
+Los dotos los pueden encontrar en `Cell2Cell.Rdata`. En el archivo `Cell2Cell-Database-Documentation.xlsx` pueden encontrar documentación de la base de datos.
 
 Cargemos los datos
 ```{r }
 load('Cell2Cell.Rdata') %>% as.data.frame()
+# file path de archivo
+# path_data <- file.path('C:/Users/rsf94/Documents/economia_computacional/tarea_2',
+#                       'Cell2Cell.RData')
 
-
+# renombrar como data
+data <- cell2cell
+rm(cell2cell)
 ```
 
 ### 1. Qué variables tienen missing values? Toma alguna decisión con los missing values. Justifica tu respuesta
+```{r,results='asis'}
+# Rafa
+# tabla resumen de missing values
+kable(check_nas(data),booktabs=T, align = 'c',
+      col.names = c("Variale", "Cantidad","%"),digits = 2)%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+```
 
 ```{r}
 # columnas con NAs
-cols_con_nas <- names(which(colSums(is.na(cell2cell)) > 0))
+cols_con_nas <- names(which(colSums(is.na(data)) > 0))
 
-df_nas <- cell2cell %>% select(all_of(cols_con_nas)) %>% as.data.frame()
+df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
 ```
 
@@ -77,20 +188,20 @@ Lista de las variables con valores faltantes. Todas son numéricas. Podríamos h
 ```{r}
 
 # numero de filas con NAs
-cell2cell[!complete.cases(cell2cell),] %>% nrow()
+cell2cell[!complete.cases(data),] %>% nrow()
 
 # correlaciones entre variables con NAs
-x <- as.data.frame(abs(is.na(cell2cell))) 
+x <- as.data.frame(abs(is.na(data)))
 # Extrae las variables que tienen algunas celdas con NAs
-y <- x[which(sapply(x, sd) > 0)] 
+y <- x[which(sapply(x, sd) > 0)]
 # la sd va a ser positiva para variables que tengan NAs
 
 # Da la correación un valor alto positivo significa que desaparecen juntas.
-cor(y) 
+cor(y)
 
 # Visualización de los NAs
 library("VIM")
-#aggr(cell2cell, plot=FALSE, prop=FALSE, numbers=TRUE)
+#aggr(data, plot=FALSE, prop=FALSE, numbers=TRUE)
 
 
 ```
@@ -119,30 +230,30 @@ library(gridExtra)
 grid.arrange(grobs=hists,ncol=4)
 ```
 
-Viendo su distribución, parece que las variables mou, recchrge, eqpdays
+Parece que las variables mou, recchrge, eqpdays se distribuyen de forma normal.
 
 
 ```{r}
 # se define una funcion para imputar por valor central
 imputar_valor_central <- function(data, var_list) {
-  # Función para imputar valores centrales, media en numéricos y moda en categoricos 
+  # Función para imputar valores centrales, media/mediana en numéricos y moda en categoricos
   # Inputs:
-  # data - El tibble de algas
-  # colnames - El array de las columnas que se desea imputar
-  # 
+  # data - conjunto de datos
+  # colnames - array de las columnas que se desea imputar
+  #
   # Outputs
   # dataframe con imputaciones centrales
-  
+
   if (missing(var_list)){
     var_list <- colnames(data)
-  } 
-  
+  }
+
   #Dividir entre numericas y categoricas
-  data_columnas <- data %>% 
+  data_columnas <- data %>%
     dplyr::select(all_of(var_list)) %>% as.data.frame()
   var_numericas <- dplyr::select_if(data_columnas, is.numeric) %>% names()
   var_categoricas <- dplyr::select_if(data_columnas, is.character) %>% colnames()
-  
+
   #Imputar
   algas_data_imputacion_central  <-
     data.frame(data) %>%
@@ -154,10 +265,10 @@ imputar_valor_central <- function(data, var_list) {
     mutate_at(
       vars(var_categoricas),
       funs(as.ordered(ifelse(is.na(.), moda(.), as.character(.)))))
-  
+
   return(algas_data_imputacion_central)
-  
-  
+
+
 }
 
 # se aplica la funcion al conjunto de datos
@@ -167,23 +278,54 @@ summary(df_nas2)
 
 ```
 
-
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?  
+```{r, out.width = '70%',fig.align = "center"}
+# preparación de variables
 
+# churn indica si cliente se va
+data$churn <- as.factor(data$churn)
 
+# frecuencia absoluta
+ggplot(data)+
+  geom_bar(aes(x=churn,y=(..count..)))+
+labs(title="Distribución de churn",
+       subtitle="Frecuencia absoluta")+
+  ylab("Frecuencia absoluta")+
+  scale_y_continuous(labels=scales::comma)+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
 
+# frecuencia relativa
+ggplot(data)+
+  geom_bar(aes(x=churn,y=(..count../sum(..count..))))+
+  scale_y_continuous(breaks=seq(0,1, by =0.1),
+                     limits=c(0,1))+
+    labs(title="Distribución de churn",
+       subtitle="Frecuencia relativa")+
+  ylab("Frecuencia relativa")+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
 
+```
 Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base balanceada y que los modelos a estimar tengan mayor poder predictivo.
 
 
 ### 3. (2 pts) Divide tu base en entrenamiento y validación (80/20). Además, considera hacer oversampling (SMOTE) o undersampling. (Tip: Recuerda que el objetivo final es tener muestra ~balanceada en el traning set. En el validation la distribución debe ser la original)
 
+```{r}
 
+```
 
 
 ## Model estimation
 
-Pondremos a competir 3 modelos: 
+Pondremos a competir 3 modelos:
 
 1. Cross-Validated LASSO-logit
 
@@ -192,34 +334,52 @@ Pondremos a competir 3 modelos:
 3. Random Forest
 
 ### 4 (2 pts). Estima un cross validated LASSO. Muestra el la gráfica de CV Binomial Deviance vs Complejidad
+```{r}
 
+```
 
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.   
+```{r}
 
+```
 
 \newpage
 
 ### 6 (2 pts). Cuál es la $\lambda$ resultante? Genera una tabla con los coeficientes que selecciona el CV LASSO. Cuántas variables deja iguales a cero? Cuales son las 3 variables más importantes para predecir el abandono? Da una explicación intuitiva a la última pregunta
+```{r}
 
+```
 
-### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO. 
+### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
+```{r}
 
+```
 
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
+```{r}
 
+```
 
-### 9. Grafica el árbol resultante 
+### 9. Grafica el árbol resultante
+```{r}
 
+```
 
 ### 10. Poda el árbol usando CV. Muestra el resultado. Grafica Tree Size vs Binomial Deviance. Cuál es el mejor tamaño del árbol? Mejora el Error?
+```{r}
 
+```
 
 ### 11. Gráfica el árbol final. (Tip: Checa `prune.tree`)
+```{r}
 
+```
 
 ### 12. Genera las predicciones del árbol pruned. Guardalas en la base de predicciones. Guarda el score y la prediccion categorica en la misma data frame donde guardaste las predicciones del LASSO
+```{r}
 
+```
 
 
 ### 13 (4pts). Corre un Random Forest ahora. Cuál es la $B$ para la que ya no ganamos mucho más en poder predictivo?
@@ -227,33 +387,50 @@ Pondremos a competir 3 modelos:
 - Corre para `num.trees=100,200,300, 500, 700, 800`
 
 - En cada caso, guarda únicamente el `prediction.error`
+```{r}
+
+```
+
+### 14. Escoge un random forest para hacer las predicciones. Grafica la importancia de las variables. Interpreta
+```{r}
+
+```
 
 
-### 14. Escoge un random forest para hacer las predicciones. Grafica la importancia de las variables. Interpreta 
+### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
+```{r}
 
-
-
-### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos 
-
+```
 
 
 ### 16 (2pts). Corre el mismo forest pero ahora con `probability = T`. Esto generará predicciones númericas en lugar de categóricas. Genera las predicciones continuas y guardalas en el mismo data frame
+```{r}
 
+```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
+```{r}
+
+```
 
 
+### 18. Genera una tabla con el AUC ROC. Cuál es el mejor modelo ?
+```{r}
 
-### 18. Genera una tabla con el AUC ROC. Cuál es el mejor modelo ? 
+```
 
+### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso?
+```{r}
 
-### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso? 
-
+```
 
 ### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
+```{r}
 
+```
 
 
 ### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
+```{r}
 
-
+```
