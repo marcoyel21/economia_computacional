@@ -93,8 +93,10 @@ packages <- c(
   'parallel',
   'tidymodels',
   'naniar',
-  'kableExtra'
-  )
+  'kableExtra',
+  'gridExtra',
+  'VIM'
+    )
 
 # instala los que no tengas
 installed_packages <- packages %in% rownames(installed.packages())
@@ -192,7 +194,6 @@ y <- x[which(sapply(x, sd) > 0)]
 cor(y)
 
 # Visualización de los NAs
-library("VIM")
 #aggr(data, plot=FALSE, prop=FALSE, numbers=TRUE)
 
 
@@ -204,7 +205,6 @@ Esto en general nos dice que no hay un problema serio de NAs. No obstante, para 
 Podemos imputar la media a aquellas variables que parezcan tener una distribución normal.
 
 ```{r}
-library(ggplot2)
 myhist <- function(yvar){
   ggplot(df_nas, aes_(x=as.name(yvar)))+
     geom_histogram()+
@@ -217,7 +217,6 @@ hists<- df_nas %>%
         names() %>%
         lapply(myhist)
 
-library(gridExtra)
 
 grid.arrange(grobs=hists,ncol=4)
 ```
@@ -277,13 +276,29 @@ summary(df_nas2)
 # churn indica si cliente se va
 data$churn <- as.factor(data$churn)
 
+# tabulación 
+tabulado <- data %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+
+kable(tabulado,booktabs=T, align = 'c',
+      col.names = c("Churn", "Cantidad","%"),digits = 2)%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+
+rm(tabulado)
+
 # frecuencia absoluta
-ggplot(data)+
-  geom_bar(aes(x=churn,y=(..count..)))+
-labs(title="Distribución de churn",
-       subtitle="Frecuencia absoluta")+
+ggplot(data, aes(x=churn))+
+  geom_bar(aes(y=..count..,fill=(factor(..x..)),stat="count"))+
+  geom_text(aes(label= scales::number(..count..),
+                y=..count..),stat="count", vjust=-0.5)+
+  labs(title="Distribución de churn",
+    subtitle="Frecuencia absoluta",
+    fill="Churn")+
   ylab("Frecuencia absoluta")+
-  scale_y_continuous(labels=scales::comma)+
+  scale_y_continuous(labels=scales::comma,
+                     limits=c(0,60000))+
+  scale_x_continuous(breaks=c(0,1))+
   theme_bw()+
   theme(axis.line = element_line(colour = "black"),
     panel.grid.major = element_blank(),
@@ -291,12 +306,17 @@ labs(title="Distribución de churn",
     panel.background = element_blank())
 
 # frecuencia relativa
-ggplot(data)+
-  geom_bar(aes(x=churn,y=(..count../sum(..count..))))+
+ggplot(data, aes(x=churn))+
+  geom_bar(aes(y=..prop.., fill=factor(..x..)),stat="count")+
+    geom_text(aes(label= scales::percent(..prop..),
+                y=..prop..),stat="count", vjust=-0.5)+
   scale_y_continuous(breaks=seq(0,1, by =0.1),
                      limits=c(0,1))+
+  scale_x_continuous(breaks=c(0,1))+
+
     labs(title="Distribución de churn",
-       subtitle="Frecuencia relativa")+
+       subtitle="Frecuencia relativa",
+       fill="Churn")+
   ylab("Frecuencia relativa")+
   theme_bw()+
   theme(axis.line = element_line(colour = "black"),
