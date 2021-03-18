@@ -1,9 +1,9 @@
 ---
 output:
+  pdf_document: null
+  geometry: margin=1in
   html_document:
     df_print: paged
-  geometry: margin=1in
-  pdf_document: null
 fontsize: 11pt
 header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
   \hbadness=10000 \linespread{1.2} \usepackage[justification=centering, font=bf, labelsep=period,
@@ -28,7 +28,7 @@ header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphe
 
 \textsc{\large }\\[1em]
 \textsc{\LARGE }\\[1em]
-\textsc{\LARGE }\\[1em]
+
 
 \textsc{\large }\\[1em]
 \textsc{\LARGE }\\[1em]
