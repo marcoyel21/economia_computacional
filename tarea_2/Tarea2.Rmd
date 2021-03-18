@@ -1,23 +1,14 @@
 ---
 output:
-  pdf_document:
+  html_document:
+    df_print: paged
   geometry: margin=1in
+  pdf_document: null
 fontsize: 11pt
-header-includes :
-  \usepackage{geometry}
-  \usepackage{graphicx}
-  \tolerance=1
-  \hyphenpenalty=10000
-  \hbadness=10000
-  \linespread{1.2}
-  \usepackage[justification=centering, font=bf, labelsep=period, skip=5pt]{caption}
-  \usepackage{titling}
-  \usepackage{babel}
-  \usepackage{fancyhdr}
-  \pagestyle{fancy}
-  \fancyhead[L]{Maestría en Economía Aplicada}
-  \fancyhead[R]{ITAM}
-
+header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
+  \hbadness=10000 \linespread{1.2} \usepackage[justification=centering, font=bf, labelsep=period,
+  skip=5pt]{caption} \usepackage{titling} \usepackage{babel} \usepackage{fancyhdr}
+  \pagestyle{fancy} \fancyhead[L]{Maestría en Economía Aplicada} \fancyhead[R]{ITAM}
 ---
 \begin{titlepage}
 \begin{center}
@@ -65,6 +56,7 @@ header-includes :
 
 \textsc{\LARGE Francisco Velazquez Guadarrama}\\[1em]
 
+\textsc{\large 175606}\\[1em]
 
 \end{center}
 
@@ -188,7 +180,7 @@ Lista de las variables con valores faltantes. Todas son numéricas. Podríamos h
 ```{r}
 
 # numero de filas con NAs
-cell2cell[!complete.cases(data),] %>% nrow()
+data[!complete.cases(data),] %>% nrow()
 
 # correlaciones entre variables con NAs
 x <- as.data.frame(abs(is.na(data)))
