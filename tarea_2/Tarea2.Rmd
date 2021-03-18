@@ -95,7 +95,8 @@ packages <- c(
   'naniar',
   'kableExtra',
   'gridExtra',
-  'VIM'
+  'VIM',
+  'smotefamily'
     )
 
 # instala los que no tengas
@@ -331,6 +332,63 @@ Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base 
 ### 3. (2 pts) Divide tu base en entrenamiento y validación (80/20). Además, considera hacer oversampling (SMOTE) o undersampling. (Tip: Recuerda que el objetivo final es tener muestra ~balanceada en el traning set. En el validation la distribución debe ser la original)
 
 ```{r}
+set.seed(666)
+
+# Primer intento
+# proporción que queremos de training
+training_size <- 0.8
+
+# filas de training
+training_rows <- sample(seq_len(nrow(data)),size=floor(training_size*nrow(data)))
+
+#training set
+data_training <- data[training_rows,]
+
+#validation set
+data_validation <- data[-training_rows,]
+
+# la muestra está balanceada? --> NO :(
+tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+```
+
+```{r SMOTE}
+
+# Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
+# echénle un ojo a: https://rikunert.com/SMOTE_explained
+smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn, K=5, dup_size=0)
+
+oversampled <- as.data.frame(smote$data)
+length
+
+# sí está balanceado, aún no entiendo bien los outputs de la función
+tabulado <- oversampled %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+
+
+# $data arroja el data frame original + observaciones sintéticas de la minoría
+length(as.data.frame(smote$data)$churn)
+
+# syn_data arroja observaciones sintéticas de la minoría
+length(as.data.frame(smote$syn_data)$churn)
+
+# resta de ambos nos da el original
+length((data %>% na.exclude)$churn)
+
+# la verdad aquí me atoré, no sé si el siguiente paso ahora sí es volver a hacer sampling
+# va la prueba, no sé si sea correcto
+
+training_size <- 0.8
+
+training_rows <- sample(seq_len(nrow(oversampled)),size=floor(training_size*nrow(oversampled)))
+
+data_training <- oversampled[training_rows,]
+
+data_validation <- oversampled[-training_rows,]
+
+tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+
 
 ```
 
