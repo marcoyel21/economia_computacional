@@ -270,14 +270,14 @@ summary(df_nas2)
 
 ```
 
-### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?  
+### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
 ```{r, out.width = '70%',fig.align = "center"}
 # preparación de variables
 
 # churn indica si cliente se va
 data$churn <- as.factor(data$churn)
 
-# tabulación 
+# tabulación
 tabulado <- data %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
 
@@ -406,9 +406,12 @@ Pondremos a competir 3 modelos:
 ### 4 (2 pts). Estima un cross validated LASSO. Muestra el la gráfica de CV Binomial Deviance vs Complejidad
 ```{r}
 
+# gamlr()
+# cv.gamlr()
+
 ```
 
-### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.   
+### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
 
 ```
@@ -429,6 +432,8 @@ Pondremos a competir 3 modelos:
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
 
+# tree(formula, data, ...)
+
 ```
 
 ### 9. Grafica el árbol resultante
@@ -439,15 +444,20 @@ Pondremos a competir 3 modelos:
 ### 10. Poda el árbol usando CV. Muestra el resultado. Grafica Tree Size vs Binomial Deviance. Cuál es el mejor tamaño del árbol? Mejora el Error?
 ```{r}
 
+#cv.tree()
+
 ```
 
 ### 11. Gráfica el árbol final. (Tip: Checa `prune.tree`)
 ```{r}
+#prune.tree()
 
 ```
 
 ### 12. Genera las predicciones del árbol pruned. Guardalas en la base de predicciones. Guarda el score y la prediccion categorica en la misma data frame donde guardaste las predicciones del LASSO
 ```{r}
+
+#predict.tree
 
 ```
 
