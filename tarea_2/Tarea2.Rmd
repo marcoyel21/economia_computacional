@@ -79,7 +79,6 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
 ```
 
 ```{r,message=FALSE }
-
 packages <- c(
   "tidyverse",
   "data.table",
@@ -91,7 +90,6 @@ packages <- c(
   'ranger',
   'tree',
   'parallel',
-  'tidymodels',
   'naniar',
   'kableExtra',
   'gridExtra',
