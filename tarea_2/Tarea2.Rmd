@@ -145,9 +145,9 @@ Nota: Voy a evaluar las tareas con base en la respuesta a cada pregunta. Como ha
 
 ## Datos
 
-Los dotos los pueden encontrar en `Cell2Cell.Rdata`. En el archivo `Cell2Cell-Database-Documentation.xlsx` pueden encontrar documentación de la base de datos.
+Los datos los pueden encontrar en `Cell2Cell.Rdata`. En el archivo `Cell2Cell-Database-Documentation.xlsx` pueden encontrar documentación de la base de datos.
 
-Cargemos los datos
+Carguemos los datos
 ```{r }
 load('Cell2Cell.Rdata') %>% as.data.frame()
 # file path de archivo
@@ -199,7 +199,7 @@ cor(y)
 
 
 ```
-Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden.Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Además, se puede ver en la matriz que los valores faltantes del primer grupo de variables coincide en un 65% con los valores faltantes de changem y changer. Para estos casos, se tiene valores faltantes en 8 de 68 variables, el 11.7% de los datos.
+Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden.Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Además, se puede ver en la matriz que los valores faltantes del primer grupo de variables coincide en un 65% con los valores faltantes de changem y changer. Para estos casos, se tiene valores faltantes en 8 de 68 variables, el 11.7% de las columnas.
 
 Esto en general nos dice que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
 
@@ -405,19 +405,31 @@ Pondremos a competir 3 modelos:
 
 ### 4 (2 pts). Estima un cross validated LASSO. Muestra el la gráfica de CV Binomial Deviance vs Complejidad
 ```{r}
+data_training[is.na(data_training)] <- 0 # Parche temporal, vuelve 0 los NA
 
+X <- sparse.model.matrix(~.+0, data = data_training[,-c(1,2)]) # Transformar a sparse matrix la información relevante
+
+cv_lasso <- cv.gamlr(x = X, y = data_training$churn, family = 'binomial', nfold = 5, verb = TRUE) # Estimar el CV LASSO
+
+par(mar=c(5,4,4,2) + 0.1)
+plot(cv_lasso) # Gráfico
 ```
 
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.   
 ```{r}
-
+plot(cv_lasso$gamlr, select=FALSE)
 ```
 
 \newpage
 
 ### 6 (2 pts). Cuál es la $\lambda$ resultante? Genera una tabla con los coeficientes que selecciona el CV LASSO. Cuántas variables deja iguales a cero? Cuales son las 3 variables más importantes para predecir el abandono? Da una explicación intuitiva a la última pregunta
 ```{r}
+coef(cv_lasso, select="min") # Coeficientes de CV LASSO
+```
 
+```{r}
+lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
+cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 ```
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
