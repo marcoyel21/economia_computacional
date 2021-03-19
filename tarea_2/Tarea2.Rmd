@@ -195,8 +195,9 @@ cor(y)
 # Visualización de los NAs
 #aggr(data, plot=FALSE, prop=FALSE, numbers=TRUE)
 
-
 ```
+
+
 Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden.Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Además, se puede ver en la matriz que los valores faltantes del primer grupo de variables coincide en un 65% con los valores faltantes de changem y changer. Para estos casos, se tiene valores faltantes en 8 de 68 variables, el 11.7% de las columnas.
 
 Esto en general nos dice que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
@@ -268,6 +269,7 @@ summary(df_nas2)
 
 ```
 
+
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
 ```{r, out.width = '70%',fig.align = "center"}
 # preparación de variables
@@ -286,6 +288,8 @@ kable(tabulado,booktabs=T, align = 'c',
 
 rm(tabulado)
 
+
+data$churn <- as.numeric(data$churn)
 # frecuencia absoluta
 ggplot(data, aes(x=churn))+
   geom_bar(aes(y=..count..,fill=(factor(..x..)),stat="count"))+
@@ -324,6 +328,7 @@ ggplot(data, aes(x=churn))+
     panel.background = element_blank())
 
 ```
+
 Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base balanceada y que los modelos a estimar tengan mayor poder predictivo.
 
 
@@ -346,9 +351,10 @@ data_training <- data[training_rows,]
 data_validation <- data[-training_rows,]
 
 # la muestra está balanceada? --> NO :(
-tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+(tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 ```
+
 
 ```{r SMOTE}
 
@@ -360,8 +366,8 @@ oversampled <- as.data.frame(smote$data)
 length
 
 # sí está balanceado, aún no entiendo bien los outputs de la función
-tabulado <- oversampled %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+(tabulado <- oversampled %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
 
 # $data arroja el data frame original + observaciones sintéticas de la minoría
@@ -384,8 +390,8 @@ data_training <- oversampled[training_rows,]
 
 data_validation <- oversampled[-training_rows,]
 
-tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+(tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
 
 ```
