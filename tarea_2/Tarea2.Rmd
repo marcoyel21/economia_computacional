@@ -153,7 +153,7 @@ load('Cell2Cell.Rdata') %>% as.data.frame()
 #                       'Cell2Cell.RData')
 
 # renombrar como data
-data <- cell2cell
+data <- as.data.frame(cell2cell)
 rm(cell2cell)
 ```
 
@@ -270,12 +270,53 @@ summary(df_nas2)
 ```
 
 
-### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
-```{r, out.width = '70%',fig.align = "center"}
-# preparación de variables
+```{r preparacion_variables}
+#categóricas
+cat_variables <- c("churn",
+                  "children",
+                  "credita",
+                  "creditaa",
+                  "prizmrur",
+                  "prizmtwn",
+                  "refurb",
+                  "webcap",
+                  "truck",
+                  "rv",
+                  "occprof",
+                  "occcler",
+                  "occcrft",
+                  "occstud",
+                  "occhmkr",
+                  "occret",
+                  "occself",
+                  "ownrent",
+                  "marryun",
+                  "marryyes",
+                  "mailord",
+                  "mailres",
+                  "mailflag",
+                  "travel",
+                  "pcown",
+                  "creditcd",
+                  "newcelly",
+                  "newcelln",
+                  "incmiss",
+                  "mcycle",
+                  "setprcm",
+                  "retcall")
 
-# churn indica si cliente se va
-data$churn <- as.factor(data$churn)
+#numéricas
+#numeric_variables <-
+  
+  
+data[,cat_variables] <- lapply(data[,cat_variables], factor)
+
+#data[,numeric_variables] <- lapply(data[,numeric_variables], as.numeric)
+```
+
+### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
+# preparación de variables
+```{r, out.width = '70%',fig.align = "center"}
 
 # tabulación
 tabulado <- data %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
@@ -335,7 +376,7 @@ Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base 
 ### 3. (2 pts) Divide tu base en entrenamiento y validación (80/20). Además, considera hacer oversampling (SMOTE) o undersampling. (Tip: Recuerda que el objetivo final es tener muestra ~balanceada en el traning set. En el validation la distribución debe ser la original)
 
 ```{r}
-set.seed(666)
+set.seed(123)
 
 # Primer intento
 # proporción que queremos de training
@@ -360,7 +401,7 @@ data_validation <- data[-training_rows,]
 
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
-smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn, K=5, dup_size=0)
+smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn, K=10, dup_size=0)
 
 oversampled <- as.data.frame(smote$data)
 length
@@ -445,13 +486,23 @@ cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
+# corregir
+tree_control <- tree.control(nrow(data_training),
+             mincut = 1000,
+             mindev = 0.05)
 
-# tree(formula, data, ...)
+tree_estimation <- tree(churn ~ .,
+                        data = data_training,
+                        control = tree_control)
+
+summary(tree_estimation)
 
 ```
 
 ### 9. Grafica el árbol resultante
 ```{r}
+
+plot(tree_estimation)
 
 ```
 
