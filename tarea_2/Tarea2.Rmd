@@ -395,20 +395,32 @@ data_validation <- data[-training_rows,]
 (tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 ```
+No está balanceada por lo que procedemos a rebalancear, tenemos 3 estrategias: undersampling, oversampling o una mezcla de ambas.
+
+```{r undersampling}
+
+#Undersampling
+
+#simplemente reducimos la clase más abundante
+undersampling_c0<-  sample_n((data %>% na.exclude %>% filter(churn==0)),size=19984,replace = TRUE)
+undersampling<-rbind((data %>% na.exclude %>% filter(churn==1)),undersampling_c0)
 
 
-```{r SMOTE}
 
+```
+
+```{r oversampling}
+#oversampling
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
-smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn, K=10, dup_size=0)
+smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn==1, K=5, dup_size=2)
 
 oversampled <- as.data.frame(smote$data)
-length
+
 
 # sí está balanceado, aún no entiendo bien los outputs de la función
 (tabulado <- oversampled %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
 
 # $data arroja el data frame original + observaciones sintéticas de la minoría
@@ -419,23 +431,65 @@ length(as.data.frame(smote$syn_data)$churn)
 
 # resta de ambos nos da el original
 length((data %>% na.exclude)$churn)
+```
 
-# la verdad aquí me atoré, no sé si el siguiente paso ahora sí es volver a hacer sampling
-# va la prueba, no sé si sea correcto
+
+
+```{r under-oversampling}
+
+#Under y over sampling
+#para rebalancear de manera más precisa el oversampling, simplemente "podamos" las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
+
+#podamos
+undersampling_c1<-  sample_n((oversampled %>% filter(churn==1)),size=49325,replace = TRUE)
+
+#armamos la base
+under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
+
+#listo!
+(tabulado <- under_over_sampling %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
+```
+
+
+De esta manera me quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos.
+
+```{r under-oversampling}
+data_a<-undersampling
+data_b<-oversampled
+data_c<-under_over_sampling
+```
+
+
+Ahora experimentaremos con cada base:
+
+
+```{r SMOTE CV}
 
 training_size <- 0.8
 
-training_rows <- sample(seq_len(nrow(oversampled)),size=floor(training_size*nrow(oversampled)))
+# A
+training_rows_a <- sample(seq_len(nrow(data_a)),size=floor(training_size*nrow(data_a)))
+data_training_a <- data_a[training_rows,]
+data_validation_a <- data_a[-training_rows,]
 
-data_training <- oversampled[training_rows,]
+# B
+training_rows_b <- sample(seq_len(nrow(data_b)),size=floor(training_size*nrow(data_b)))
+data_training_b <- data_b[training_rows,]
+data_validation_b <- data_b[-training_rows,]
 
-data_validation <- oversampled[-training_rows,]
+# C
+training_rows_c <- sample(seq_len(nrow(data_c)),size=floor(training_size*nrow(data_c)))
+data_training_c <- data_c[training_rows,]
+data_validation_c <- data_c[-training_rows,]
 
-(tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
 
 ```
+
+
+
+
 
 
 ## Model estimation
