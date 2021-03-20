@@ -270,52 +270,8 @@ summary(df_nas2)
 ```
 
 
-```{r preparacion_variables}
-#categóricas
-cat_variables <- c("churn",
-                  "children",
-                  "credita",
-                  "creditaa",
-                  "prizmrur",
-                  "prizmtwn",
-                  "refurb",
-                  "webcap",
-                  "truck",
-                  "rv",
-                  "occprof",
-                  "occcler",
-                  "occcrft",
-                  "occstud",
-                  "occhmkr",
-                  "occret",
-                  "occself",
-                  "ownrent",
-                  "marryun",
-                  "marryyes",
-                  "mailord",
-                  "mailres",
-                  "mailflag",
-                  "travel",
-                  "pcown",
-                  "creditcd",
-                  "newcelly",
-                  "newcelln",
-                  "incmiss",
-                  "mcycle",
-                  "setprcm",
-                  "retcall")
-
-#numéricas
-#numeric_variables <-
-  
-  
-data[,cat_variables] <- lapply(data[,cat_variables], factor)
-
-#data[,numeric_variables] <- lapply(data[,numeric_variables], as.numeric)
-```
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
-# preparación de variables
 ```{r, out.width = '70%',fig.align = "center"}
 
 # tabulación
@@ -378,8 +334,10 @@ Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base 
 ```{r}
 set.seed(123)
 
+#PARCHE TEMPORAL
+data[is.na(data)] <- 0 # Parche temporal, vuelve 0 los NA
+
 # Primer intento
-# proporción que queremos de training
 training_size <- 0.8
 
 # filas de training
@@ -458,6 +416,11 @@ De esta manera me quedan 3 bases para comparar: undersampling, oversampling y un
 data_a<-undersampling
 data_b<-oversampled
 data_c<-under_over_sampling
+
+str(data_a)
+str(data_b)
+str(data_c)
+
 ```
 
 
@@ -470,7 +433,7 @@ training_size <- 0.8
 
 # A
 training_rows_a <- sample(seq_len(nrow(data_a)),size=floor(training_size*nrow(data_a)))
-data_training_a <- data_a[training_rows,]
+data_training_a <- data_a[training_rows_a,]
 data_validation_a <- data_a[-training_rows,]
 
 # B
@@ -483,7 +446,7 @@ training_rows_c <- sample(seq_len(nrow(data_c)),size=floor(training_size*nrow(da
 data_training_c <- data_c[training_rows,]
 data_validation_c <- data_c[-training_rows,]
 
-
+data_training_a[]
 
 ```
 
@@ -540,23 +503,55 @@ cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
-# corregir
-tree_control <- tree.control(nrow(data_training),
+tree_control_a <- tree.control(nobs=nrow(data_training_a),
              mincut = 1000,
              mindev = 0.05)
 
-tree_estimation <- tree(churn ~ .,
-                        data = data_training,
-                        control = tree_control)
 
-summary(tree_estimation)
+tree_estimation_a <- tree(churn ~ . -customer,
+                        data = data_training_a,
+                        control = tree_control_a)
+
+
+tree_control_b <- tree.control(nobs=nrow(data_training_b),
+             mincut = 1000,
+             mindev = 0.05)
+
+
+tree_estimation_b <- tree(churn ~ . -customer,
+                        data = data_training_b,
+                        control = tree_control_b)
+
+
+tree_control_c <- tree.control(nobs=nrow(data_training_c),
+             mincut = 1000,
+             mindev = 0.05)
+
+
+tree_estimation_c <- tree(churn ~ . -customer,
+                        data = data_training_c,
+                        control = tree_control_c)
+
+
+
+summary(tree_estimation_a)
+summary(tree_estimation_b)
+summary(tree_estimation_c)
+
 
 ```
 
 ### 9. Grafica el árbol resultante
 ```{r}
 
-plot(tree_estimation)
+plot(tree_estimation_a)
+text(tree_estimation_a)
+
+plot(tree_estimation_b)
+text(tree_estimation_b)
+
+plot(tree_estimation_c)
+text(tree_estimation_c)
 
 ```
 
