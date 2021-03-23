@@ -95,7 +95,7 @@ packages <- c(
   'gridExtra',
   'VIM',
   'smotefamily'
-    )
+  )
 
 # instala los que no tengas
 installed_packages <- packages %in% rownames(installed.packages())
@@ -270,52 +270,8 @@ summary(df_nas2)
 ```
 
 
-```{r preparacion_variables}
-#categóricas
-cat_variables <- c("churn",
-                  "children",
-                  "credita",
-                  "creditaa",
-                  "prizmrur",
-                  "prizmtwn",
-                  "refurb",
-                  "webcap",
-                  "truck",
-                  "rv",
-                  "occprof",
-                  "occcler",
-                  "occcrft",
-                  "occstud",
-                  "occhmkr",
-                  "occret",
-                  "occself",
-                  "ownrent",
-                  "marryun",
-                  "marryyes",
-                  "mailord",
-                  "mailres",
-                  "mailflag",
-                  "travel",
-                  "pcown",
-                  "creditcd",
-                  "newcelly",
-                  "newcelln",
-                  "incmiss",
-                  "mcycle",
-                  "setprcm",
-                  "retcall")
-
-#numéricas
-#numeric_variables <-
-  
-  
-#data[,cat_variables] <- lapply(data[,cat_variables], factor)
-
-#data[,numeric_variables] <- lapply(data[,numeric_variables], as.numeric)
-```
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
-# preparación de variables
 ```{r, out.width = '70%',fig.align = "center"}
 
 # tabulación
@@ -379,6 +335,9 @@ Primero dividimos la base.
 ```{r}
 set.seed(123)
 
+#PARCHE TEMPORAL
+#data[is.na(data)] <- 0 # Parche temporal, vuelve 0 los NA
+
 
 # proporción que queremos de training
 training_size <- 0.8
@@ -413,7 +372,7 @@ undersampling_c0<-  sample_n((data_training %>% filter(churn==0)),
                              size=freq_churn,
                              replace = FALSE)
 
-undersampling<-rbind((data_training %>% 
+undersampling<-rbind((data_training %>%
                         filter(churn==1)),undersampling_c0)
 
 
@@ -439,7 +398,7 @@ colnames(oversampled)[68] <- "churn"
 oversampled$churn <- oversampled$churn %>% as.numeric
 
 # sí está balanceado, aún no entiendo bien los outputs de la función
-(tabulado <- oversampled %>% group_by(churn) %>% 
+(tabulado <- oversampled %>% group_by(churn) %>%
     dplyr::summarise(frecuencia_absoluta=n()) %>%
     mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
@@ -483,6 +442,11 @@ De esta manera me quedan 3 bases para comparar: undersampling, oversampling y un
 data_a<-undersampling
 data_b<-oversampled
 data_c<-under_over_sampling
+
+str(data_a)
+str(data_b)
+str(data_c)
+
 ```
 
 
@@ -500,7 +464,7 @@ data_validation_a <- data_a[-training_rows,]
 
 # B
 training_rows_b <- sample(seq_len(nrow(data_b)),size=floor(training_size*nrow(data_b)))
-data_training_b <- data_b[training_rows,] 
+data_training_b <- data_b[training_rows,]
 data_validation_b <- data_b[-training_rows,]
 
 # C
@@ -508,6 +472,7 @@ training_rows_c <- sample(seq_len(nrow(data_c)),size=floor(training_size*nrow(da
 data_training_c <- data_c[training_rows,]
 data_validation_c <- data_c[-training_rows,]
 
+data_training_a[]
 
 ```
 
@@ -564,43 +529,164 @@ cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
-# corregir
-tree_control <- tree.control(nrow(data_training),
+# hago para los 3 training datasets que tenemos: a,b y c
+# b2 es restringiendo variables
+
+#A
+tree_control_a <- tree.control(nobs=nrow(data_training_a),
              mincut = 1000,
              mindev = 0.05)
 
-tree_estimation <- tree(churn ~ .,
-                        data = data_training,
-                        control = tree_control)
 
-summary(tree_estimation)
+tree_estimation_a <- tree(as.factor(churn) ~ . -customer,
+                        data = data_training_a,
+                        control = tree_control_a,
+                        split = c("gini"))
+
+#B
+tree_control_b <- tree.control(nobs=nrow(data_training_b),
+             mincut = 1000,
+             mindev = 0.05)
+
+
+tree_estimation_b <- tree(as.factor(churn) ~ . -customer ,
+                        data = data_training_b,
+                        control = tree_control_b)
+
+
+tree_estimation_b2 <- tree(as.factor(churn) ~ eqpdays + refurb + changem + months + mou + changer + recchrge + creditcd + setprc + revenue + retcall + marryyes + credita,
+                        data = data_training_b)
+
+#C
+tree_control_c <- tree.control(nobs=nrow(data_training_c),
+             mincut = 1000,
+             mindev = 0.05)
+
+
+tree_estimation_c <- tree(as.factor(churn) ~ . -customer,
+                        data = data_training_c,
+                        control = tree_control_c)
+
+
+
+summary(tree_estimation_a)
+
+summary(tree_estimation_b)
+summary(tree_estimation_b2)
+summary(tree_estimation_c)
+
+# El a utiliza más variables
 
 ```
 
 ### 9. Grafica el árbol resultante
 ```{r}
+# me gusta el a
 
-plot(tree_estimation)
+plot(tree_estimation_a)
+text(tree_estimation_a,pretty=0)
+
+plot(tree_estimation_b)
+text(tree_estimation_b,pretty=0)
+
+plot(tree_estimation_b2)
+text(tree_estimation_b2,pretty=0)
+
+plot(tree_estimation_c)
+text(tree_estimation_c,pretty=0)
+
+
+#cross validation y confusionMatrix (opcional)
+#data_validation_a$churn <- as.factor(data_validation_a$churn)
+
+#DTpred<- predict(tree_estimation_a,type="class" ,newdata=data_validation_a)
+#caret::confusionMatrix(data_validation_a$churn,DTpred)
 
 ```
 
 ### 10. Poda el árbol usando CV. Muestra el resultado. Grafica Tree Size vs Binomial Deviance. Cuál es el mejor tamaño del árbol? Mejora el Error?
 ```{r}
+cv_tree_a <- cv.tree(tree_estimation_a, K=10)
+cv_tree_b <- cv.tree(tree_estimation_b, K=10)
+cv_tree_b2 <- cv.tree(tree_estimation_b2, K=10)
+cv_tree_c <- cv.tree(tree_estimation_c, K=10)
 
-#cv.tree()
+cv_tree_a
+cv_tree_b
+cv_tree_b2
+cv_tree_c
+
+# Size con menor deviance
+min_dev_size_a <- cv_tree_a$size[match(min(cv_tree_a$dev),cv_tree_a$dev)]
+min_dev_size_b <-cv_tree_b$size[match(min(cv_tree_b$dev),cv_tree_b$dev)]
+min_dev_size_b2 <-cv_tree_b2$size[match(min(cv_tree_b2$dev),cv_tree_b2$dev)]
+min_dev_size_c <-cv_tree_c$size[match(min(cv_tree_c$dev),cv_tree_c$dev)]
+
+# Gráfica Tree Size vs. Binomial Deviance
+
+plot_size_dev <- function(cv_tree){
+
+  ggplot(data=as.data.frame(cbind(size=cv_tree$size,dev=cv_tree$dev)),
+       aes(x=size,y=dev))+
+  geom_point(size=3)+
+  labs(title="Deviance against Tree Size")+
+  xlab("Tree Size")+
+  ylab("Deviance")+
+  theme_bw()+
+    theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
+
+                                  }
+
+plot_size_dev(cv_tree_a)
+plot_size_dev(cv_tree_b)
+plot_size_dev(cv_tree_b2)
+plot_size_dev(cv_tree_c)
+
 
 ```
 
 ### 11. Gráfica el árbol final. (Tip: Checa `prune.tree`)
 ```{r}
-#prune.tree()
+tree_cut_a <- prune.tree(tree_estimation_a, best = min_dev_size_a)
+tree_cut_b <- prune.tree(tree_estimation_b, best = min_dev_size_b)
+tree_cut_b2 <- prune.tree(tree_estimation_b2, best = min_dev_size_b2)
+tree_cut_c <- prune.tree(tree_estimation_c, best = min_dev_size_c)
+
+plot(tree_cut_a)
+text(tree_cut_a,pretty=0)
+
+plot(tree_cut_b)
+text(tree_cut_b,pretty=0)
+
+plot(tree_cut_b2)
+text(tree_cut_b2,pretty=0)
+
+plot(tree_cut_c)
+text(tree_cut_c,pretty=0)
 
 ```
 
 ### 12. Genera las predicciones del árbol pruned. Guardalas en la base de predicciones. Guarda el score y la prediccion categorica en la misma data frame donde guardaste las predicciones del LASSO
 ```{r}
 
-#predict.tree
+tree_score_predict_a <- predict(tree_cut_a,data=data_validation_a)
+tree_class_predict_a <- predict(tree_cut_a,data=data_validation_a,type="class")
+
+tree_score_predict_b <- predict(tree_cut_b,data=data_validation_b)
+tree_class_predict_b <- predict(tree_cut_b,data=data_validation_b,type="class")
+
+tree_score_predict_b2 <- predict(tree_cut_b2,data=data_validation_b2)
+tree_class_predict_b2 <- predict(tree_cut_b2,data=data_validation_b2,type="class")
+
+tree_score_predict_c <- predict(tree_cut_c,data=data_validation_c)
+tree_class_predict_c <- predict(tree_cut_c,data=data_validation_c,type="class")
+
+
+# unir con base de predicciones
+
 
 ```
 
@@ -624,66 +710,66 @@ error <- c()
 
 a<-Sys.time() # para observar el tiempo de estimacion
 
-k <- 1 # iterador 
+k <- 1 # iterador
 for (i in c(100,200,300,500,700,800)){
-  
-  rf<-ranger(churn~., 
+
+  rf<-ranger(churn~.,
              data = data_training_a,
              num.trees = i,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
              min.node.size = 1,
              splitrule = "gini",
-             classification = T, 
+             classification = T,
              )
-  
+
   trees[k] <- rf$num.trees
   error[k] <- rf$prediction.error
-  
+
   rf <- NULL
-  k <- k + 1 
+  k <- k + 1
 }
 
 treesb <- c()
 errorb <- c()
 
-k <- 1 # iterador 
+k <- 1 # iterador
 for (i in c(100,200,300,500,700,800)){
-  
-  rf<-ranger(churn~., 
+
+  rf<-ranger(churn~.,
              data = data_training_b,
              num.trees = i,
              mtry = (ncol(data_training_b)-1) %>% sqrt() %>% floor(),
              min.node.size = 1,
              splitrule = "gini",
-             classification = T, 
+             classification = T,
              )
-  
+
   treesb[k] <- rf$num.trees
   errorb[k] <- rf$prediction.error
-  
+
   rf <- NULL
-  k <- k + 1 
+  k <- k + 1
 }
 
 treesc <- c()
 errorc <- c()
-k <- 1 # iterador 
+k <- 1 # iterador
 for (i in c(100,200,300,500,700,800)){
-  
-  rf<-ranger(churn~., 
+
+  rf<-ranger(churn~.,
              data = data_training_c,
              num.trees = i,
              mtry = (ncol(data_training_c)-1) %>% sqrt() %>% floor(),
              min.node.size = 1,
              splitrule = "gini",
-             classification = T, 
+             classification = T,
              )
-  
+
   treesc[k] <- rf$num.trees
   errorc[k] <- rf$prediction.error
-  
+
   rf <- NULL
-  k <- k + 1 
+  k <- k + 1
 }
 
 Sys.time() -a
@@ -705,17 +791,17 @@ Parece ser que con una $B=200$, el error de predicción ya no parece reducirse m
 # vuelvo a correr el mejor random forest
 cl<- detectCores() %>% makeCluster()
 cl
-best_rf <- ranger(churn~., 
+best_rf <- ranger(churn~.,
              data = data_training_a,
              num.trees = 200,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
              importance = "impurity",
-             classification = T, 
+             classification = T,
              )
 stopCluster(cl)
 
 # Grafica
-df_imp <- data.frame(names=(importance(best_rf) %>% 
+df_imp <- data.frame(names=(importance(best_rf) %>%
               names()),importance=(importance(best_rf)))
 
 
@@ -741,12 +827,12 @@ best_rf$predictions
 # vuelvo a correr el mejor random forest, con probability=T
 cl<- detectCores() %>% makeCluster()
 cl
-best_rf <- ranger(churn~., 
+best_rf <- ranger(churn~.,
              data = data_training_a,
              num.trees = 200,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
              importance = "impurity",
-             classification = T, 
+             classification = T,
              probability = T
              )
 stopCluster(cl)
