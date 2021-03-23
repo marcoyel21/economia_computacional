@@ -177,10 +177,12 @@ Revisamos más a detalle estas variables y notamos que todas son numéricas.
 ```{r}
 # columnas con NAs
 cols_con_nas <- names(which(colSums(is.na(data)) > 0))
-
 df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
 ```
+
+
+
 Otro elemento importante a tener en cuenta son las coincidencias de los NAs en observaciones. Si hay una alta coincidencia, lo mejor es tirar esas observaciones.
 
 ```{r}
@@ -255,7 +257,7 @@ data$revenue[is.na(data$revenue)] <- median(data$revenue[!is.na(data$revenue)])
 data$mou[is.na(data$mou)] <- median(data$mou[!is.na(data$mou)])
 data$recchrge[is.na(data$recchrge)]<- median(data$recchrge[!is.na(data$recchrge)])
 ```
- 
+
  **roam y directas**
 
 Estas variables están altamente concentradas (más del 50% de las observaciones en 0 o entre 0 y 1, respectivamente). Por lo tanto, también les imputamos la mediana.
@@ -282,7 +284,7 @@ Por último, revisamos si _overage_ puede imputarse por correlación con otra va
 
 ```{r}
 # Revisemos correlación de estas variables con alguna otra
-cors <- cor(data, 
+cors <- cor(data,
             method = "pearson",
             use = "complete.obs")[,"overage"] %>% as.data.frame() %>%
 arrange(desc(.))
@@ -310,6 +312,153 @@ data[!complete.cases(data),] %>% nrow()
 
 ```
 Ahora tenemos una base sin valores faltantes.
+
+
+# MARCO
+
+```{r }
+load('Cell2Cell.Rdata') %>% as.data.frame()
+# file path de archivo
+# path_data <- file.path('C:/Users/rsf94/Documents/economia_computacional/tarea_2',
+#                       'Cell2Cell.RData')
+
+# renombrar como data
+data <- as.data.frame(cell2cell)
+
+```
+
+### 1. Qué variables tienen missing values? Toma alguna decisión con los missing values. Justifica tu respuesta
+
+```{r,results='asis'}
+# Rafa
+# tabla resumen de missing values
+kable(check_nas(data),booktabs=T, align = 'c',
+      col.names = c("Variale", "Cantidad","%"),digits = 2)%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+```
+
+
+## Análisis general de missing values (pendiente)
+
+```{r}
+myhist <- function(yvar){
+  ggplot(df_nas, aes_(x=as.name(yvar)))+
+    geom_histogram()+
+    ggtitle(paste0(as.name(yvar)))+
+    xlab("")+
+    ylab("")+
+    theme(axis.text.y = element_blank())
+}
+hists<- df_nas %>%
+  names() %>%
+  lapply(myhist)
+
+
+grid.arrange(grobs=hists,ncol=4)
+```
+
+Parece que las variables mou, recchrge, eqpdays se distribuyen de forma normal.
+
+## Analisis por variable
+
+**age_1 y age_2**
+
+  Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
+```{r}
+summary(factor(data$age1))
+summary(factor(data$age2))
+data$age1[is.na(data$age1)] <- 0
+data$age2[is.na(data$age2)] <- 0
+```
+
+**phones, models y eqpdays**
+
+En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la moda en phones y models y la media en eqpdays.
+```{r}
+summary(factor(data$phones))
+summary(factor(data$models))
+summary((data$eqpdays))
+
+data$phones[is.na(data$phones)] <- mode(factor(data$phones[!is.na(data$phones)]))
+data$models[is.na(data$models)] <- mode(factor(data$models[!is.na(data$models)]))
+data$eqpdays[is.na(data$eqpdays)]<- mean(data$eqpdays[!is.na(data$eqpdays)])
+```
+
+**changem y changer**
+```{r}
+hist(data$changem)
+hist(data$changer)
+```
+
+En este caso podemos cortar la variable para tener datos más centrados y poder imputar con mayor precisión (ABIERTO A DISCUSCION): debido a la distribución de los datos podemos optar por dos caminos A) imputar la media muestral o B) realizar un supuesto e imputar 0, pues se trata de cambios y existe evidencia suficiente para sotener que la media es muy cercana a cero.
+
+```{r}
+data$changem[is.na(data$changem)] <- 0 #mean((data$changem[!is.na(data$changem)]))
+data$changer[is.na(data$changer)] <- 0 #mean((data$changer[!is.na(data$changer)]))
+```
+
+**revenue, mou, recchrge, directas, overage, roam**
+
+La primera sospecha que tenemos es que todas estas variables tienen las mismas observaciones como faltantes. Lo corroboramos con la siguiente exploración:
+
+```{r}
+inspeccion<-data %>% select(revenue, mou, recchrge, directas, overage, roam)
+inspeccion[!complete.cases(inspeccion),] %>% nrow()
+```
+
+Esto quiere decir que sería inadecuado hacer imputaciones con base en información entre ellas, pues desconocemos todo. Lo que podemos hacer es A) imputar simplemente la media muestral o B) encontrar alguna relación con otras variables que nos permitan imputar con base en un modelo lineal sencillo.
+
+
+```{r}
+aux_data <- data.frame(sapply(data, function(x) as.numeric(as.character(x))))
+aux_data<-aux_data[complete.cases(aux_data),]
+cor_aux<-cor(aux_data)
+cor_aux<-data.frame(cor_aux) %>% select (churn,changer,changem,revenue, mou, recchrge, directas, overage, roam)
+```
+
+En el data frame cor_aux podemos ver las correlaciones entre nuestras variables conmissing values y las demás. Podemos proponer imputar en cada variable el valor predicho por una regresión, De esta manera, lograremos una mejor imputación que con solo la media muestral. Para construir los modelos simplemente elegimos para cada variable las variables más correlacionadas (tanto negativa como positivamente), sin contar revenue, mou, recchrge, directas, overage ni roam pues los missing values son compartidos y no contamos con esa información para estimar.
+
+```{r}
+imp_revenue<-lm(revenue~peakvce+mourec,data)
+imp_mou<-lm(mou~peakvce+opeakvce+mourec+outcalls+unansvce+callwait,data)
+imp_recchrge<-lm(recchrge~peakvce+mourec+outcalls,data)
+imp_directas<-lm(directas~peakvce+opeakvce+mourec+outcalls+callwait,data)
+imp_overage<-lm(overage~peakvce+opeakvce+mourec+outcalls+callwait,data)
+imp_roam<-lm(roam~peakvce+opeakvce+mourec+outcalls+callwait,data)
+```
+
+```{r}
+library(stargazer)
+stargazer(imp_revenue,imp_mou,imp_recchrge,imp_directas,imp_overage,imp_overage,imp_roam,type="text")
+```
+
+En esta tabla podemos observar que en general los  modelos nos dan una predicción mejor a la media, excepto en el ultimo modelo. Esta información nos da luz verde para realizar una imputación con base en una regresión lineal.
+
+
+```{r}
+#imputo la predicción de la regresión
+data<-data %>% mutate(revenue=ifelse(is.na(revenue),predict(imp_revenue,newdata=data),revenue))%>%
+       mutate(mou=ifelse(is.na(mou),predict(imp_mou,newdata=data),mou))%>%
+       mutate(recchrge=ifelse(is.na(recchrge),predict(imp_recchrge,newdata=data),recchrge))%>%
+       mutate(directas=ifelse(is.na(directas),predict(imp_directas,newdata=data),directas))%>%
+       mutate(overage=ifelse(is.na(overage),predict(imp_overage,newdata=data),overage))
+
+#imputo la predicción la media mmuestral
+data$roam[is.na(data$roam)] <- mean(data$roam[!is.na(data$roam)])
+```
+
+Finalmente checo mi base:
+
+
+```{r,results='asis'}
+cols_con_nas <- names(which(colSums(is.na(data)) > 0))
+df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
+summary(df_nas)
+```
+
+
+
 
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
@@ -506,16 +655,16 @@ plot(cv_lasso) # Gráfico
 ##A
 
 #Matriz de covariates
-Xa <-data_training_a %>% select(-customer,-churn) 
+Xa <-data_training_a %>% select(-customer,-churn)
 
 #se quita intercepto
-Xa <- sparse.model.matrix(~.+0, data = Xa) 
+Xa <- sparse.model.matrix(~.+0, data = Xa)
 
 #vector de Y´s
-Ya<-data_training_a$churn 
+Ya<-data_training_a$churn
 
 #CV LASSO
-cvlasso_a<-cv.gamlr(x = Xa, y = Ya, verb = T, family = 'binomial', nfold = 5) 
+cvlasso_a<-cv.gamlr(x = Xa, y = Ya, verb = T, family = 'binomial', nfold = 5)
 
 #Grafica
 plot(cvlasso_a)
@@ -543,28 +692,28 @@ lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lamb
 cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
 
-#lambda resultante 
+#lambda resultante
 #A
-a_lambda<- colnames(coef(cvlasso_a, select="min")) 
-cvlasso_a$gamlr$lambda[a_lambda] 
+a_lambda<- colnames(coef(cvlasso_a, select="min"))
+cvlasso_a$gamlr$lambda[a_lambda]
 
 # tabla de coeficientes
-coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a 
+coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a
 ```
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
 
 #Predicciones
-y_pred<-predict(cv_lasso$gamlr, 
-                newdata = data_validation[,-1], 
+y_pred<-predict(cv_lasso$gamlr,
+                newdata = data_validation[,-1],
                 type = 'response',
                 select = cv_lasso$seg.min)
 y_pred<-as.numeric(y_pred)
 
 #A
-y_pred_a<-predict(cvlasso_a, 
-                  newdata = data_validation[,-1], 
+y_pred_a<-predict(cvlasso_a,
+                  newdata = data_validation[,-1],
                   type = 'response')
 y_pred_a<-as.numeric(y_pred_a)
 
@@ -738,7 +887,7 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
 
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
-pred_rf<-predict(best_rf, 
+pred_rf<-predict(best_rf,
                  data = (data_validation[,-1]),
                  type = "response")
 
@@ -772,7 +921,7 @@ eval$pred_rf_cont <- predict(best_rf2, data=data_validation)$predictions[,1]
 ```{r}
 library(yardstick)
 # ROC Curve
-roc_curve <- roc_curve(data = eval, 
+roc_curve <- roc_curve(data = eval,
                        truth = factor(validation),
                        pred_rf,
                        event_level = "second")
