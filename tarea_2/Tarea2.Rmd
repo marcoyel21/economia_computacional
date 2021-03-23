@@ -158,6 +158,11 @@ rm(cell2cell)
 ```
 
 ### 1. Qué variables tienen missing values? Toma alguna decisión con los missing values. Justifica tu respuesta
+
+## Análisis de missing values (pendiente)
+
+Primero revisamos las columnas que tienen missing values y su cantidad.
+
 ```{r,results='asis'}
 # Rafa
 # tabla resumen de missing values
@@ -167,47 +172,13 @@ kable(check_nas(data),booktabs=T, align = 'c',
                 latex_options="HOLD_position")
 ```
 
-```{r}
-# columnas con NAs
-cols_con_nas <- names(which(colSums(is.na(data)) > 0))
+Revisamos más a detalle estas variables y notamos que todas son numéricas.
 
+```{r}
 df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
 ```
-
-Lista de las variables con valores faltantes. Todas son numéricas. Podríamos hacer imputación.
-
-
-## Análisis de missing values (pendiente)
-
-**age_1 y age_2**
-
-Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
-```{r}
-summary(factor(data$age1))
-summary(factor(data$age2))
-data$age1[is.na(data$age1)] <- 0
-data$age2[is.na(data$age)] <- 0
-```
-
-**phones, models y eqpdays**
-
-En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la moda en phones y models y la media en eqpdays.
-```{r}
-summary(factor(data$phones))
-summary(factor(data$models))
-summary((data$eqpdays))
-
-data$phones[is.na(data$phones)] <- mode(factor(data$phones[!is.na(data$phones)]))
-data$models[is.na(data$models)] <- mode(factor(data$models[!is.na(data$models)]))
-data$eqpdays[is.na(data$eqpdays)]<- mean(data$eqpdays[!is.na(data$eqpdays)])
-```
-
-**changem y changer**
-
-**revenue, moe recchrge, directas, overage,roam**
-
-...pendiente
+Otro elemento importante a tener en cuenta son las coincidencias de los NAs en observaciones. Si hay una alta coincidencia, lo mejor es tirar esas observaciones.
 
 ```{r}
 
@@ -252,75 +223,57 @@ hists<- df_nas %>%
 grid.arrange(grobs=hists,ncol=4)
 ```
 
-Es evidente que casi todas estas variables tienen outliers. Por ello, conviene imputar la la mediana, por lo menos para:
+Es evidente que casi todas estas variables tienen outliers. Por ello, conviene imputar la la mediana en lugar de la media.
 
- - _revenue_
- - _mou_
- - _recchrge_
- - _changem_
- - _changer_
- - _eqpdays_
- - _directas_
- - _phones_
- - _models_
+**phones, models y eqpdays**
 
- 
-Las primeras seis variables tienen una distribución normal, y las otras tres están altamente concentradas (más del 50% de las observaciones en un valor o entre 0 y 1). Por lo tanto, les imputamos la mediana.
+En este caso, solo estamos hablando de un missing value y más de la mitad de las observaciones igual a 1 para _phones_ y _models_. Podemos imputarles la mediana.
 
 ```{r}
-# se define una funcion para imputar por valor central
-imputar_valor_central <- function(data) {
-  # Función para imputar valores centrales, media/mediana en numéricos y moda en categoricos
-  # Inputs:
-  # data - conjunto de datos
-  # colnames - array de las columnas que se desea imputar
-  #
-  # Outputs
-  # dataframe con imputaciones centrales
-
-  var_list <- colnames(data)
-
-
-  # Filtrar variables numéricas
-  data_columnas <- data %>%
-    dplyr::select(all_of(var_list)) %>% as.data.frame()
-  var_numericas <- dplyr::select_if(data_columnas, is.numeric) %>% names()
-
-  #Imputar
-  algas_data_imputacion_central  <-
-    data.frame(data) %>%
-    # variables numéricas (mediana)
-    mutate_at(
-      vars(var_numericas),
-      funs(ifelse(is.na(.), median(., na.rm = T), .)))
-
-  return(algas_data_imputacion_central)
-
-}
-
-# subset de las variables a las que haremos esta imputacion
-df_nas_central <- df_nas %>% dplyr::select(-c(overage,age1,age2))
-
-# se aplica la funcion de imputación
-df_nas_central <- imputar_valor_central(df_nas_central)
-
-# revisamos los datos
-summary(df_nas_central)
-
-# los sustituimos en la base original
-data[,names(df_nas_central)] <- df_nas_central
-cols_con_nas2 <- names(which(colSums(is.na(data)) > 0))
-
+data$phones[is.na(data$phones)] <- median(data$phones[!is.na(data$phones)])
+data$models[is.na(data$models)] <- median(data$models[!is.na(data$models)])
+data$eqpdays[is.na(data$eqpdays)]<- median(data$eqpdays[!is.na(data$eqpdays)])
 ```
 
-Por otra parte, las variables age1 y age2, las edades del primer y segundo miembro del hogar, presentan una distribución normal y muchos ceros. Esto nos hace pensar que cuando el valor es desconocido, o bien aparece como cero o como faltante. Por ello, decidimos imputarle a los valores faltantes de estas variables el cero.
+
+**changem y changer**
+```{r}
+# temporal
+data$changem[is.na(data$changem)] <- median(data$changem[!is.na(data$changem)])
+data$changer[is.na(data$changer)]<- median(data$changer[!is.na(data$changer)])
+```
+
+**revenue, mou, recchrge**
+
+Estas variables muestran una distribución normal, por lo que también puede aplicárseles la imputación con la mediana.
+
+```{r}
+data$revenue[is.na(data$revenue)] <- median(data$revenue[!is.na(data$revenue)])
+data$mou[is.na(data$mou)] <- median(data$mou[!is.na(data$mou)])
+data$recchrge[is.na(data$recchrge)]<- median(data$recchrge[!is.na(data$recchrge)])
+```
+ 
+ **roam y directas**
+
+Estas variables están altamente concentradas (más del 50% de las observaciones en 0 o entre 0 y 1, respectivamente). Por lo tanto, también les imputamos la mediana.
+
+```{r}
+data$directas[is.na(data$directas)] <- median(data$directas[!is.na(data$directas)])
+data$roam[is.na(data$roam)] <- median(data$roam[!is.na(data$roam)])
+```
+
+
+**age_1 y age_2**
+
+Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
 
 ```{r}
 data$age1[is.na(data$age1)] <- 0
 data$age2[is.na(data$age2)] <- 0
-
 ```
 
+
+**overage**
 
 Por último, revisamos si _overage_ puede imputarse por correlación con otra variable.
 
@@ -343,6 +296,18 @@ modelo <- lm(overage ~ mourec+peakvce+callwait+outcalls, data)
 summary(modelo)
 
 ```
+
+PENDIENTE
+```{r}
+# temporal
+data$overage[is.na(data$overage)] <- median(data$overage[!is.na(data$overage)])
+
+# numero de filas con NAs
+data[!complete.cases(data),] %>% nrow()
+
+```
+Ahora tenemos una base sin valores faltantes.
+
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
 ```{r, out.width = '70%',fig.align = "center"}
@@ -408,10 +373,6 @@ Primero dividimos la base.
 ```{r}
 set.seed(123)
 
-#PARCHE TEMPORAL
-#data[is.na(data)] <- 0 # Parche temporal, vuelve 0 los NA
-
-
 # proporción que queremos de training
 training_size <- 0.8
 
@@ -457,8 +418,8 @@ undersampling<-rbind((data_training %>%
 # 2. oversampling
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
-smote <- smotefamily::SMOTE((data_training %>% na.exclude)[,-2], # data
-                            (data_training %>% na.exclude)$churn, # class attribute
+smote <- smotefamily::SMOTE((data_training)[,-2], # data
+                            data_training$churn, # class attribute
                             K=10, # number of nearest neighbors
                             dup_size=2 # desired times of synthetic minority instances
                             # over original number of majority instances
@@ -1015,9 +976,9 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
 pred_rf<-predict(best_rf, 
-                 data = (data_validation %>% na.exclude))$predictions
+                 data = (data_validation))$predictions
 
-eval <-bind_cols((churn_validation %>% na.exclude),
+eval <-bind_cols((churn_validation),
                  pred_rf)
 
 ```
