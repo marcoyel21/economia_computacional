@@ -601,8 +601,22 @@ coef(cvlasso_c, select="min", k=2, corrected=TRUE) #c
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
 
-```
+#Predicciones
+y_pred<-predict(cv_lasso, newdata = X, type = 'response')
+y_pred<-as.numeric(y_pred)
 
+#A
+y_pred_a<-predict(cvlasso_a, newdata = Xa, type = 'response')
+y_pred_a<-as.numeric(y_pred_a)
+
+#B
+y_pred_b<-predict(cvlasso_b, newdata = Xb, type = 'response')
+y_pred_b<-as.numeric(y_pred_b)
+
+#C
+y_pred_c<-predict(cvlasso_c, newdata = Xc, type = 'response')
+y_pred_c<-as.numeric(y_pred_c)
+```
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
