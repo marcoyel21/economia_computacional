@@ -309,7 +309,7 @@ cat_variables <- c("churn",
 #numeric_variables <-
   
   
-data[,cat_variables] <- lapply(data[,cat_variables], factor)
+#data[,cat_variables] <- lapply(data[,cat_variables], factor)
 
 #data[,numeric_variables] <- lapply(data[,numeric_variables], as.numeric)
 ```
@@ -375,10 +375,11 @@ Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base 
 
 ### 3. (2 pts) Divide tu base en entrenamiento y validación (80/20). Además, considera hacer oversampling (SMOTE) o undersampling. (Tip: Recuerda que el objetivo final es tener muestra ~balanceada en el traning set. En el validation la distribución debe ser la original)
 
+Primero dividimos la base.
 ```{r}
 set.seed(123)
 
-# Primer intento
+
 # proporción que queremos de training
 training_size <- 0.8
 
@@ -395,31 +396,51 @@ data_validation <- data[-training_rows,]
 (tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 ```
-No está balanceada por lo que procedemos a rebalancear, tenemos 3 estrategias: undersampling, oversampling o una mezcla de ambas.
+No está balanceada, aunque sí conserva la proporción de clases de la base original. Procedemos a rebalancear, tenemos 3 estrategias: undersampling, oversampling o una mezcla de ambas.
+
+Cabe mencionar que realizamos el rebalanceo sobre nuestra base de entrenamiento.
 
 ```{r undersampling}
 
-#Undersampling
+# 1. Undersampling
+
+# tamaño de churn==1 en la base de entrenamiento
+freq_churn <- data_training %>% filter(churn==1) %>% nrow()
+
 
 #simplemente reducimos la clase más abundante
-undersampling_c0<-  sample_n((data %>% na.exclude %>% filter(churn==0)),size=19984,replace = TRUE)
-undersampling<-rbind((data %>% na.exclude %>% filter(churn==1)),undersampling_c0)
+undersampling_c0<-  sample_n((data_training %>% filter(churn==0)),
+                             size=freq_churn,
+                             replace = FALSE)
+
+undersampling<-rbind((data_training %>% 
+                        filter(churn==1)),undersampling_c0)
 
 
 
 ```
 
 ```{r oversampling}
-#oversampling
+# 2. oversampling
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
-smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn==1, K=5, dup_size=2)
+smote <- smotefamily::SMOTE((data_training %>% na.exclude)[,-2], # data
+                            (data_training %>% na.exclude)$churn, # class attribute
+                            K=10, # number of nearest neighbors
+                            dup_size=2 # desired times of synthetic minority instances
+                            # over original number of majority instances
+                            )
 
+class(data %>% na.exclude)
 oversampled <- as.data.frame(smote$data)
 
+# smote guarda la variable de clase como class. se renombra y convierte a numerica
+colnames(oversampled)[68] <- "churn"
+oversampled$churn <- oversampled$churn %>% as.numeric
 
 # sí está balanceado, aún no entiendo bien los outputs de la función
-(tabulado <- oversampled %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+(tabulado <- oversampled %>% group_by(churn) %>% 
+    dplyr::summarise(frecuencia_absoluta=n()) %>%
     mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
 
@@ -430,9 +451,10 @@ length(as.data.frame(smote$data)$churn)
 length(as.data.frame(smote$syn_data)$churn)
 
 # resta de ambos nos da el original
-length((data %>% na.exclude)$churn)
-```
+length((data_training %>% na.exclude)$churn)
 
+
+```
 
 
 ```{r under-oversampling}
@@ -440,8 +462,11 @@ length((data %>% na.exclude)$churn)
 #Under y over sampling
 #para rebalancear de manera más precisa el oversampling, simplemente "podamos" las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
 
+freq_churn_os <- oversampled %>% filter(churn==0) %>% nrow()
+
 #podamos
-undersampling_c1<-  sample_n((oversampled %>% filter(churn==1)),size=49325,replace = TRUE)
+undersampling_c1<-  sample_n((oversampled %>% filter(churn==1)),
+                             size=freq_churn_os,replace = FALSE)
 
 #armamos la base
 under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
@@ -470,19 +495,18 @@ training_size <- 0.8
 
 # A
 training_rows_a <- sample(seq_len(nrow(data_a)),size=floor(training_size*nrow(data_a)))
-data_training_a <- data_a[training_rows,]
+data_training_a <- data_a[training_rows,] %>% na.exclude()
 data_validation_a <- data_a[-training_rows,]
 
 # B
 training_rows_b <- sample(seq_len(nrow(data_b)),size=floor(training_size*nrow(data_b)))
-data_training_b <- data_b[training_rows,]
+data_training_b <- data_b[training_rows,] 
 data_validation_b <- data_b[-training_rows,]
 
 # C
 training_rows_c <- sample(seq_len(nrow(data_c)),size=floor(training_size*nrow(data_c)))
 data_training_c <- data_c[training_rows,]
 data_validation_c <- data_c[-training_rows,]
-
 
 
 ```
@@ -587,24 +611,148 @@ plot(tree_estimation)
 
 - En cada caso, guarda únicamente el `prediction.error`
 ```{r}
+# eficientar el Random Forest corriendolo en los nodos disponibles del equipo
+cl<- detectCores() %>% makeCluster()
+cl
+
+# vector con el número de los arboles
+trees <- c()
+# vector con el prediction error de cada forest
+error <- c()
+
+# Estimation. Loop que estima un random forest para distintos numeros de árboles
+
+a<-Sys.time() # para observar el tiempo de estimacion
+
+k <- 1 # iterador 
+for (i in c(100,200,300,500,700,800)){
+  
+  rf<-ranger(churn~., 
+             data = data_training_a,
+             num.trees = i,
+             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             min.node.size = 1,
+             splitrule = "gini",
+             classification = T, 
+             )
+  
+  trees[k] <- rf$num.trees
+  error[k] <- rf$prediction.error
+  
+  rf <- NULL
+  k <- k + 1 
+}
+
+treesb <- c()
+errorb <- c()
+
+k <- 1 # iterador 
+for (i in c(100,200,300,500,700,800)){
+  
+  rf<-ranger(churn~., 
+             data = data_training_b,
+             num.trees = i,
+             mtry = (ncol(data_training_b)-1) %>% sqrt() %>% floor(),
+             min.node.size = 1,
+             splitrule = "gini",
+             classification = T, 
+             )
+  
+  treesb[k] <- rf$num.trees
+  errorb[k] <- rf$prediction.error
+  
+  rf <- NULL
+  k <- k + 1 
+}
+
+treesc <- c()
+errorc <- c()
+k <- 1 # iterador 
+for (i in c(100,200,300,500,700,800)){
+  
+  rf<-ranger(churn~., 
+             data = data_training_c,
+             num.trees = i,
+             mtry = (ncol(data_training_c)-1) %>% sqrt() %>% floor(),
+             min.node.size = 1,
+             splitrule = "gini",
+             classification = T, 
+             )
+  
+  treesc[k] <- rf$num.trees
+  errorc[k] <- rf$prediction.error
+  
+  rf <- NULL
+  k <- k + 1 
+}
+
+Sys.time() -a
+stopCluster(cl)
+
+rf <- data.frame(trees,error)
+rfb <- data.frame(treesb,errorb)
+rfc <- data.frame(treesc,errorc)
+rf
+rfb
+rfc
 
 ```
+Parece ser que con una $B=200$, el error de predicción ya no parece reducirse mucho.
 
 ### 14. Escoge un random forest para hacer las predicciones. Grafica la importancia de las variables. Interpreta
+
 ```{r}
+# vuelvo a correr el mejor random forest
+cl<- detectCores() %>% makeCluster()
+cl
+best_rf <- ranger(churn~., 
+             data = data_training_a,
+             num.trees = 200,
+             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             importance = "impurity",
+             classification = T, 
+             )
+stopCluster(cl)
+
+# Grafica
+df_imp <- data.frame(names=(importance(best_rf) %>% 
+              names()),importance=(importance(best_rf)))
+
+
+ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
+  geom_bar(stat="identity") +
+  xlab("Variable")+
+  ylab("importancia")+
+  coord_flip()
 
 ```
 
 
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
+best_rf$predictions
+
 
 ```
 
 
 ### 16 (2pts). Corre el mismo forest pero ahora con `probability = T`. Esto generará predicciones númericas en lugar de categóricas. Genera las predicciones continuas y guardalas en el mismo data frame
 ```{r}
+# vuelvo a correr el mejor random forest, con probability=T
+cl<- detectCores() %>% makeCluster()
+cl
+best_rf <- ranger(churn~., 
+             data = data_training_a,
+             num.trees = 200,
+             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             importance = "impurity",
+             classification = T, 
+             probability = T
+             )
+stopCluster(cl)
 
+# prediccion continua de churn==1
+best_rf$predictions[,1]
 ```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
