@@ -78,7 +78,7 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
                       fig.width = 7, fig.height = 4, fig.align = "right")
 ```
 
-```{r,message=FALSE }
+```{r, message=FALSE}
 packages <- c(
   "tidyverse",
   "data.table",
@@ -202,9 +202,9 @@ Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam 
 
 Esto en general nos dice que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
 
-Podemos imputar la media a aquellas variables que parezcan tener una distribución normal.
+Podemos imputar alguna medida de tendencia central a aquellas variables que parezcan tener una distribución normal o estén concentradas en uno o pocos valores. Para decidir esto, examinamos la distribución de estas variables.
 
-```{r}
+```{r, warning=FALSE}
 myhist <- function(yvar){
   ggplot(df_nas, aes_(x=as.name(yvar)))+
     geom_histogram()+
@@ -221,12 +221,24 @@ hists<- df_nas %>%
 grid.arrange(grobs=hists,ncol=4)
 ```
 
-Parece que las variables mou, recchrge, eqpdays se distribuyen de forma normal.
+Es evidente que casi todas estas variables tienen outliers. Por ello, conviene imputar la la mediana, por lo menos para:
 
+ - _revenue_
+ - _mou_
+ - _recchrge_
+ - _changem_
+ - _changer_
+ - _eqpdays_
+ - _directas_
+ - _phones_
+ - _models_
+
+ 
+Las primeras seis variables tienen una distribución normal, y las otras tres están altamente concentradas (más del 50% de las observaciones en un valor o entre 0 y 1). Por lo tanto, les imputamos la mediana.
 
 ```{r}
 # se define una funcion para imputar por valor central
-imputar_valor_central <- function(data, var_list) {
+imputar_valor_central <- function(data) {
   # Función para imputar valores centrales, media/mediana en numéricos y moda en categoricos
   # Inputs:
   # data - conjunto de datos
@@ -235,41 +247,71 @@ imputar_valor_central <- function(data, var_list) {
   # Outputs
   # dataframe con imputaciones centrales
 
-  if (missing(var_list)){
-    var_list <- colnames(data)
-  }
+  var_list <- colnames(data)
 
-  #Dividir entre numericas y categoricas
+
+  # Filtrar variables numéricas
   data_columnas <- data %>%
     dplyr::select(all_of(var_list)) %>% as.data.frame()
   var_numericas <- dplyr::select_if(data_columnas, is.numeric) %>% names()
-  var_categoricas <- dplyr::select_if(data_columnas, is.character) %>% colnames()
 
   #Imputar
   algas_data_imputacion_central  <-
     data.frame(data) %>%
-    # variables numéricas (media)
+    # variables numéricas (mediana)
     mutate_at(
       vars(var_numericas),
-      funs(ifelse(is.na(.), median(., na.rm = T), .))) %>%
-    # variables categóricas (moda)
-    mutate_at(
-      vars(var_categoricas),
-      funs(as.ordered(ifelse(is.na(.), moda(.), as.character(.)))))
+      funs(ifelse(is.na(.), median(., na.rm = T), .)))
 
   return(algas_data_imputacion_central)
 
-
 }
 
-# se aplica la funcion al conjunto de datos
-df_nas2 <- imputar_valor_central(df_nas)
+# subset de las variables a las que haremos esta imputacion
+df_nas_central <- df_nas %>% dplyr::select(-c(overage,age1,age2))
 
-summary(df_nas2)
+# se aplica la funcion de imputación
+df_nas_central <- imputar_valor_central(df_nas_central)
+
+# revisamos los datos
+summary(df_nas_central)
+
+# los sustituimos en la base original
+data[,names(df_nas_central)] <- df_nas_central
+cols_con_nas2 <- names(which(colSums(is.na(data)) > 0))
+
+```
+
+Por otra parte, las variables age1 y age2, las edades del primer y segundo miembro del hogar, presentan una distribución normal y muchos ceros. Esto nos hace pensar que cuando el valor es desconocido, o bien aparece como cero o como faltante. Por ello, decidimos imputarle a los valores faltantes de estas variables el cero.
+
+```{r}
+data$age1[is.na(data$age1)] <- 0
+data$age2[is.na(data$age2)] <- 0
 
 ```
 
 
+Por último, revisamos si _overage_ puede imputarse por correlación con otra variable.
+
+```{r}
+# Revisemos correlación de estas variables con alguna otra
+cors <- cor(data, 
+            method = "pearson",
+            use = "complete.obs")[,"overage"] %>% as.data.frame() %>%
+arrange(desc(.))
+
+head(cors,10)
+
+```
+
+Notamos que _overage_ tiene una correlación mayor a 30% para las variables sin NAs _dropvce, unansvce, mourec, outcalls, incalls, peakvce, opeakvce, dropblk y callwait_.
+
+```{r}
+
+modelo <- lm(overage ~ mourec+peakvce+callwait+outcalls, data)
+summary(modelo)
+
+```
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
 ```{r, out.width = '70%',fig.align = "center"}
@@ -348,8 +390,9 @@ training_rows <- sample(seq_len(nrow(data)),size=floor(training_size*nrow(data))
 #training set
 data_training <- data[training_rows,]
 
-#validation set
-data_validation <- data[-training_rows,]
+#validation set. guardamos la base de características y la variable objetivo por separado
+data_validation <- data[-training_rows,-2]
+churn_validation <- data[-training_rows,2]
 
 # la muestra está balanceada? --> NO :(
 (tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
@@ -436,48 +479,18 @@ under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
 ```
 
 
-De esta manera me quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos.
+De esta manera me quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos. 
+
+Ahora experimentaremos con cada base.
 
 ```{r under-oversampling}
-data_a<-undersampling
-data_b<-oversampled
-data_c<-under_over_sampling
+data_training_a<-undersampling %>% na.exclude
+data_training_b<-oversampled
+data_training_c<-under_over_sampling
 
-str(data_a)
-str(data_b)
-str(data_c)
+
 
 ```
-
-
-Ahora experimentaremos con cada base:
-
-
-```{r SMOTE CV}
-
-training_size <- 0.8
-
-# A
-training_rows_a <- sample(seq_len(nrow(data_a)),size=floor(training_size*nrow(data_a)))
-data_training_a <- data_a[training_rows,] %>% na.exclude()
-data_validation_a <- data_a[-training_rows,]
-
-# B
-training_rows_b <- sample(seq_len(nrow(data_b)),size=floor(training_size*nrow(data_b)))
-data_training_b <- data_b[training_rows,]
-data_validation_b <- data_b[-training_rows,]
-
-# C
-training_rows_c <- sample(seq_len(nrow(data_c)),size=floor(training_size*nrow(data_c)))
-data_training_c <- data_c[training_rows,]
-data_validation_c <- data_c[-training_rows,]
-
-data_training_a[]
-
-```
-
-
-
 
 
 
@@ -515,6 +528,7 @@ plot(cv_lasso$gamlr, select=FALSE)
 ```{r}
 coef(cv_lasso, select="min") # Coeficientes de CV LASSO
 ```
+
 
 ```{r}
 lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
@@ -816,8 +830,11 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
 
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
-best_rf$predictions
+pred_rf<-predict(best_rf, 
+                 data = (data_validation %>% na.exclude))$predictions
 
+eval <-bind_cols((churn_validation %>% na.exclude),
+                 pred_rf)
 
 ```
 
@@ -827,7 +844,7 @@ best_rf$predictions
 # vuelvo a correr el mejor random forest, con probability=T
 cl<- detectCores() %>% makeCluster()
 cl
-best_rf <- ranger(churn~.,
+best_rf2 <- ranger(churn~.,
              data = data_training_a,
              num.trees = 200,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
@@ -838,11 +855,13 @@ best_rf <- ranger(churn~.,
 stopCluster(cl)
 
 # prediccion continua de churn==1
-best_rf$predictions[,1]
+best_rf2$predictions[,1]
 ```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
 ```{r}
+# ROC Curve
+roc_curve(data = eval, truth = truth, "1")
 
 ```
 
