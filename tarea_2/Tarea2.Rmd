@@ -178,6 +178,37 @@ summary(df_nas)
 Lista de las variables con valores faltantes. Todas son numéricas. Podríamos hacer imputación.
 
 
+## Análisis de missing values (pendiente)
+
+**age_1 y age_2**
+
+Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
+```{r}
+summary(factor(data$age1))
+summary(factor(data$age2))
+data$age1[is.na(data$age1)] <- 0
+data$age2[is.na(data$age)] <- 0
+```
+
+**phones, models y eqpdays**
+
+En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la moda en phones y models y la media en eqpdays.
+```{r}
+summary(factor(data$phones))
+summary(factor(data$models))
+summary((data$eqpdays))
+
+data$phones[is.na(data$phones)] <- mode(factor(data$phones[!is.na(data$phones)]))
+data$models[is.na(data$models)] <- mode(factor(data$models[!is.na(data$models)]))
+data$eqpdays[is.na(data$eqpdays)]<- mean(data$eqpdays[!is.na(data$eqpdays)])
+```
+
+**changem y changer**
+
+**revenue, moe recchrge, directas, overage,roam**
+
+...pendiente
+
 ```{r}
 
 # numero de filas con NAs
@@ -433,6 +464,7 @@ smote <- smotefamily::SMOTE((data_training %>% na.exclude)[,-2], # data
                             # over original number of majority instances
                             )
 
+
 class(data %>% na.exclude)
 oversampled <- as.data.frame(smote$data)
 
@@ -516,11 +548,66 @@ par(mar=c(5,4,4,2) + 0.1)
 plot(cv_lasso) # Gráfico
 
 ```
+#PARA LAS DIFERENTES BASES DE ENTRENAMIENTO
+
+##A
+
+#Matriz de covariates
+Xa <-data_training_a %>% select(-customer,-churn) 
+
+#se quita intercepto
+Xa <- sparse.model.matrix(~.+0, data = Xa) 
+
+#vector de Y´s
+Ya<-data_training_a$churn 
+
+#CV LASSO
+cvlasso_a<-cv.gamlr(x = Xa, y = Ya, verb = T, family = 'binomial', nfold = 5) 
+
+#Grafica
+plot(cvlasso_a)
+
+##B
+
+#Matriz de covariates
+Xb <-data_training_b %>% select(-customer,-churn) 
+
+#se quita intercepto
+Xb <- sparse.model.matrix(~.+0, data = Xb) 
+
+#vector de Y´s
+Yb<-data_training_b$churn 
+
+#CV LASSO
+cvlasso_b<-cv.gamlr(x = Xb, y = Yb, verb = T, family = 'binomial', nfold = 5) 
+
+#Grafica
+plot(cvlasso_b)
+
+##C
+
+#Matriz de covariates
+Xc <-data_training_c %>% select(-customer,-churn) 
+
+#se quita intercepto
+Xc <- sparse.model.matrix(~.+0, data = Xc) 
+
+#vector de Y´s
+Yc<-data_training_c$churn 
+
+#CV LASSO
+cvlasso_c<-cv.gamlr(x = Xc, y = Yc, verb = T, family = 'binomial', nfold = 5) 
+
+#Grafica
+plot(cvlasso_c)
 
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
 plot(cv_lasso$gamlr, select=FALSE)
 ```
+plot(cvlasso_a$gamlr)
+plot(cvlasso_b$gamlr)
+plot(cvlasso_c$gamlr)
 
 \newpage
 
@@ -533,16 +620,113 @@ coef(cv_lasso, select="min") # Coeficientes de CV LASSO
 ```{r}
 lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
 cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
+
+#PARA LAS 3 BASES:
+
+#lambda resultante 
+#A
+a_lambda<- colnames(coef(cvlasso_a, select="min")) 
+cvlasso_a$gamlr$lambda[a_lambda] 
+
+#B
+b_lambda<- colnames(coef(cvlasso_b, select="min")) 
+cvlasso_b$gamlr$lambda[b_lambda] 
+
+#c
+c_lambda<- colnames(coef(cvlasso_c, select="min")) 
+cvlasso_a$gamlr$lambda[c_lambda] 
+
+# tabla de coeficientes
+coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a 
+coef(cvlasso_b, select="min", k=2, corrected=TRUE) #b
+coef(cvlasso_c, select="min", k=2, corrected=TRUE) #c
+#Para c y b coeficientes en blanco, a final aparecen dos coeficientes classFALSE y classTRUE que no puedo quitar.
 ```
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
 
-```
+#Predicciones
+y_pred<-predict(cv_lasso, newdata = X, type = 'response')
+y_pred<-as.numeric(y_pred)
 
+#A
+y_pred_a<-predict(cvlasso_a, newdata = Xa, type = 'response')
+y_pred_a<-as.numeric(y_pred_a)
+
+#B
+y_pred_b<-predict(cvlasso_b, newdata = Xb, type = 'response')
+y_pred_b<-as.numeric(y_pred_b)
+
+#C
+y_pred_c<-predict(cvlasso_c, newdata = Xc, type = 'response')
+y_pred_c<-as.numeric(y_pred_c)
+
+#dataframe
+estandar<-data.frame(data_validation$customer, data_validation$churn, y_pred)
+
+A<-data.frame(data_validation_a$customer, data_validation_a$churn, y_pred_a)
+
+B<-data.frame(data_validation_b$customer, data_validation_b$churn, y_pred_b)
+
+C<-data.frame(data_validation_c$customer, data_validation_c$churn, y_pred_c)
+
+```
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
+
+cat_variables <- c("churn",
+                  "children",
+                  "credita",
+                  "creditaa",
+                  "prizmrur",
+                  "prizmub",
+                  "prizmtwn",
+                  "refurb",
+                  "webcap",
+                  "truck",
+                  "rv",
+                  "occprof",
+                  "occcler",
+                  "occcrft",
+                  "occstud",
+                  "occhmkr",
+                  "occret",
+                  "occself",
+                  "ownrent",
+                  "marryun",
+                  "marryyes",
+                  "mailord",
+                  "mailres",
+                  "mailflag",
+                  "travel",
+                  "pcown",
+                  "creditcd",
+                  "newcelly",
+                  "newcelln",
+                  "incmiss",
+                  "mcycle",
+                  "setprcm",
+                  "retcall")
+
+
+round_up_down <- function(x){
+  
+  return(if_else(x<0.5,as.integer(floor(x)),
+          as.integer(ceiling(x))))
+  
+}
+
+data_training_b[,cat_variables] <- lapply(data_training_b[,cat_variables],round_up_down)
+data_training_c[,cat_variables] <- lapply(data_training_c[,cat_variables],round_up_down)
+
+
+str(data_training_a %>% select(cat_variables) %>% arrange())
+summary(data_training_c %>% select(cat_variables) %>% arrange())
+View(data_training_c %>% select(cat_variables) %>% arrange())
+
+
 # hago para los 3 training datasets que tenemos: a,b y c
 # b2 es restringiendo variables
 
