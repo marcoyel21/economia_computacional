@@ -175,6 +175,9 @@ kable(check_nas(data),booktabs=T, align = 'c',
 Revisamos más a detalle estas variables y notamos que todas son numéricas.
 
 ```{r}
+# columnas con NAs
+cols_con_nas <- names(which(colSums(is.na(data)) > 0))
+
 df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
 ```
@@ -390,14 +393,11 @@ churn_validation <- data[-training_rows,2]
 (tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 ```
-No está balanceada, aunque sí conserva la proporción de clases de la base original. Procedemos a rebalancear, tenemos 3 estrategias: undersampling, oversampling o una mezcla de ambas.
+No está balanceada, aunque sí conserva la proporción de clases de la base original. Procedemos a rebalancear, probamos 3 estrategias: undersampling, oversampling o una mezcla de ambas. A continuación mostramos cómo realizamos las tres estrategias sobre nuestra base de entrenamiento.
 
-Cabe mencionar que realizamos el rebalanceo sobre nuestra base de entrenamiento.
+#### A. Undersampling
 
 ```{r undersampling}
-
-# 1. Undersampling
-
 # tamaño de churn==1 en la base de entrenamiento
 freq_churn <- data_training %>% filter(churn==1) %>% nrow()
 
@@ -414,8 +414,9 @@ undersampling<-rbind((data_training %>%
 
 ```
 
+#### B. oversampling
+
 ```{r oversampling}
-# 2. oversampling
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
 smote <- smotefamily::SMOTE((data_training)[,-2], # data
@@ -451,10 +452,9 @@ length((data_training %>% na.exclude)$churn)
 
 ```
 
-
+#### C. Under y over sampling
 ```{r under-oversampling}
 
-#Under y over sampling
 #para rebalancear de manera más precisa el oversampling, simplemente "podamos" las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
 
 freq_churn_os <- oversampled %>% filter(churn==0) %>% nrow()
@@ -472,17 +472,11 @@ under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
 ```
 
 
-De esta manera me quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos. 
+De esta manera quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos. Comparamos las tres bases con los tres modelos y obtuvimos los mejores resultados de la base con undersampling. En adelante, mostramos nuestros resultados con esa base. En el script `remuestreo_alt` incluimos algunos resultados con las otras bases.
 
-Ahora experimentaremos con cada base.
 
-```{r under-oversampling}
+```{r new training}
 data_training_a<-undersampling %>% na.exclude
-data_training_b<-oversampled
-data_training_c<-under_over_sampling
-
-
-
 ```
 
 
@@ -499,7 +493,6 @@ Pondremos a competir 3 modelos:
 
 ### 4 (2 pts). Estima un cross validated LASSO. Muestra el la gráfica de CV Binomial Deviance vs Complejidad
 ```{r}
-data_training[is.na(data_training)] <- 0 # Parche temporal, vuelve 0 los NA
 
 X <- sparse.model.matrix(~.+0, data = data_training[,-c(1,2)]) # Transformar a sparse matrix la información relevante
 
@@ -509,8 +502,7 @@ par(mar=c(5,4,4,2) + 0.1)
 plot(cv_lasso) # Gráfico
 
 ```
-#PARA LAS DIFERENTES BASES DE ENTRENAMIENTO
-
+```{r}
 ##A
 
 #Matriz de covariates
@@ -527,48 +519,16 @@ cvlasso_a<-cv.gamlr(x = Xa, y = Ya, verb = T, family = 'binomial', nfold = 5)
 
 #Grafica
 plot(cvlasso_a)
+```
 
-##B
-
-#Matriz de covariates
-Xb <-data_training_b %>% select(-customer,-churn) 
-
-#se quita intercepto
-Xb <- sparse.model.matrix(~.+0, data = Xb) 
-
-#vector de Y´s
-Yb<-data_training_b$churn 
-
-#CV LASSO
-cvlasso_b<-cv.gamlr(x = Xb, y = Yb, verb = T, family = 'binomial', nfold = 5) 
-
-#Grafica
-plot(cvlasso_b)
-
-##C
-
-#Matriz de covariates
-Xc <-data_training_c %>% select(-customer,-churn) 
-
-#se quita intercepto
-Xc <- sparse.model.matrix(~.+0, data = Xc) 
-
-#vector de Y´s
-Yc<-data_training_c$churn 
-
-#CV LASSO
-cvlasso_c<-cv.gamlr(x = Xc, y = Yc, verb = T, family = 'binomial', nfold = 5) 
-
-#Grafica
-plot(cvlasso_c)
 
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
 plot(cv_lasso$gamlr, select=FALSE)
-```
+
 plot(cvlasso_a$gamlr)
-plot(cvlasso_b$gamlr)
-plot(cvlasso_c$gamlr)
+```
+
 
 \newpage
 
@@ -582,115 +542,40 @@ coef(cv_lasso, select="min") # Coeficientes de CV LASSO
 lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
 cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
-#PARA LAS 3 BASES:
 
 #lambda resultante 
 #A
 a_lambda<- colnames(coef(cvlasso_a, select="min")) 
 cvlasso_a$gamlr$lambda[a_lambda] 
 
-#B
-b_lambda<- colnames(coef(cvlasso_b, select="min")) 
-cvlasso_b$gamlr$lambda[b_lambda] 
-
-#c
-c_lambda<- colnames(coef(cvlasso_c, select="min")) 
-cvlasso_a$gamlr$lambda[c_lambda] 
-
 # tabla de coeficientes
 coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a 
-coef(cvlasso_b, select="min", k=2, corrected=TRUE) #b
-coef(cvlasso_c, select="min", k=2, corrected=TRUE) #c
-#Para c y b coeficientes en blanco, a final aparecen dos coeficientes classFALSE y classTRUE que no puedo quitar.
 ```
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
 
 #Predicciones
-y_pred<-predict(cv_lasso, newdata = X, type = 'response')
+y_pred<-predict(cv_lasso$gamlr, 
+                newdata = data_validation[,-1], 
+                type = 'response',
+                select = cv_lasso$seg.min)
 y_pred<-as.numeric(y_pred)
 
 #A
-y_pred_a<-predict(cvlasso_a, newdata = Xa, type = 'response')
+y_pred_a<-predict(cvlasso_a, 
+                  newdata = data_validation[,-1], 
+                  type = 'response')
 y_pred_a<-as.numeric(y_pred_a)
 
-#B
-y_pred_b<-predict(cvlasso_b, newdata = Xb, type = 'response')
-y_pred_b<-as.numeric(y_pred_b)
-
-#C
-y_pred_c<-predict(cvlasso_c, newdata = Xc, type = 'response')
-y_pred_c<-as.numeric(y_pred_c)
 
 #dataframe
-estandar<-data.frame(data_validation$customer, data_validation$churn, y_pred)
-
-A<-data.frame(data_validation_a$customer, data_validation_a$churn, y_pred_a)
-
-B<-data.frame(data_validation_b$customer, data_validation_b$churn, y_pred_b)
-
-C<-data.frame(data_validation_c$customer, data_validation_c$churn, y_pred_c)
+A<-data.frame(data_validation$customer, churn_validation, y_pred_a)
 
 ```
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
-
-cat_variables <- c("churn",
-                  "children",
-                  "credita",
-                  "creditaa",
-                  "prizmrur",
-                  "prizmub",
-                  "prizmtwn",
-                  "refurb",
-                  "webcap",
-                  "truck",
-                  "rv",
-                  "occprof",
-                  "occcler",
-                  "occcrft",
-                  "occstud",
-                  "occhmkr",
-                  "occret",
-                  "occself",
-                  "ownrent",
-                  "marryun",
-                  "marryyes",
-                  "mailord",
-                  "mailres",
-                  "mailflag",
-                  "travel",
-                  "pcown",
-                  "creditcd",
-                  "newcelly",
-                  "newcelln",
-                  "incmiss",
-                  "mcycle",
-                  "setprcm",
-                  "retcall")
-
-
-round_up_down <- function(x){
-  
-  return(if_else(x<0.5,as.integer(floor(x)),
-          as.integer(ceiling(x))))
-  
-}
-
-data_training_b[,cat_variables] <- lapply(data_training_b[,cat_variables],round_up_down)
-data_training_c[,cat_variables] <- lapply(data_training_c[,cat_variables],round_up_down)
-
-
-str(data_training_a %>% select(cat_variables) %>% arrange())
-summary(data_training_c %>% select(cat_variables) %>% arrange())
-View(data_training_c %>% select(cat_variables) %>% arrange())
-
-
-# hago para los 3 training datasets que tenemos: a,b y c
-# b2 es restringiendo variables
-
 #A
 tree_control_a <- tree.control(nobs=nrow(data_training_a),
              mincut = 1000,
@@ -702,58 +587,14 @@ tree_estimation_a <- tree(as.factor(churn) ~ . -customer,
                         control = tree_control_a,
                         split = c("gini"))
 
-#B
-tree_control_b <- tree.control(nobs=nrow(data_training_b),
-             mincut = 1000,
-             mindev = 0.05)
-
-
-tree_estimation_b <- tree(as.factor(churn) ~ . -customer ,
-                        data = data_training_b,
-                        control = tree_control_b)
-
-
-tree_estimation_b2 <- tree(as.factor(churn) ~ eqpdays + refurb + changem + months + mou + changer + recchrge + creditcd + setprc + revenue + retcall + marryyes + credita,
-                        data = data_training_b)
-
-#C
-tree_control_c <- tree.control(nobs=nrow(data_training_c),
-             mincut = 1000,
-             mindev = 0.05)
-
-
-tree_estimation_c <- tree(as.factor(churn) ~ . -customer,
-                        data = data_training_c,
-                        control = tree_control_c)
-
-
-
 summary(tree_estimation_a)
-
-summary(tree_estimation_b)
-summary(tree_estimation_b2)
-summary(tree_estimation_c)
-
-# El a utiliza más variables
 
 ```
 
 ### 9. Grafica el árbol resultante
 ```{r}
-# me gusta el a
-
 plot(tree_estimation_a)
 text(tree_estimation_a,pretty=0)
-
-plot(tree_estimation_b)
-text(tree_estimation_b,pretty=0)
-
-plot(tree_estimation_b2)
-text(tree_estimation_b2,pretty=0)
-
-plot(tree_estimation_c)
-text(tree_estimation_c,pretty=0)
-
 
 #cross validation y confusionMatrix (opcional)
 #data_validation_a$churn <- as.factor(data_validation_a$churn)
@@ -766,20 +607,12 @@ text(tree_estimation_c,pretty=0)
 ### 10. Poda el árbol usando CV. Muestra el resultado. Grafica Tree Size vs Binomial Deviance. Cuál es el mejor tamaño del árbol? Mejora el Error?
 ```{r}
 cv_tree_a <- cv.tree(tree_estimation_a, K=10)
-cv_tree_b <- cv.tree(tree_estimation_b, K=10)
-cv_tree_b2 <- cv.tree(tree_estimation_b2, K=10)
-cv_tree_c <- cv.tree(tree_estimation_c, K=10)
-
 cv_tree_a
-cv_tree_b
-cv_tree_b2
-cv_tree_c
+
 
 # Size con menor deviance
 min_dev_size_a <- cv_tree_a$size[match(min(cv_tree_a$dev),cv_tree_a$dev)]
-min_dev_size_b <-cv_tree_b$size[match(min(cv_tree_b$dev),cv_tree_b$dev)]
-min_dev_size_b2 <-cv_tree_b2$size[match(min(cv_tree_b2$dev),cv_tree_b2$dev)]
-min_dev_size_c <-cv_tree_c$size[match(min(cv_tree_c$dev),cv_tree_c$dev)]
+
 
 # Gráfica Tree Size vs. Binomial Deviance
 
@@ -800,9 +633,6 @@ plot_size_dev <- function(cv_tree){
                                   }
 
 plot_size_dev(cv_tree_a)
-plot_size_dev(cv_tree_b)
-plot_size_dev(cv_tree_b2)
-plot_size_dev(cv_tree_c)
 
 
 ```
@@ -810,42 +640,21 @@ plot_size_dev(cv_tree_c)
 ### 11. Gráfica el árbol final. (Tip: Checa `prune.tree`)
 ```{r}
 tree_cut_a <- prune.tree(tree_estimation_a, best = min_dev_size_a)
-tree_cut_b <- prune.tree(tree_estimation_b, best = min_dev_size_b)
-tree_cut_b2 <- prune.tree(tree_estimation_b2, best = min_dev_size_b2)
-tree_cut_c <- prune.tree(tree_estimation_c, best = min_dev_size_c)
+
 
 plot(tree_cut_a)
 text(tree_cut_a,pretty=0)
-
-plot(tree_cut_b)
-text(tree_cut_b,pretty=0)
-
-plot(tree_cut_b2)
-text(tree_cut_b2,pretty=0)
-
-plot(tree_cut_c)
-text(tree_cut_c,pretty=0)
 
 ```
 
 ### 12. Genera las predicciones del árbol pruned. Guardalas en la base de predicciones. Guarda el score y la prediccion categorica en la misma data frame donde guardaste las predicciones del LASSO
 ```{r}
 
-tree_score_predict_a <- predict(tree_cut_a,data=data_validation_a)
-tree_class_predict_a <- predict(tree_cut_a,data=data_validation_a,type="class")
-
-tree_score_predict_b <- predict(tree_cut_b,data=data_validation_b)
-tree_class_predict_b <- predict(tree_cut_b,data=data_validation_b,type="class")
-
-tree_score_predict_b2 <- predict(tree_cut_b2,data=data_validation_b2)
-tree_class_predict_b2 <- predict(tree_cut_b2,data=data_validation_b2,type="class")
-
-tree_score_predict_c <- predict(tree_cut_c,data=data_validation_c)
-tree_class_predict_c <- predict(tree_cut_c,data=data_validation_c,type="class")
-
+tree_score_predict_a <- predict(tree_cut_a,data=data_validation)
+tree_class_predict_a <- predict(tree_cut_a,data=data_validation,type="class")
 
 # unir con base de predicciones
-
+A <- cbind(A,tree_score_predict_a,tree_class_predict_a)
 
 ```
 
@@ -888,61 +697,15 @@ for (i in c(100,200,300,500,700,800)){
   k <- k + 1
 }
 
-treesb <- c()
-errorb <- c()
-
-k <- 1 # iterador
-for (i in c(100,200,300,500,700,800)){
-
-  rf<-ranger(churn~.,
-             data = data_training_b,
-             num.trees = i,
-             mtry = (ncol(data_training_b)-1) %>% sqrt() %>% floor(),
-             min.node.size = 1,
-             splitrule = "gini",
-             classification = T,
-             )
-
-  treesb[k] <- rf$num.trees
-  errorb[k] <- rf$prediction.error
-
-  rf <- NULL
-  k <- k + 1
-}
-
-treesc <- c()
-errorc <- c()
-k <- 1 # iterador
-for (i in c(100,200,300,500,700,800)){
-
-  rf<-ranger(churn~.,
-             data = data_training_c,
-             num.trees = i,
-             mtry = (ncol(data_training_c)-1) %>% sqrt() %>% floor(),
-             min.node.size = 1,
-             splitrule = "gini",
-             classification = T,
-             )
-
-  treesc[k] <- rf$num.trees
-  errorc[k] <- rf$prediction.error
-
-  rf <- NULL
-  k <- k + 1
-}
-
 Sys.time() -a
 stopCluster(cl)
 
 rf <- data.frame(trees,error)
-rfb <- data.frame(treesb,errorb)
-rfc <- data.frame(treesc,errorc)
 rf
-rfb
-rfc
+
 
 ```
-Parece ser que con una $B=200$, el error de predicción ya no parece reducirse mucho.
+Parece ser que con una $B=200$, el error de predicción ya no parece reducirse mucho. Cabe mencionar que el error in sample era mucho menor con las bases resultantes de oversampling, pero lo opuesto pasaba en OOS.
 
 ### 14. Escoge un random forest para hacer las predicciones. Grafica la importancia de las variables. Interpreta
 
@@ -951,12 +714,12 @@ Parece ser que con una $B=200$, el error de predicción ya no parece reducirse m
 cl<- detectCores() %>% makeCluster()
 cl
 best_rf <- ranger(churn~.,
-             data = data_training_a,
+             data = data_training_a[,-1],
              num.trees = 200,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
              importance = "impurity",
-             classification = T,
-             )
+             classification = T)
+
 stopCluster(cl)
 
 # Grafica
@@ -976,11 +739,13 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
 pred_rf<-predict(best_rf, 
-                 data = (data_validation))$predictions
+                 data = (data_validation[,-1]),
+                 type = "response")
+
 
 eval <-bind_cols((churn_validation),
-                 pred_rf)
-
+                 pred_rf$predictions)
+names(eval) <- c("validation","pred_rf")
 ```
 
 
@@ -1000,19 +765,30 @@ best_rf2 <- ranger(churn~.,
 stopCluster(cl)
 
 # prediccion continua de churn==1
-best_rf2$predictions[,1]
+eval$pred_rf_cont <- predict(best_rf2, data=data_validation)$predictions[,1]
 ```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
 ```{r}
+library(yardstick)
 # ROC Curve
-roc_curve(data = eval, truth = truth, "1")
+roc_curve <- roc_curve(data = eval, 
+                       truth = factor(validation),
+                       pred_rf,
+                       event_level = "second")
+
+ggplot(roc_curve, aes(x = 1-specificity, y = sensitivity))+
+geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
+  geom_path()+theme_bw()
 
 ```
 
 
 ### 18. Genera una tabla con el AUC ROC. Cuál es el mejor modelo ?
 ```{r}
+roc_auc(eval, factor(validation), pred_rf, event_level = "second")
+
+
 
 ```
 
