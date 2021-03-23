@@ -504,11 +504,66 @@ par(mar=c(5,4,4,2) + 0.1)
 plot(cv_lasso) # Gráfico
 
 ```
+#PARA LAS DIFERENTES BASES DE ENTRENAMIENTO
+
+##A
+
+#Matriz de covariates
+Xa <-data_training_a %>% select(-customer,-churn) 
+
+#se quita intercepto
+Xa <- sparse.model.matrix(~.+0, data = Xa) 
+
+#vector de Y´s
+Ya<-data_training_a$churn 
+
+#CV LASSO
+cvlasso_a<-cv.gamlr(x = Xa, y = Ya, verb = T, family = 'binomial', nfold = 5) 
+
+#Grafica
+plot(cvlasso_a)
+
+##B
+
+#Matriz de covariates
+Xb <-data_training_b %>% select(-customer,-churn) 
+
+#se quita intercepto
+Xb <- sparse.model.matrix(~.+0, data = Xb) 
+
+#vector de Y´s
+Yb<-data_training_b$churn 
+
+#CV LASSO
+cvlasso_b<-cv.gamlr(x = Xb, y = Yb, verb = T, family = 'binomial', nfold = 5) 
+
+#Grafica
+plot(cvlasso_b)
+
+##C
+
+#Matriz de covariates
+Xc <-data_training_c %>% select(-customer,-churn) 
+
+#se quita intercepto
+Xc <- sparse.model.matrix(~.+0, data = Xc) 
+
+#vector de Y´s
+Yc<-data_training_c$churn 
+
+#CV LASSO
+cvlasso_c<-cv.gamlr(x = Xc, y = Yc, verb = T, family = 'binomial', nfold = 5) 
+
+#Grafica
+plot(cvlasso_c)
 
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
 plot(cv_lasso$gamlr, select=FALSE)
 ```
+plot(cvlasso_a$gamlr)
+plot(cvlasso_b$gamlr)
+plot(cvlasso_c$gamlr)
 
 \newpage
 
@@ -521,6 +576,27 @@ coef(cv_lasso, select="min") # Coeficientes de CV LASSO
 lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
 cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 ```
+#PARA LAS 3 BASES:
+
+#lambda resultante 
+#A
+a_lambda<- colnames(coef(cvlasso_a, select="min")) 
+cvlasso_a$gamlr$lambda[a_lambda] 
+
+#B
+b_lambda<- colnames(coef(cvlasso_b, select="min")) 
+cvlasso_b$gamlr$lambda[b_lambda] 
+
+#c
+c_lambda<- colnames(coef(cvlasso_c, select="min")) 
+cvlasso_a$gamlr$lambda[c_lambda] 
+
+# tabla de coeficientes
+coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a 
+coef(cvlasso_b, select="min", k=2, corrected=TRUE) #b
+coef(cvlasso_c, select="min", k=2, corrected=TRUE) #c
+#Para c y b coeficientes en blanco, a final aparecen dos coeficientes classFALSE y classTRUE que no puedo quitar.
+
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
