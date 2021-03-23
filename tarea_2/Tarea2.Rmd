@@ -390,6 +390,7 @@ smote <- smotefamily::SMOTE((data_training %>% na.exclude)[,-2], # data
                             # over original number of majority instances
                             )
 
+
 class(data %>% na.exclude)
 oversampled <- as.data.frame(smote$data)
 
@@ -529,6 +530,58 @@ cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
+
+cat_variables <- c("churn",
+                  "children",
+                  "credita",
+                  "creditaa",
+                  "prizmrur",
+                  "prizmub",
+                  "prizmtwn",
+                  "refurb",
+                  "webcap",
+                  "truck",
+                  "rv",
+                  "occprof",
+                  "occcler",
+                  "occcrft",
+                  "occstud",
+                  "occhmkr",
+                  "occret",
+                  "occself",
+                  "ownrent",
+                  "marryun",
+                  "marryyes",
+                  "mailord",
+                  "mailres",
+                  "mailflag",
+                  "travel",
+                  "pcown",
+                  "creditcd",
+                  "newcelly",
+                  "newcelln",
+                  "incmiss",
+                  "mcycle",
+                  "setprcm",
+                  "retcall")
+
+
+round_up_down <- function(x){
+  
+  return(if_else(x<0.5,as.integer(floor(x)),
+          as.integer(ceiling(x))))
+  
+}
+
+data_training_b[,cat_variables] <- lapply(data_training_b[,cat_variables],round_up_down)
+data_training_c[,cat_variables] <- lapply(data_training_c[,cat_variables],round_up_down)
+
+
+str(data_training_a %>% select(cat_variables) %>% arrange())
+summary(data_training_c %>% select(cat_variables) %>% arrange())
+View(data_training_c %>% select(cat_variables) %>% arrange())
+
+
 # hago para los 3 training datasets que tenemos: a,b y c
 # b2 es restringiendo variables
 
