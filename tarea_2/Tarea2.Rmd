@@ -178,6 +178,37 @@ summary(df_nas)
 Lista de las variables con valores faltantes. Todas son numéricas. Podríamos hacer imputación.
 
 
+## Análisis de missing values (pendiente)
+
+**age_1 y age_2**
+
+Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
+```{r}
+summary(factor(data$age1))
+summary(factor(data$age2))
+data$age1[is.na(data$age1)] <- 0
+data$age2[is.na(data$age)] <- 0
+```
+
+**phones, models y eqpdays**
+
+En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la moda en phones y models y la media en eqpdays.
+```{r}
+summary(factor(data$phones))
+summary(factor(data$models))
+summary((data$eqpdays))
+
+data$phones[is.na(data$phones)] <- mode(factor(data$phones[!is.na(data$phones)]))
+data$models[is.na(data$models)] <- mode(factor(data$models[!is.na(data$models)]))
+data$eqpdays[is.na(data$eqpdays)]<- mean(data$eqpdays[!is.na(data$eqpdays)])
+```
+
+**changem y changer**
+
+**revenue, moe recchrge, directas, overage,roam**
+
+...pendiente
+
 ```{r}
 
 # numero de filas con NAs
