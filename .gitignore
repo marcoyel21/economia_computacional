@@ -42,4 +42,6 @@ vignettes/*.pdf
 docs/
 
 # translation temp files
-po/*~.DS_Store
+po/*~
+
+.DS_Store
