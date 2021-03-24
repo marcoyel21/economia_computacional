@@ -74,12 +74,11 @@ header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphe
 \newpage
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
                       fig.width = 7, fig.height = 4, fig.align = "right")
 ```
 
-```{r,message=FALSE }
-
+```{r, message=FALSE}
 packages <- c(
   "tidyverse",
   "data.table",
@@ -91,13 +90,13 @@ packages <- c(
   'ranger',
   'tree',
   'parallel',
-  'tidymodels',
   'naniar',
   'kableExtra',
   'gridExtra',
   'VIM',
-  'smotefamily'
-    )
+  'smotefamily',
+  'stargazer'
+  )
 
 # instala los que no tengas
 installed_packages <- packages %in% rownames(installed.packages())
@@ -155,11 +154,16 @@ load('Cell2Cell.Rdata') %>% as.data.frame()
 #                       'Cell2Cell.RData')
 
 # renombrar como data
-data <- cell2cell
+data <- as.data.frame(cell2cell)
 rm(cell2cell)
 ```
 
 ### 1. Qué variables tienen missing values? Toma alguna decisión con los missing values. Justifica tu respuesta
+
+## Análisis de missing values general
+
+Primero revisamos las columnas que tienen missing values y su cantidad.
+
 ```{r,results='asis'}
 # Rafa
 # tabla resumen de missing values
@@ -169,16 +173,17 @@ kable(check_nas(data),booktabs=T, align = 'c',
                 latex_options="HOLD_position")
 ```
 
+Revisamos más a detalle estas variables y notamos que todas son numéricas.
+
 ```{r}
 # columnas con NAs
 cols_con_nas <- names(which(colSums(is.na(data)) > 0))
-
 df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
 ```
 
-Lista de las variables con valores faltantes. Todas son numéricas. Podríamos hacer imputación.
-
+## NO SE SI QUITAR O DEJAR ESTO
+Otro elemento importante a tener en cuenta son las coincidencias de los NAs en observaciones. Si hay una alta coincidencia, lo mejor es tirar esas observaciones.
 
 ```{r}
 
@@ -197,15 +202,16 @@ cor(y)
 # Visualización de los NAs
 #aggr(data, plot=FALSE, prop=FALSE, numbers=TRUE)
 
-
 ```
+
+
 Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden.Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Además, se puede ver en la matriz que los valores faltantes del primer grupo de variables coincide en un 65% con los valores faltantes de changem y changer. Para estos casos, se tiene valores faltantes en 8 de 68 variables, el 11.7% de las columnas.
 
 Esto en general nos dice que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
 
-Podemos imputar la media a aquellas variables que parezcan tener una distribución normal.
+Podemos imputar alguna medida de tendencia central a aquellas variables que parezcan tener una distribución normal o estén concentradas en uno o pocos valores. Para decidir esto, examinamos la distribución de estas variables.
 
-```{r}
+```{r, warning=FALSE}
 myhist <- function(yvar){
   ggplot(df_nas, aes_(x=as.name(yvar)))+
     geom_histogram()+
@@ -222,60 +228,111 @@ hists<- df_nas %>%
 grid.arrange(grobs=hists,ncol=4)
 ```
 
-Parece que las variables mou, recchrge, eqpdays se distribuyen de forma normal.
+## Analisis por variable
+
+**age_1 y age_2**
+
+Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
+```{r}
+summary(factor(data$age1))
+summary(factor(data$age2))
+data$age1[is.na(data$age1)] <- 0
+data$age2[is.na(data$age2)] <- 0
+```
+
+**phones, models y eqpdays**
+
+En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la mediana..
+```{r}
+summary(factor(data$phones))
+summary(factor(data$models))
+summary((data$eqpdays))
+
+data$phones[is.na(data$phones)] <- median(data$phones[!is.na(data$phones)]) %>% as.numeric
+data$models[is.na(data$models)] <- median(data$models[!is.na(data$models)]) %>% as.numeric
+data$eqpdays[is.na(data$eqpdays)]<- median(data$eqpdays[!is.na(data$eqpdays)])
+```
+
+**changem y changer**
+```{r}
+hist(data$changem)
+hist(data$changer)
+```
+
+En este caso, ante la sospecha de posibles outliers decidimos imputar con la mediana muestral.
+
+```{r}
+data$changem[is.na(data$changem)] <- median((data$changem[!is.na(data$changem)]))
+data$changer[is.na(data$changer)] <- median((data$changer[!is.na(data$changer)]))
+```
+
+**revenue, mou, recchrge, directas, overage, roam**
+
+La primera sospecha que tenemos es que todas estas variables tienen las mismas observaciones como faltantes. Lo corroboramos con la siguiente exploración:
+
+```{r}
+inspeccion<-data %>% select(revenue, mou, recchrge, directas, overage, roam)
+inspeccion[!complete.cases(inspeccion),] %>% nrow()
+```
+
+Esto quiere decir que sería inadecuado hacer imputaciones con base en información entre ellas, pues desconocemos todo. Lo que podemos hacer es A) imputar simplemente la media muestral o B) encontrar alguna relación con otras variables que nos permitan imputar con base en un modelo lineal sencillo.
 
 
 ```{r}
-# se define una funcion para imputar por valor central
-imputar_valor_central <- function(data, var_list) {
-  # Función para imputar valores centrales, media/mediana en numéricos y moda en categoricos
-  # Inputs:
-  # data - conjunto de datos
-  # colnames - array de las columnas que se desea imputar
-  #
-  # Outputs
-  # dataframe con imputaciones centrales
+aux_data <- data.frame(sapply(data, function(x) as.numeric(as.character(x))))
+aux_data<-aux_data[complete.cases(aux_data),]
+cor_aux<-cor(aux_data)
+cor_aux<-data.frame(cor_aux) %>% select (churn,changer,changem,revenue, mou, recchrge, directas, overage, roam)
+```
 
-  if (missing(var_list)){
-    var_list <- colnames(data)
-  }
+En el data frame cor_aux podemos ver las correlaciones entre nuestras variables conmissing values y las demás. Podemos proponer imputar en cada variable el valor predicho por una regresión, De esta manera, lograremos una mejor imputación que con solo la media muestral. Para construir los modelos simplemente elegimos para cada variable las variables más correlacionadas (tanto negativa como positivamente), sin contar revenue, mou, recchrge, directas, overage ni roam pues los missing values son compartidos y no contamos con esa información para estimar.
 
-  #Dividir entre numericas y categoricas
-  data_columnas <- data %>%
-    dplyr::select(all_of(var_list)) %>% as.data.frame()
-  var_numericas <- dplyr::select_if(data_columnas, is.numeric) %>% names()
-  var_categoricas <- dplyr::select_if(data_columnas, is.character) %>% colnames()
+```{r}
+imp_revenue<-lm(revenue~peakvce+mourec,data)
+imp_mou<-lm(mou~peakvce+opeakvce+mourec+outcalls+unansvce+callwait,data)
+imp_recchrge<-lm(recchrge~peakvce+mourec+outcalls,data)
+imp_directas<-lm(directas~peakvce+opeakvce+mourec+outcalls+callwait,data)
+imp_overage<-lm(overage~peakvce+opeakvce+mourec+outcalls+callwait,data)
+imp_roam<-lm(roam~peakvce+opeakvce+mourec+outcalls+callwait,data)
+```
 
-  #Imputar
-  algas_data_imputacion_central  <-
-    data.frame(data) %>%
-    # variables numéricas (media)
-    mutate_at(
-      vars(var_numericas),
-      funs(ifelse(is.na(.), median(., na.rm = T), .))) %>%
-    # variables categóricas (moda)
-    mutate_at(
-      vars(var_categoricas),
-      funs(as.ordered(ifelse(is.na(.), moda(.), as.character(.)))))
+```{r}
+stargazer(imp_revenue,imp_mou,imp_recchrge,imp_directas,imp_overage,imp_overage,imp_roam,type="text")
+```
 
-  return(algas_data_imputacion_central)
+En esta tabla podemos observar que en general los  modelos nos dan una predicción mejor a la media, excepto en el ultimo modelo sobre roam. Esta información nos da luz verde para realizar una imputación con base en una regresión lineal.
 
 
-}
+```{r}
+#imputo la predicción de la regresión
+data<-data %>% mutate(revenue=ifelse(is.na(revenue),predict(imp_revenue,newdata=data),revenue))%>%
+       mutate(mou=ifelse(is.na(mou),predict(imp_mou,newdata=data),mou))%>%
+       mutate(recchrge=ifelse(is.na(recchrge),predict(imp_recchrge,newdata=data),recchrge))%>%
+       mutate(directas=ifelse(is.na(directas),predict(imp_directas,newdata=data),directas))%>%
+       mutate(overage=ifelse(is.na(overage),predict(imp_overage,newdata=data),overage))
 
-# se aplica la funcion al conjunto de datos
-df_nas2 <- imputar_valor_central(df_nas)
+#imputo la predicción la media mmuestral
+data$roam[is.na(data$roam)] <- mean(data$roam[!is.na(data$roam)])
+```
 
-summary(df_nas2)
+Finalmente checo mi base:
 
+
+```{r,results='asis'}
+cols_con_nas <- names(which(colSums(is.na(data)) > 0))
+df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
+summary(df_nas)
+```
+
+
+```{r}
+str(data)
+# numero de filas con NAs
+data[!complete.cases(data),]
 ```
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
 ```{r, out.width = '70%',fig.align = "center"}
-# preparación de variables
-
-# churn indica si cliente se va
-data$churn <- as.factor(data$churn)
 
 # tabulación
 tabulado <- data %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
@@ -288,6 +345,8 @@ kable(tabulado,booktabs=T, align = 'c',
 
 rm(tabulado)
 
+
+data$churn <- as.numeric(data$churn)
 # frecuencia absoluta
 ggplot(data, aes(x=churn))+
   geom_bar(aes(y=..count..,fill=(factor(..x..)),stat="count"))+
@@ -326,15 +385,16 @@ ggplot(data, aes(x=churn))+
     panel.background = element_blank())
 
 ```
+
 Sí, parece que sí se debe hacer algún tipo de remuestreo para tener una base balanceada y que los modelos a estimar tengan mayor poder predictivo.
 
 
 ### 3. (2 pts) Divide tu base en entrenamiento y validación (80/20). Además, considera hacer oversampling (SMOTE) o undersampling. (Tip: Recuerda que el objetivo final es tener muestra ~balanceada en el traning set. En el validation la distribución debe ser la original)
 
+Primero dividimos la base.
 ```{r}
-set.seed(666)
+set.seed(123)
 
-# Primer intento
 # proporción que queremos de training
 training_size <- 0.8
 
@@ -344,26 +404,59 @@ training_rows <- sample(seq_len(nrow(data)),size=floor(training_size*nrow(data))
 #training set
 data_training <- data[training_rows,]
 
-#validation set
-data_validation <- data[-training_rows,]
+#validation set. guardamos la base de características y la variable objetivo por separado
+data_validation <- data[-training_rows,-2]
+churn_validation <- data[-training_rows,2]
 
 # la muestra está balanceada? --> NO :(
-tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+(tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
+```
+No está balanceada, aunque sí conserva la proporción de clases de la base original. Procedemos a rebalancear, probamos 3 estrategias: undersampling, oversampling o una mezcla de ambas. A continuación mostramos cómo realizamos las tres estrategias sobre nuestra base de entrenamiento.
+
+#### A. Undersampling
+
+```{r undersampling}
+# tamaño de churn==1 en la base de entrenamiento
+freq_churn <- data_training %>% filter(churn==1) %>% nrow()
+
+
+#simplemente reducimos la clase más abundante
+undersampling_c0<-  sample_n((data_training %>% filter(churn==0)),
+                             size=freq_churn,
+                             replace = FALSE)
+
+undersampling<-rbind((data_training %>%
+                        filter(churn==1)),undersampling_c0)
+
+
+
 ```
 
-```{r SMOTE}
+#### B. oversampling
 
+```{r oversampling}
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
-smote <- smotefamily::SMOTE(data %>% na.exclude, (data %>% na.exclude)$churn, K=5, dup_size=0)
+smote <- smotefamily::SMOTE((data_training)[,-2], # data
+                            data_training$churn, # class attribute
+                            K=10, # number of nearest neighbors
+                            dup_size=2 # desired times of synthetic minority instances
+                            # over original number of majority instances
+                            )
 
+
+class(data %>% na.exclude)
 oversampled <- as.data.frame(smote$data)
-length
+
+# smote guarda la variable de clase como class. se renombra y convierte a numerica
+colnames(oversampled)[68] <- "churn"
+oversampled$churn <- oversampled$churn %>% as.numeric
 
 # sí está balanceado, aún no entiendo bien los outputs de la función
-tabulado <- oversampled %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+(tabulado <- oversampled %>% group_by(churn) %>%
+    dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
 
 
 # $data arroja el data frame original + observaciones sintéticas de la minoría
@@ -373,24 +466,38 @@ length(as.data.frame(smote$data)$churn)
 length(as.data.frame(smote$syn_data)$churn)
 
 # resta de ambos nos da el original
-length((data %>% na.exclude)$churn)
-
-# la verdad aquí me atoré, no sé si el siguiente paso ahora sí es volver a hacer sampling
-# va la prueba, no sé si sea correcto
-
-training_size <- 0.8
-
-training_rows <- sample(seq_len(nrow(oversampled)),size=floor(training_size*nrow(oversampled)))
-
-data_training <- oversampled[training_rows,]
-
-data_validation <- oversampled[-training_rows,]
-
-tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+length((data_training %>% na.exclude)$churn)
 
 
 ```
+
+#### C. Under y over sampling
+```{r under-oversampling}
+
+#para rebalancear de manera más precisa el oversampling, simplemente "podamos" las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
+
+freq_churn_os <- oversampled %>% filter(churn==0) %>% nrow()
+
+#podamos
+undersampling_c1<-  sample_n((oversampled %>% filter(churn==1)),
+                             size=freq_churn_os,replace = FALSE)
+
+#armamos la base
+under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
+
+#listo!
+(tabulado <- under_over_sampling %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
+```
+
+
+De esta manera quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos. Comparamos las tres bases con los tres modelos y obtuvimos los mejores resultados de la base con undersampling. En adelante, mostramos nuestros resultados con esa base. En el script `remuestreo_alt` incluimos algunos resultados con las otras bases.
+
+
+```{r new training}
+data_training_a<-undersampling %>% na.exclude
+```
+
 
 
 ## Model estimation
@@ -405,70 +512,168 @@ Pondremos a competir 3 modelos:
 
 ### 4 (2 pts). Estima un cross validated LASSO. Muestra el la gráfica de CV Binomial Deviance vs Complejidad
 ```{r}
-data_training[is.na(data_training)] <- 0 # Parche temporal, vuelve 0 los NA
 
-X <- sparse.model.matrix(~.+0, data = data_training[,-c(1,2)]) # Transformar a sparse matrix la información relevante
+#X <- sparse.model.matrix(~.+0, data = data_training[,-c(1,2)]) # Transformar a sparse matrix la información relevante
 
-cv_lasso <- cv.gamlr(x = X, y = data_training$churn, family = 'binomial', nfold = 5, verb = TRUE) # Estimar el CV LASSO
+#cv_lasso <- cv.gamlr(x = X, y = data_training$churn, family = 'binomial', nfold = 5, verb = TRUE) # Estimar el CV LASSO
 
-par(mar=c(5,4,4,2) + 0.1)
-plot(cv_lasso) # Gráfico
+#par(mar=c(5,4,4,2) + 0.1)
+#plot(cv_lasso) # Gráfico
 
+
+##A
+
+#Matriz de covariates
+Xa <-data_training_a %>% select(-customer,-churn)
+
+#se quita intercepto
+Xa <- sparse.model.matrix(~.+0, data = Xa)
+
+#vector de Y´s
+Ya<-data_training_a$churn
+
+#CV LASSO
+cvlasso_a<-cv.gamlr(x = Xa, y = Ya, verb = T, family = 'binomial', nfold = 5)
+
+#Grafica
+plot(cvlasso_a)
 ```
+
 
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
-plot(cv_lasso$gamlr, select=FALSE)
+#plot(cv_lasso$gamlr, select=FALSE)
+
+plot(cvlasso_a$gamlr)
 ```
+
 
 \newpage
 
 ### 6 (2 pts). Cuál es la $\lambda$ resultante? Genera una tabla con los coeficientes que selecciona el CV LASSO. Cuántas variables deja iguales a cero? Cuales son las 3 variables más importantes para predecir el abandono? Da una explicación intuitiva a la última pregunta
 ```{r}
-coef(cv_lasso, select="min") # Coeficientes de CV LASSO
+#coef(cv_lasso, select="min") # Coeficientes de CV LASSO
+coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a
 ```
 
+
 ```{r}
-lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
-cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
+#lambda_id <- colnames(coef(cv_lasso, select="min")) # Identificador para el lambda deseado
+#cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
+
+
+#lambda resultante
+#A
+a_lambda<- colnames(coef(cvlasso_a, select="min"))
+cvlasso_a$gamlr$lambda[a_lambda]
+
 ```
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
 
-```
+#Predicciones
+#y_pred<-predict(cv_lasso$gamlr,
+#                newdata = data_validation[,-1],
+#                type = 'response',
+#                select = cv_lasso$seg.min)
+#y_pred<-as.numeric(y_pred)
 
+#A
+lasso<-predict(cvlasso_a,
+              newdata = data_validation[,-1],
+              type='link',
+               select = "min")
+lasso<-as.numeric(y_pred_a)
+
+cv_lasso_a
+#dataframe
+A<-data.frame(data_validation$customer, churn_validation, lasso)
+
+```
 
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
+#A
+tree_control_a <- tree.control(nobs=nrow(data_training_a),
+             mincut = 1000,
+             mindev = 0.05)
 
-# tree(formula, data, ...)
+
+tree_estimation_a <- tree(as.factor(churn) ~ . -customer,
+                        data = data_training_a,
+                        control = tree_control_a,
+                        split = c("gini"))
+
+summary(tree_estimation_a)
 
 ```
 
 ### 9. Grafica el árbol resultante
 ```{r}
+plot(tree_estimation_a)
+text(tree_estimation_a,pretty=0)
+
+#cross validation y confusionMatrix (opcional)
+#data_validation_a$churn <- as.factor(data_validation_a$churn)
+
+#DTpred<- predict(tree_estimation_a,type="class" ,newdata=data_validation_a)
+#caret::confusionMatrix(data_validation_a$churn,DTpred)
 
 ```
 
 ### 10. Poda el árbol usando CV. Muestra el resultado. Grafica Tree Size vs Binomial Deviance. Cuál es el mejor tamaño del árbol? Mejora el Error?
 ```{r}
+cv_tree_a <- cv.tree(tree_estimation_a, K=10)
+cv_tree_a
 
-#cv.tree()
+
+# Size con menor deviance
+min_dev_size_a <- cv_tree_a$size[match(min(cv_tree_a$dev),cv_tree_a$dev)]
+
+
+# Gráfica Tree Size vs. Binomial Deviance
+
+plot_size_dev <- function(cv_tree){
+
+  ggplot(data=as.data.frame(cbind(size=cv_tree$size,dev=cv_tree$dev)),
+       aes(x=size,y=dev))+
+  geom_point(size=3)+
+  labs(title="Deviance against Tree Size")+
+  xlab("Tree Size")+
+  ylab("Deviance")+
+  theme_bw()+
+    theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
+
+                                  }
+
+plot_size_dev(cv_tree_a)
+
 
 ```
 
 ### 11. Gráfica el árbol final. (Tip: Checa `prune.tree`)
 ```{r}
-#prune.tree()
+tree_cut_a <- prune.tree(tree_estimation_a, best = min_dev_size_a)
+
+
+plot(tree_cut_a)
+text(tree_cut_a,pretty=0)
 
 ```
 
 ### 12. Genera las predicciones del árbol pruned. Guardalas en la base de predicciones. Guarda el score y la prediccion categorica en la misma data frame donde guardaste las predicciones del LASSO
 ```{r}
 
-#predict.tree
+tree_score_predict_a <- predict(tree_cut_a,newdata=data_validation)
+tree_class_predict_a <- predict(tree_cut_a,newdata=data_validation,type="class")
 
+# unir con base de predicciones
+A <- data.frame(A,tree_score_predict_a[,1],tree_class_predict_a)
+names(A)[4] <- "tree_score_predict"
 ```
 
 
@@ -478,34 +683,161 @@ cv_lasso$gamlr$lambda[lambda_id] # Valor del lambda deseado
 
 - En cada caso, guarda únicamente el `prediction.error`
 ```{r}
+# eficientar el Random Forest corriendolo en los nodos disponibles del equipo
+cl<- detectCores() %>% makeCluster()
+cl
+
+# vector con el número de los arboles
+trees <- c()
+# vector con el prediction error de cada forest
+error <- c()
+
+# Estimation. Loop que estima un random forest para distintos numeros de árboles
+
+a<-Sys.time() # para observar el tiempo de estimacion
+
+k <- 1 # iterador
+for (i in c(100,200,300,500,700,800)){
+
+  rf<-ranger(churn~.,
+             data = data_training_a,
+             num.trees = i,
+             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             min.node.size = 1,
+             splitrule = "gini",
+             classification = T,
+             )
+
+  trees[k] <- rf$num.trees
+  error[k] <- rf$prediction.error
+
+  rf <- NULL
+  k <- k + 1
+}
+
+Sys.time() -a
+stopCluster(cl)
+
+rf <- data.frame(trees,error)
+rf
+
 
 ```
+Parece ser que con una $B=200$, el error de predicción ya no parece reducirse mucho. Cabe mencionar que el error in sample era mucho menor con las bases resultantes de oversampling, pero lo opuesto pasaba en OOS.
 
 ### 14. Escoge un random forest para hacer las predicciones. Grafica la importancia de las variables. Interpreta
+
 ```{r}
+# vuelvo a correr el mejor random forest
+cl<- detectCores() %>% makeCluster()
+cl
+best_rf <- ranger(churn~.,
+             data = data_training_a[,-1],
+             num.trees = 200,
+             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             importance = "impurity",
+             classification = T)
+
+stopCluster(cl)
+
+# Grafica
+df_imp <- data.frame(names=(importance(best_rf) %>%
+              names()),importance=(importance(best_rf)))
+
+
+ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
+  geom_bar(stat="identity") +
+  xlab("Variable")+
+  ylab("importancia")+
+  coord_flip()
 
 ```
 
 
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
+pred_rf<-predict(best_rf,
+                 data = (data_validation[,-1]),
+                 type = "response")
 
+
+# añadir prediccion al data frame con las otras predicciones
+A <- data.frame(A,pred_rf$predictions)
+names(A)[6] <- "pred_rf"
 ```
 
 
 ### 16 (2pts). Corre el mismo forest pero ahora con `probability = T`. Esto generará predicciones númericas en lugar de categóricas. Genera las predicciones continuas y guardalas en el mismo data frame
 ```{r}
+# vuelvo a correr el mejor random forest, con probability=T
+cl<- detectCores() %>% makeCluster()
+cl
+best_rf2 <- ranger(churn~.,
+             data = data_training_a,
+             num.trees = 200,
+             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             importance = "impurity",
+             classification = T,
+             probability = T
+             )
+stopCluster(cl)
 
+# prediccion continua de churn==1
+eval$pred_rf_cont <- predict(best_rf2, data=data_validation)$predictions[,1]
 ```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
 ```{r}
+library(yardstick)
+summary(A)
+
+# Lasso
+roc_curve(data = A,
+           truth = factor(churn_validation),
+           lasso,
+           event_level = "second") %>%
+  ggplot(aes(x = 1-specificity, y = sensitivity))+
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
+  geom_path()+
+  theme_bw()
+
+# Trees
+roc_curve(data = A,
+           truth = factor(churn_validation),
+           as.numeric(as.character(tree_class_predict_a)),
+           event_level = "second") %>%
+  ggplot(aes(x = 1-specificity, y = sensitivity))+
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
+  geom_path()+
+  theme_bw()
+
+roc_curve(data = A,
+           truth = factor(churn_validation),
+           tree_score_predict,
+           event_level = "second") %>%
+  ggplot(aes(x = 1-specificity, y = sensitivity))+
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
+  geom_path()+
+  theme_bw()
+
+# Random Forest
+roc_curve <- roc_curve(data = A,
+                       truth = factor(churn_validation),
+                       pred_rf,
+                       event_level = "second")
+
+ggplot(roc_curve, aes(x = 1-specificity, y = sensitivity))+
+geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
+  geom_path()+theme_bw()
 
 ```
 
 
 ### 18. Genera una tabla con el AUC ROC. Cuál es el mejor modelo ?
 ```{r}
+roc_auc(eval, factor(validation), pred_rf, event_level = "second")
+
+
 
 ```
 
