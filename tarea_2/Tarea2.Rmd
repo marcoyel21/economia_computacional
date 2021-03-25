@@ -582,17 +582,18 @@ cvlasso_a$gamlr$lambda[a_lambda]
 #y_pred<-as.numeric(y_pred)
 
 #A
-lasso<-predict(cvlasso_a,
-              newdata = data_validation[,-1],
-              type='response',
-              select = "min")
+lasso_score <- predict(cvlasso_a,
+               newdata = data_validation[,-1],
+               type='response',
+               select = "min")
 
 # lasso <- as.numeric(lasso)
 # FVG
 lasso <- as.numeric(lasso > 0.5)
 
 #dataframe
-A<-data.frame(data_validation$customer, churn_validation, lasso)
+A <- data.frame(data_validation$customer, churn_validation, lasso_score, lasso)
+colnames(A)[3:4] <- c('lasso_score', 'lasso_predict')
 
 ```
 
@@ -676,8 +677,8 @@ tree_score_predict_a <- predict(tree_cut_a,newdata=data_validation)
 tree_class_predict_a <- predict(tree_cut_a,newdata=data_validation,type="class")
 
 # unir con base de predicciones
-A <- data.frame(A, tree_class_predict_a)
-#names(A)[4] <- "tree_score_predict"
+A <- data.frame(A, tree_score_predict_a[1], tree_class_predict_a)
+names(A)[5:6] <- c("tree_score","tree_predict")
 ```
 
 
