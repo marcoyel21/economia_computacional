@@ -848,7 +848,7 @@ rf_auc <- roc_auc(data = A,
 aucs <- (full_join(lasso_auc, tree_auc) %>% 
   full_join(rf_auc))[,3] %>% 
   rename(AUC = .estimate) %>% as.data.frame()
-rownames(aucs) <- c('CV-Lasso','Pruned Tree','Random Forest')
+rownames(aucs) <- c('CV-LASSO','Pruned Tree','Random Forest')
 
 kable(aucs)
 
@@ -862,7 +862,9 @@ El mejor modelo es el Random Forest.
 # ------------------------------
 # Puntos de corte
 # ------------------------------
-
+# Nota (FVG): Ya hice el punto de corte para LASSO desde que 
+#             se definió inicialmente el df A en la sección de LASSO.
+#             Lo hice en 0.5, y me parece que el resto de los modelos toman el mismo criterio.
 
 
 # ------------------------------
@@ -931,14 +933,13 @@ dtest <- xgb.DMatrix(sparse_test, label = label_test)
 watchlist <- list(train = dtrain, eval = dtest) # Para evaluar el performance del modelo
 
 # Entrenamiento del modelo
-param <- list(max_depth = 6, eta = 0.3, objective = "binary:logistic", 
-              eval_metric = "auc", subsample = 0.8, colsample_bytree = 0.8)
-bst <- xgb.train(params = param, dtrain, early_stopping_rounds =  5, nrounds = 50, 
+param <- list(max_depth = 6, learning_rate = 0.06, objective = "binary:logistic", 
+              eval_metric = "auc", subsample = 0.85, colsample_bytree = 0.7)
+bst <- xgb.train(params = param, dtrain, early_stopping_rounds =  10, nrounds = 100, 
                  watchlist)
-#bst <- xgboost(data = sparse_train, label = label_train, params = param, early_stopping_rounds =  5,
-#               nrounds = 30)
+# Actualmente le pego al 0.676 con 6, 0.06, 0.85, 0.7, 10, 100
 
-# predict
+# Predicción
 pred <- predict(bst, sparse_test)
 
 ```
