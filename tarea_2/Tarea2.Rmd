@@ -796,27 +796,18 @@ summary(A)
 
 # Lasso
 roc_curve(data = A,
-           truth = factor(churn_validation),
-           lasso,
-           event_level = "second") %>%
-  ggplot(aes(x = 1-specificity, y = sensitivity))+
-  geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
-  geom_path()+
+          truth = as.factor(churn_validation),
+          lasso_score,
+          event_level = "second") %>%
+  ggplot(aes(x = 1-specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
+  geom_path() +
   theme_bw()
 
 # Trees
 roc_curve(data = A,
-           truth = factor(churn_validation),
-           as.numeric(as.character(tree_class_predict_a)),
-           event_level = "second") %>%
-  ggplot(aes(x = 1-specificity, y = sensitivity))+
-  geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
-  geom_path()+
-  theme_bw()
-
-roc_curve(data = A,
-           truth = factor(churn_validation),
-           tree_score_predict,
+           truth = as.factor(churn_validation),
+           tree_score,
            event_level = "second") %>%
   ggplot(aes(x = 1-specificity, y = sensitivity))+
   geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
@@ -824,14 +815,14 @@ roc_curve(data = A,
   theme_bw()
 
 # Random Forest
-roc_curve <- roc_curve(data = A,
-                       truth = factor(churn_validation),
-                       pred_rf,
-                       event_level = "second")
-
-ggplot(roc_curve, aes(x = 1-specificity, y = sensitivity))+
-geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
-  geom_path()+theme_bw()
+roc_curve(data = A, 
+          truth = factor(churn_validation),
+          rf_score,
+          event_level = "second") %>%
+  ggplot(aes(x = 1-specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
+  geom_path() +
+  theme_bw()
 
 ```
 
