@@ -911,15 +911,50 @@ PENDIENTE: si les late esta forma de responder, sigo iterando para encontrar un 
 # ------------------------------
 
 # LASSO
-caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
+matconf_lasso <- caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
 
 # TREE
-caret::confusionMatrix(as.factor(A$tree_predict),as.factor(A$churn_validation))
+matconf_tree <- caret::confusionMatrix(as.factor(A$tree_predict),as.factor(A$churn_validation))
 
 # RANDOM FOREST
-caret::confusionMatrix(as.factor(A$rf_predict),as.factor(A$churn_validation))
+matconf_rf<-caret::confusionMatrix(as.factor(A$rf_predict),as.factor(A$churn_validation))
+
+matconf_lasso$table
+matconf_tree$table
+matconf_rf$table
 
 ```
+Como vimos en clase, a partir de las matrices de confusión es posible calcular 5 métricas de éxito:
+- Sensibilidad
+- Especificidad
+- Positivos Acertados
+- Negativos Acertados
+- Accuracy
+
+A continuación se comparan dichas métricas en una tabla:
+
+```{r}
+
+exito<- as.data.frame(rbind(matconf_lasso$byClass[1:5],
+      matconf_tree$byClass[1:5],
+      matconf_rf$byClass[1:5]))
+
+Modelo <- c("Lasso","Tree","Random Forest")
+predictive_power <- cbind(Modelo,exito)
+rm(exito, Modelo)
+
+kable(predictive_power,booktabs=T, align = 'c',
+      col.names = c("Modelo","Sensibilidad", "Especificidad","Positivos acertados","Negativos acertados", "Accuracy"),digits = 3)%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+
+```
+El modelo que arroja las mejores métricas de éxito es el _Random Forest_. 
+En este caso nos interesa una sensibilidad relativamente alta, ya que nos indica cuál es la probabilidad de que encontremos a clientes que efectivamente se van ($churn=1$).
+
+Adicionalmente, nos interesa ver el porcentaje de positivos acertados, lo que nos dice cuántos clientes que predecimos que se vayan efectivamente se irán.
+
+
 
 ### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
 ```{r}
