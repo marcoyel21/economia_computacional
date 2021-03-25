@@ -872,6 +872,27 @@ caret::confusionMatrix(A$tree_class_predict,as.factor(A$churn_validation))
 
 ### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
 ```{r}
+# Esto es para un modelo
+lift <- function(depvar, predcol, groups=10) {
+if(!require(dplyr)){
+  install.packages("dplyr")
+library(dplyr)}
+if(is.factor(depvar)) depvar <- as.integer(as.character(depvar))
+if(is.factor(predcol)) predcol <- as.integer(as.character(predcol))
+helper = data.frame(cbind(depvar, predcol))
+helper[,"bucket"] = ntile(-helper[,"predcol"], groups)
+gaintable = helper %>% group_by(bucket)  %>%
+  summarise_at(vars(depvar), funs(total = n(),
+  totalresp=sum(., na.rm = TRUE))) %>%
+  mutate(Cumresp = cumsum(totalresp),
+  Gain=Cumresp/sum(totalresp)*100,
+  Cumlift=Gain/(bucket*(100/groups)))
+return(gaintable)
+}
+
+dt<-lift(A$churn_validation , A$lasso_predict, groups = 20)
+
+graphics::plot(dt$bucket, dt$Cumlift, type="l", ylab="Cumulative lift", xlab="Bucket")
 
 ```
 
