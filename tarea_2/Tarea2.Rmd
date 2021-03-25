@@ -599,45 +599,40 @@ A<-data.frame(data_validation$customer, churn_validation, lasso)
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
 #A
-tree_control_a <- tree.control(nobs=nrow(data_training_a),
+tree_control <- tree.control(nobs=nrow(data_training[,-1]),
              mincut = 1000,
              mindev = 0.05)
 
 
-tree_estimation_a <- tree(as.factor(churn) ~ . -customer,
-                        data = data_training_a,
-                        control = tree_control_a,
+tree_estimation <- tree(as.factor(churn) ~ . ,
+                        data = data_training[,-1],
+                        control = tree_control,
                         split = c("gini"))
 
-summary(tree_estimation_a)
+summary(tree_estimation)
 
 ```
+Obtenemos `r summary(tree_estimation_a)$size ` nodos finales
 
 ### 9. Grafica el árbol resultante
 ```{r}
-plot(tree_estimation_a)
-text(tree_estimation_a,pretty=0)
-
-#cross validation y confusionMatrix (opcional)
-#data_validation_a$churn <- as.factor(data_validation_a$churn)
-
-#DTpred<- predict(tree_estimation_a,type="class" ,newdata=data_validation_a)
-#caret::confusionMatrix(data_validation_a$churn,DTpred)
+plot(tree_estimation)
+text(tree_estimation,pretty=0)
+title("Árbol para predicción de churn",line=0.5)
 
 ```
 
 ### 10. Poda el árbol usando CV. Muestra el resultado. Grafica Tree Size vs Binomial Deviance. Cuál es el mejor tamaño del árbol? Mejora el Error?
 ```{r}
-cv_tree_a <- cv.tree(tree_estimation_a, K=10)
-cv_tree_a
+cv_tree <- cv.tree(tree_estimation, K=10)
+cv_tree
 
 
 # Size con menor deviance
-min_dev_size_a <- cv_tree_a$size[match(min(cv_tree_a$dev),cv_tree_a$dev)]
+min_dev_size <- cv_tree$size[match(min(cv_tree$dev),cv_tree$dev)]
 
 
 # Gráfica Tree Size vs. Binomial Deviance
-
 plot_size_dev <- function(cv_tree){
 
   ggplot(data=as.data.frame(cbind(size=cv_tree$size,dev=cv_tree$dev)),
@@ -655,28 +650,28 @@ plot_size_dev <- function(cv_tree){
                                   }
 
 plot_size_dev(cv_tree_a)
-
-
 ```
+Por lo general buscaríamos el árbol que nos de menor _deviance_ , en este caso tenemos una _deviance_ constante y elegimos el modelo de 25 nodos. Esto nos podría indicar que los split son espurios y probablemente este modelo no sea el adecuado para llevar a cabo la predicción de _churn_
 
 ### 11. Gráfica el árbol final. (Tip: Checa `prune.tree`)
 ```{r}
-tree_cut_a <- prune.tree(tree_estimation_a, best = min_dev_size_a)
+tree_cut <- prune.tree(tree_estimation, best = min_dev_size)
 
 
-plot(tree_cut_a)
-text(tree_cut_a,pretty=0)
+plot(tree_cut)
+text(tree_cut,pretty=0)
+title("Árbol final para predicción de churn",line=0.5)
 
 ```
 
 ### 12. Genera las predicciones del árbol pruned. Guardalas en la base de predicciones. Guarda el score y la prediccion categorica en la misma data frame donde guardaste las predicciones del LASSO
 ```{r}
+tree_score_predict <- predict(tree_cut,newdata=data_validation)
 
-tree_score_predict_a <- predict(tree_cut_a,newdata=data_validation)
-tree_class_predict_a <- predict(tree_cut_a,newdata=data_validation,type="class")
+tree_class_predict <- predict(tree_cut,newdata=data_validation,type="class")
 
 # unir con base de predicciones
-A <- data.frame(A,tree_score_predict_a[,1],tree_class_predict_a)
+A <- data.frame(A,tree_score_predict[,1],tree_class_predict)
 names(A)[4] <- "tree_score_predict"
 ```
 
@@ -704,7 +699,7 @@ k <- 1 # iterador
 for (i in c(100,200,300,500,700,800)){
 
   rf<-ranger(churn~.,
-             data = data_training_a,
+             data = data_training_a[,-1],
              num.trees = i,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
              min.node.size = 1,
@@ -847,11 +842,33 @@ roc_auc(eval, factor(validation), pred_rf, event_level = "second")
 
 ### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso?
 ```{r}
+# ------------------------------
+# Puntos de corte
+# ------------------------------
+
+
+
+# ------------------------------
+# Matrices de confusión
+# ------------------------------
+
+# LASSO
+caret::confusionMatrix(as.factor(A$lasso),as.factor(A$churn_validation))
+
+# TREE
+data_validation$churn <- as.factor(data_validation$churn)
+
+caret::confusionMatrix(A$tree_class_predict,as.factor(A$churn_validation))
+
+# RANDOM FOREST
+
+
 
 ```
 
 ### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
 ```{r}
+
 
 ```
 
