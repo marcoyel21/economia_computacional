@@ -98,7 +98,8 @@ packages <- c(
   'smotefamily',
   'stargazer',
   'xgboost',
-  'DiagrammeR'
+  'DiagrammeR',
+  'CustomerScoringMetrics'
   )
 
 # instala los que no tengas
@@ -928,17 +929,31 @@ caret::confusionMatrix(A$tree_class_predict,as.factor(A$churn_validation))
 
 ### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
 ```{r}
-# Esto es para un modelo
-lift <- function(depvar, predcol, groups=10) {
-if(!require(dplyr)){
-  install.packages("dplyr")
-library(dplyr)}
-if(is.factor(depvar)) depvar <- as.integer(as.character(depvar))
-if(is.factor(predcol)) predcol <- as.integer(as.character(predcol))
-helper = data.frame(cbind(depvar, predcol))
-helper[,"bucket"] = ntile(-helper[,"predcol"], groups)
+
+
+```
+
+
+### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
+```{r}
+# tablas
+tabla_lasso<-liftTable( A$lasso_score, A$churn_validation, resolution = 1/20)
+tabla_tree<-liftTable( A$tree_score, A$churn_validation, resolution = 1/20)
+tabla_rf<-liftTable( A$rf_score, A$churn_validation, resolution = 1/20)
+tabla_lift<-data.frame(tabla_lasso$Percentile,tabla_lasso$expectedIncidence,
+                       tabla_lasso$trueIncidence,tabla_tree$trueIncidence,tabla_rf$trueIncidence)
+kable(tabla_lift, col.names = c("Percentil","Valor esperado","Promedio Lasso","Promedio Tree","Promedio RF"))
+
+
+
+# Esto es para generar las graficas
+tabla_lift <- function(variable_objetivo, score_prediccion, groups) {
+if(is.factor(variable_objetivo)) variable_objetivo <- as.integer(as.character(variable_objetivo))
+if(is.factor(score_prediccion)) score_prediccion <- as.integer(as.character(score_prediccion))
+helper = data.frame(cbind(variable_objetivo, score_prediccion))
+helper[,"bucket"] = ntile(-helper[,"score_prediccion"], groups)
 gaintable = helper %>% group_by(bucket)  %>%
-  summarise_at(vars(depvar), funs(total = n(),
+  summarise_at(vars(variable_objetivo), funs(total = n(),
   totalresp=sum(., na.rm = TRUE))) %>%
   mutate(Cumresp = cumsum(totalresp),
   Gain=Cumresp/sum(totalresp)*100,
@@ -946,15 +961,13 @@ gaintable = helper %>% group_by(bucket)  %>%
 return(gaintable)
 }
 
-dt<-lift(A$churn_validation , A$lasso_predict, groups = 20)
-
-graphics::plot(dt$bucket, dt$Cumlift, type="l", ylab="Cumulative lift", xlab="Bucket")
-
-```
-
-
-### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
-```{r}
+#El tree es un desmadre JAJA
+lift_lasso<-tabla_lift(A$churn_validation , A$lasso_score, groups = 20)
+graphics::plot(lift_lasso$bucket, lift_lasso$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Lasso")
+lift_tree<-tabla_lift(A$churn_validation , A$tree_score, groups = 20)
+graphics::plot(lift_tree$bucket, lift_tree$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Tree")
+lift_rf<-tabla_lift(A$churn_validation , A$rf_score, groups = 20)
+graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Random Forest")
 
 ```
 
