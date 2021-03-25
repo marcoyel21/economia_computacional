@@ -958,13 +958,6 @@ Adicionalmente, nos interesa ver el porcentaje de positivos acertados, lo que no
 
 ### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
 ```{r}
-
-
-```
-
-
-### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
-```{r}
 # tablas
 tabla_lasso<-liftTable( A$lasso_score, A$churn_validation, resolution = 1/20)
 tabla_tree<-liftTable( A$tree_score, A$churn_validation, resolution = 1/20)
@@ -997,6 +990,13 @@ lift_tree<-tabla_lift(A$churn_validation , A$tree_score, groups = 20)
 graphics::plot(lift_tree$bucket, lift_tree$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Tree")
 lift_rf<-tabla_lift(A$churn_validation , A$rf_score, groups = 20)
 graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Random Forest")
+
+```
+
+
+### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
+```{r}
+
 
 ```
 
