@@ -7,7 +7,8 @@ output:
 fontsize: 11pt
 header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
   \hbadness=10000 \linespread{1.2} \usepackage[justification=centering, font=bf, labelsep=period,
-  skip=5pt]{caption} \usepackage{titling} \usepackage{babel} \usepackage{fancyhdr}
+  skip=5pt]{caption} 
+  \usepackage{babel} \usepackage{fancyhdr}
   \pagestyle{fancy} \fancyhead[L]{Maestría en Economía Aplicada} \fancyhead[R]{ITAM}
 ---
 \begin{titlepage}
@@ -437,7 +438,7 @@ undersampling<-rbind((data_training %>%
 
 #### B. oversampling
 
-```{r oversampling}
+```{r oversampling, eval=FALSE}
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
 # echénle un ojo a: https://rikunert.com/SMOTE_explained
 smote <- smotefamily::SMOTE((data_training)[,-2], # data
@@ -474,7 +475,7 @@ length((data_training %>% na.exclude)$churn)
 ```
 
 #### C. Under y over sampling
-```{r under-oversampling}
+```{r under-oversampling, eval=FALSE}
 
 #para rebalancear de manera más precisa el oversampling, simplemente "podamos" las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
 
@@ -493,7 +494,7 @@ under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
 ```
 
 
-De esta manera quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos. Comparamos las tres bases con los tres modelos y obtuvimos los mejores resultados de la base con undersampling. En adelante, mostramos nuestros resultados con esa base. En el script `remuestreo_alt` incluimos algunos resultados con las otras bases.
+De esta manera quedan 3 bases para comparar: undersampling, oversampling y una combinación de ambos. Comparamos las tres bases con los tres modelos y obtuvimos los mejores resultados de la base con undersampling. En adelante, mostramos nuestros resultados con esa base. En el script `remuestreo_alt.R` incluimos algunos resultados con las otras bases.
 
 
 ```{r new training}
@@ -587,9 +588,8 @@ lasso_score <- predict(cvlasso_a,
                type='response',
                select = "min")
 
-# lasso <- as.numeric(lasso)
 # FVG
-lasso_predict <- as.numeric(lasso_score > 0.5)
+#lasso_predict <- as.numeric(lasso_score > 0.5)
 
 #dataframe
 A <- data.frame(data_validation$customer, churn_validation, lasso_score, lasso_predict)
@@ -613,7 +613,7 @@ tree_estimation <- tree(as.factor(churn) ~ . ,
 summary(tree_estimation)
 
 ```
-Obtenemos `r summary(tree_estimation_a)$size ` nodos finales
+Obtenemos `r summary(tree_estimation)$size ` nodos finales
 
 ### 9. Grafica el árbol resultante
 ```{r}
@@ -801,6 +801,7 @@ roc_curve(data = A,
           event_level = "second") %>%
   ggplot(aes(x = 1-specificity, y = sensitivity)) +
   geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
+  ggtitle("Curva ROC del LASSO")+
   geom_path() +
   theme_bw()
 
@@ -811,6 +812,7 @@ roc_curve(data = A,
            event_level = "second") %>%
   ggplot(aes(x = 1-specificity, y = sensitivity))+
   geom_abline(slope = 1, intercept = 0, linetype = 'dashed')+
+  ggtitle("Curva ROC del Prune Tree")+
   geom_path()+
   theme_bw()
 
@@ -821,11 +823,13 @@ roc_curve(data = A,
           event_level = "second") %>%
   ggplot(aes(x = 1-specificity, y = sensitivity)) +
   geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
+  ggtitle("Curva ROC del Random Forest")+
   geom_path() +
   theme_bw()
 
 ```
 
+Dado que la línea punteada es un modelo nulo (aleatorio), entre más rápido gane sensibilidad sin perder especificidad, el modelo será mejor. Gráficamente, buscamos una curva cóncava y pegada al eje y del lado derecho y al eje x por arriba. En este sentido, el Random Forest parece ser el mejor modelo.
 
 ### 18. Genera una tabla con el AUC ROC. Cuál es el mejor modelo ?
 ```{r}
@@ -855,7 +859,7 @@ kable(aucs)
 
 ```
 
-El mejor modelo es el Random Forest.
+Confirmamos que el mejor modelo es el Random Forest.
 
 ### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso?
 ```{r}
@@ -866,16 +870,53 @@ El mejor modelo es el Random Forest.
 #             se definió inicialmente el df A en la sección de LASSO.
 #             Lo hice en 0.5, y me parece que el resto de los modelos toman el mismo criterio.
 
+summary(A$lasso_score)
+summary(A$lasso_predict)
 
+# Loop que tome diferentes puntos de corte y grafique curva ROC sobre el predict
+
+gglist <- NULL
+it <- 1 # iterador
+
+for (x in seq(0.3,0.8,0.1)){
+
+  A$lasso_1 <- as.numeric(A$lasso_score > x)
+  
+  curva <- roc_curve(data = A,
+          truth = as.factor(churn_validation),
+          lasso_1,
+          event_level = "second") %>%
+          ggplot(aes(x = 1-specificity, y = sensitivity)) +
+          geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
+          ggtitle("Curva ROC del LASSO")+
+          geom_path() +
+          theme_bw()
+  
+  gglist[[it]] <- curva
+  
+  curva <- NULL
+  it <- it + 1
+}
+
+grid.arrange(grobs=gglist,ncol=4)
+```
+Se puede ver que el mejor punto de corte es cercano al 0.5. 
+
+PENDIENTE: si les late esta forma de responder, sigo iterando para encontrar un óptimo.
+
+
+```{r}
 # ------------------------------
 # Matrices de confusión
 # ------------------------------
 
 # LASSO
-caret::confusionMatrix(as.factor(A$lasso),as.factor(A$churn_validation))
+caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
 
 # TREE
-data_validation$churn <- as.factor(data_validation$churn)
+#data_validation$churn <- as.factor(data_validation$churn)
+caret::
+
 
 caret::confusionMatrix(A$tree_class_predict,as.factor(A$churn_validation))
 
