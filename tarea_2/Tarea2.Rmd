@@ -589,10 +589,10 @@ lasso_score <- predict(cvlasso_a,
 
 # lasso <- as.numeric(lasso)
 # FVG
-lasso <- as.numeric(lasso > 0.5)
+lasso_predict <- as.numeric(lasso_score > 0.5)
 
 #dataframe
-A <- data.frame(data_validation$customer, churn_validation, lasso_score, lasso)
+A <- data.frame(data_validation$customer, churn_validation, lasso_score, lasso_predict)
 colnames(A)[3:4] <- c('lasso_score', 'lasso_predict')
 
 ```
@@ -606,7 +606,7 @@ tree_control <- tree.control(nobs=nrow(data_training[,-1]),
 
 
 tree_estimation <- tree(as.factor(churn) ~ . ,
-                        data = data_training[,-1],
+                        data = data_training_a[,-1],
                         control = tree_control,
                         split = c("gini"))
 
@@ -650,7 +650,7 @@ plot_size_dev <- function(cv_tree){
 
                                   }
 
-plot_size_dev(cv_tree_a)
+plot_size_dev(cv_tree)
 ```
 Por lo general buscaríamos el árbol que nos de menor _deviance_ , en este caso tenemos una _deviance_ constante y elegimos el modelo de 25 nodos. Esto nos podría indicar que los split son espurios y probablemente este modelo no sea el adecuado para llevar a cabo la predicción de _churn_
 
@@ -672,7 +672,7 @@ tree_score_predict <- predict(tree_cut,newdata=data_validation)
 tree_class_predict <- predict(tree_cut,newdata=data_validation,type="class")
 
 # unir con base de predicciones
-A <- data.frame(A, tree_score_predict_a[1], tree_class_predict_a)
+A <- data.frame(A, tree_score_predict[,2], tree_class_predict)
 names(A)[5:6] <- c("tree_score","tree_predict")
 ```
 
@@ -700,7 +700,7 @@ k <- 1 # iterador
 for (i in c(100,200,300,500,700,800)){
 
   rf<-ranger(churn~.,
-             data = data_training_a,
+             data = data_training_a[-1],
              num.trees = i,
              mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
              min.node.size = 1,
