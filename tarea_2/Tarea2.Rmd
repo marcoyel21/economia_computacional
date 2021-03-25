@@ -584,11 +584,13 @@ cvlasso_a$gamlr$lambda[a_lambda]
 #A
 lasso<-predict(cvlasso_a,
               newdata = data_validation[,-1],
-              type='link',
-               select = "min")
-lasso<-as.numeric(y_pred_a)
+              type='response',
+              select = "min")
 
-cv_lasso_a
+# lasso <- as.numeric(lasso)
+# FVG
+lasso <- as.numeric(lasso > 0.5)
+
 #dataframe
 A<-data.frame(data_validation$customer, churn_validation, lasso)
 
