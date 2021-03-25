@@ -93,7 +93,9 @@ packages <- c(
   'stargazer',
   'xgboost',
   'DiagrammeR',
-  'CustomerScoringMetrics'
+  'CustomerScoringMetrics',
+  'ggthemes',
+  'yardstick'
   )
 
 # instala los que no tengas
@@ -165,7 +167,7 @@ check_nas <- function(df){
 
 # tabla resumen de missing values
 kable(check_nas(data),booktabs=T, align = 'c',
-      col.names = c("Variale", "Cantidad","%"),digits = 2)%>%
+      col.names = c("Variable", "Cantidad","%"),digits = 2)%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 ```
@@ -179,72 +181,51 @@ df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
 ```
 
-## NO SE SI QUITAR O DEJAR ESTO
-Otro elemento importante a tener en cuenta son las coincidencias de los NAs en observaciones. Si hay una alta coincidencia, lo mejor es tirar esas observaciones.
+Otro elemento importante a tener en cuenta son las coincidencias de los NAs en observaciones. Por ejemplo, los 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden. Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Esto en general nos dice qué los NAs están agrupados, lo cual es indicio de que tal vez haya un patrón detrás; y de que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
 
-```{r}
-
-# numero de filas con NAs
-data[!complete.cases(data),] %>% nrow()
-
-# correlaciones entre variables con NAs
-x <- as.data.frame(abs(is.na(data)))
-# Extrae las variables que tienen algunas celdas con NAs
-y <- x[which(sapply(x, sd) > 0)]
-# la sd va a ser positiva para variables que tengan NAs
-
-# Da la correación un valor alto positivo significa que desaparecen juntas.
-cor(y)
-
-# Visualización de los NAs
-#aggr(data, plot=FALSE, prop=FALSE, numbers=TRUE)
-
-```
-
-
-Las 216 valores faltantes para revenue, mou, recchrge, directas, overage y roam coinciden.Lo mismo pasa con los 502 valores faltantes de changem y changer, con el valor faltante de phones, models, eqpdays, y con los 1244 valores faltantes de age1 y age2. Además, se puede ver en la matriz que los valores faltantes del primer grupo de variables coincide en un 65% con los valores faltantes de changem y changer. Para estos casos, se tiene valores faltantes en 8 de 68 variables, el 11.7% de las columnas.
-
-Esto en general nos dice que no hay un problema serio de NAs. No obstante, para no perder dicha información, lo mejor sería hacer imputación.
-
-Podemos imputar alguna medida de tendencia central a aquellas variables que parezcan tener una distribución normal o estén concentradas en uno o pocos valores. Para decidir esto, examinamos la distribución de estas variables.
+El primer paso para evaluar la estrategia de imputación es examinar la distribución de estas variables.
 
 ```{r, warning=FALSE}
+# creo una función para hacer los histogramas pertinentes
+
 myhist <- function(yvar){
   ggplot(df_nas, aes_(x=as.name(yvar)))+
     geom_histogram()+
     ggtitle(paste0(as.name(yvar)))+
     xlab("")+
-    ylab("")+
-    theme(axis.text.y = element_blank())
+    ylab("")+  geom_rangeframe()+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
 }
 hists<- df_nas %>%
         names() %>%
         lapply(myhist)
 
-
-grid.arrange(grobs=hists,ncol=4)
+# grafico las variables
+grid.arrange(grobs=hists,ncol=4,top=textGrob("Distribución de las variables con NAs"))
 ```
 
 ## Analisis por variable
+
+En esta sección procederemos a hacer un análisis por cada grupo de NAs
 
 **age_1 y age_2**
 
 Se trata de variables de edad que comienzan a partir de los 18 y para las cuales existe una etiqueta "0" que curiosamente es la moda. Es decir, no conocemos la edad para una gran parte de las observaciones. Podemos aprovechar esta etiqueta y extenderla para tratar los missing values, de tal manera que ahora los NA's tienen la etiqueta "0".
 ```{r}
-summary(factor(data$age1))
-summary(factor(data$age2))
+# imputación de etiqueta
 data$age1[is.na(data$age1)] <- 0
 data$age2[is.na(data$age2)] <- 0
 ```
 
 **phones, models y eqpdays**
 
-En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la mediana..
+En este caso, solo estamos hablando de un missing value por lo que haremos algo sencillo, imputar la mediana.
 ```{r}
-summary(factor(data$phones))
-summary(factor(data$models))
-summary((data$eqpdays))
-
+# imputación de mediana
 data$phones[is.na(data$phones)] <- median(data$phones[!is.na(data$phones)]) %>% as.numeric
 data$models[is.na(data$models)] <- median(data$models[!is.na(data$models)]) %>% as.numeric
 data$eqpdays[is.na(data$eqpdays)]<- median(data$eqpdays[!is.na(data$eqpdays)])
@@ -252,39 +233,56 @@ data$eqpdays[is.na(data$eqpdays)]<- median(data$eqpdays[!is.na(data$eqpdays)])
 
 **changem y changer**
 ```{r}
-hist(data$changem)
-hist(data$changer)
+# histograma
+plot1 <-  ggplot(data, aes_(x=(data$changem)))+
+    geom_histogram()+
+  ylab("Frecuencia")+xlab("changem")+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
+
+plot2 <-  ggplot(data, aes_(x=(data$changer)))+
+    geom_histogram()+ 
+  ylab("Frecuencia")+xlab("changer")+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
+
+grid.arrange(plot1, plot2, ncol=2,top=textGrob("Histogramas para changem y changer"))
+
+
+
 ```
 
-En este caso, ante la sospecha de posibles outliers decidimos imputar con la mediana muestral.
+En este caso, ante la sospecha notamos que las medias están muy centradas en algún valor cercano a cero pero los outliers son considerables. Por ello, decidimos imputar con la mediana muestral.
 
 ```{r}
+# imputación de mediana
 data$changem[is.na(data$changem)] <- median((data$changem[!is.na(data$changem)]))
 data$changer[is.na(data$changer)] <- median((data$changer[!is.na(data$changer)]))
 ```
 
 **revenue, mou, recchrge, directas, overage, roam**
 
-La primera sospecha que tenemos es que todas estas variables tienen las mismas observaciones como faltantes. Lo corroboramos con la siguiente exploración:
-
-```{r}
-inspeccion<-data %>% select(revenue, mou, recchrge, directas, overage, roam)
-inspeccion[!complete.cases(inspeccion),] %>% nrow()
-```
-
-Esto quiere decir que sería inadecuado hacer imputaciones con base en información entre ellas, pues desconocemos todo. Lo que podemos hacer es A) imputar simplemente la media muestral o B) encontrar alguna relación con otras variables que nos permitan imputar con base en un modelo lineal sencillo.
+Debido a que los 216 valores que faltan son compartidos por todo este grupo de vairables, sería inadecuado hacer imputaciones con base en información entre ellas. Lo que podemos hacer es A) imputar simplemente la media muestral o B) encontrar alguna relación con otras variables que nos permitan imputar con base en un modelo lineal sencillo.
 
 
 ```{r}
+# dataframe de correlaciones
 aux_data <- data.frame(sapply(data, function(x) as.numeric(as.character(x))))
 aux_data<-aux_data[complete.cases(aux_data),]
 cor_aux<-cor(aux_data)
 cor_aux<-data.frame(cor_aux) %>% select (churn,changer,changem,revenue, mou, recchrge, directas, overage, roam)
 ```
 
-En el data frame cor_aux podemos ver las correlaciones entre nuestras variables conmissing values y las demás. Podemos proponer imputar en cada variable el valor predicho por una regresión, De esta manera, lograremos una mejor imputación que con solo la media muestral. Para construir los modelos simplemente elegimos para cada variable las variables más correlacionadas (tanto negativa como positivamente), sin contar revenue, mou, recchrge, directas, overage ni roam pues los missing values son compartidos y no contamos con esa información para estimar.
+En el data frame cor_aux podemos ver las correlaciones entre nuestras variables con missing values y las demás. Podemos proponer imputar en cada variable el valor predicho por una regresión, De esta manera, lograremos una mejor imputación que con solo la media muestral. Para construir los modelos simplemente elegimos para cada variable las variables más correlacionadas (tanto negativa como positivamente), sin contar revenue, mou, recchrge, directas, overage ni roam pues los missing values son compartidos y no contamos con esa información para estimar.
 
 ```{r}
+#modelos lineales
 imp_revenue<-lm(revenue~peakvce+mourec,data)
 imp_mou<-lm(mou~peakvce+opeakvce+mourec+outcalls+unansvce+callwait,data)
 imp_recchrge<-lm(recchrge~peakvce+mourec+outcalls,data)
@@ -293,11 +291,16 @@ imp_overage<-lm(overage~peakvce+opeakvce+mourec+outcalls+callwait,data)
 imp_roam<-lm(roam~peakvce+opeakvce+mourec+outcalls+callwait,data)
 ```
 
-```{r}
-stargazer(imp_revenue,imp_mou,imp_recchrge,imp_directas,imp_overage,imp_overage,imp_roam,type="text")
+```{r, results='asis'}
+stargazer(imp_revenue,imp_mou,imp_recchrge,imp_directas,imp_overage,imp_overage,imp_roam,type="latex",
+          header=FALSE, 
+          single.row = TRUE, 
+          no.space = TRUE, 
+          column.sep.width = "3pt",
+          font.size = "small" )
 ```
 
-En esta tabla podemos observar que en general los  modelos nos dan una predicción mejor a la media, excepto en el ultimo modelo sobre roam. Esta información nos da luz verde para realizar una imputación con base en una regresión lineal.
+En esta tabla podemos observar que en general los  modelos nos dan una predicción mejor a la media, excepto en el último modelo sobre roam. Esta información nos da luz verde para realizar una imputación con base en una regresión lineal. En el caso de roam, solo se imputará la media muestral.
 
 
 ```{r}
@@ -308,25 +311,20 @@ data<-data %>% mutate(revenue=ifelse(is.na(revenue),predict(imp_revenue,newdata=
        mutate(directas=ifelse(is.na(directas),predict(imp_directas,newdata=data),directas))%>%
        mutate(overage=ifelse(is.na(overage),predict(imp_overage,newdata=data),overage))
 
-#imputo la predicción la media mmuestral
+#imputo la predicción la media muestral
 data$roam[is.na(data$roam)] <- mean(data$roam[!is.na(data$roam)])
 ```
 
 Finalmente checo mi base:
 
-
 ```{r,results='asis'}
+#imprime tabla con NAs
 cols_con_nas <- names(which(colSums(is.na(data)) > 0))
 df_nas <- data %>% select(all_of(cols_con_nas)) %>% as.data.frame()
 summary(df_nas)
+# como no existe nos dice que el tamaño es 0x0
 ```
 
-
-```{r}
-str(data)
-# numero de filas con NAs
-data[!complete.cases(data),]
-```
 
 ### 2. Tabula la distribución de la variable `churn`. Muestra la frecuencia absoluta y relativa. Crees que se debe hacer oversampling/undersamping?
 ```{r, out.width = '70%',fig.align = "center"}
@@ -405,9 +403,12 @@ data_training <- data[training_rows,]
 data_validation <- data[-training_rows,-2]
 churn_validation <- data[-training_rows,2]
 
-# la muestra está balanceada? --> NO :(
-(tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
+# la muestra está balanceada? --> NO
+tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+kable(tabulad, col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 ```
 No está balanceada, aunque sí conserva la proporción de clases de la base original. Procedemos a rebalancear, probamos 3 estrategias: undersampling, oversampling o una mezcla de ambas. A continuación mostramos cómo realizamos las tres estrategias sobre nuestra base de entrenamiento.
 
@@ -426,15 +427,13 @@ undersampling_c0<-  sample_n((data_training %>% filter(churn==0)),
 undersampling<-rbind((data_training %>%
                         filter(churn==1)),undersampling_c0)
 
-
-
 ```
 
 #### B. oversampling
 
 ```{r oversampling, eval=FALSE}
 # Segundo intento, sugiere hacer Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily
-# echénle un ojo a: https://rikunert.com/SMOTE_explained
+# fuente: https://rikunert.com/SMOTE_explained
 smote <- smotefamily::SMOTE((data_training)[,-2], # data
                             data_training$churn, # class attribute
                             K=10, # number of nearest neighbors
@@ -450,20 +449,13 @@ oversampled <- as.data.frame(smote$data)
 colnames(oversampled)[68] <- "churn"
 oversampled$churn <- oversampled$churn %>% as.numeric
 
-# sí está balanceado, aún no entiendo bien los outputs de la función
-(tabulado <- oversampled %>% group_by(churn) %>%
+# ahora está mmejor balanceado pero como el SMOTE da vueltas completas, en este caso de tamaño 2, el balance no es perfecto
+tabulado <- oversampled %>% group_by(churn) %>%
     dplyr::summarise(frecuencia_absoluta=n()) %>%
-    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
-
-
-# $data arroja el data frame original + observaciones sintéticas de la minoría
-length(as.data.frame(smote$data)$churn)
-
-# syn_data arroja observaciones sintéticas de la minoría
-length(as.data.frame(smote$syn_data)$churn)
-
-# resta de ambos nos da el original
-length((data_training %>% na.exclude)$churn)
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+kable(tabulado, col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 
 ```
@@ -471,7 +463,7 @@ length((data_training %>% na.exclude)$churn)
 #### C. Under y over sampling
 ```{r under-oversampling, eval=FALSE}
 
-#para rebalancear de manera más precisa el oversampling, simplemente "podamos" las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
+#para rebalancear de manera más precisa el oversampling, simplemente "podamos"(con un remuestreo) las observaciones sinteticas de tal manera que nos quede una base de datos perfectamente balanceada.
 
 freq_churn_os <- oversampled %>% filter(churn==0) %>% nrow()
 
@@ -482,9 +474,13 @@ undersampling_c1<-  sample_n((oversampled %>% filter(churn==1)),
 #armamos la base
 under_over_sampling<-rbind((oversampled %>% filter(churn==0)),undersampling_c1)
 
-#listo!
-(tabulado <- under_over_sampling %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
-    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)))
+#balance perfecto
+tabulado <- under_over_sampling %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+
+kable(tabulado, col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 ```
 
 
@@ -547,6 +543,7 @@ plot(cvlasso_a$gamlr)
 \newpage
 
 ### 6 (2 pts). Cuál es la $\lambda$ resultante? Genera una tabla con los coeficientes que selecciona el CV LASSO. Cuántas variables deja iguales a cero? Cuales son las 3 variables más importantes para predecir el abandono? Da una explicación intuitiva a la última pregunta
+
 ```{r}
 #coef(cv_lasso, select="min") # Coeficientes de CV LASSO
 coef(cvlasso_a, select="min", k=2, corrected=TRUE) #a
@@ -712,7 +709,10 @@ Sys.time() -a
 stopCluster(cl)
 
 rf <- data.frame(trees,error)
-rf
+
+kable(rf, col.names = c("Trees","Error"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 
 ```
@@ -743,7 +743,12 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
   xlab("Variable")+
   ylab("importancia")+
   coord_flip()+
-  theme(axis.text.y = element_text(size = 9))
+  theme(axis.text.y = element_text(size = 9))+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank())
 
 ```
 
@@ -785,8 +790,6 @@ A <- A[c(1,2,3,4,5,7,6)]
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
 ```{r}
-library(yardstick)
-summary(A)
 
 # Lasso
 roc_curve(data = A,
@@ -846,9 +849,13 @@ rf_auc <- roc_auc(data = A,
 aucs <- (full_join(lasso_auc, tree_auc) %>% 
   full_join(rf_auc))[,3] %>% 
   rename(AUC = .estimate) %>% as.data.frame()
-rownames(aucs) <- c('CV-LASSO','Pruned Tree','Random Forest')
+model_names <- c('CV-LASSO','Pruned Tree','Random Forest')
+aucs<-data.frame(model_names, aucs$AUC)
 
-kable(aucs)
+
+kable(aucs, col.names = c("Modelos","AUC"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 
 ```
@@ -929,9 +936,16 @@ matconf_tree <- caret::confusionMatrix(as.factor(A$tree_predict),as.factor(A$chu
 # RANDOM FOREST
 matconf_rf<-caret::confusionMatrix(as.factor(A$rf_predict),as.factor(A$churn_validation))
 
-matconf_lasso$table
-matconf_tree$table
-matconf_rf$table
+
+kable(matconf_lasso$table, caption = "Lasso")%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+kable(matconf_tree$table, caption="Tree")%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+kable(matconf_rf$table, caption="Random Forest")%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 ```
 Como vimos en clase, a partir de las matrices de confusión es posible calcular 5 métricas de éxito:
@@ -976,8 +990,9 @@ tabla_tree<-liftTable( A$tree_score, A$churn_validation, resolution = 1/20)
 tabla_rf<-liftTable( A$rf_score, A$churn_validation, resolution = 1/20)
 tabla_lift<-data.frame(tabla_lasso$Percentile,tabla_lasso$expectedIncidence,
                        tabla_lasso$trueIncidence,tabla_tree$trueIncidence,tabla_rf$trueIncidence)
-kable(tabla_lift, col.names = c("Percentil","Valor esperado","Promedio Lasso","Promedio Tree","Promedio RF"))
-
+kable(tabla_lift, col.names = c("Percentil","Valor esperado","Promedio Lasso","Promedio Tree","Promedio RF"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 
 # Esto es para generar las graficas
@@ -995,7 +1010,7 @@ gaintable = helper %>% group_by(bucket)  %>%
 return(gaintable)
 }
 
-#El tree es un desmadre JAJA
+# Grafico el lift
 lift_lasso<-tabla_lift(A$churn_validation , A$lasso_score, groups = 20)
 graphics::plot(lift_lasso$bucket, lift_lasso$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Lasso")
 lift_tree<-tabla_lift(A$churn_validation , A$tree_score, groups = 20)
@@ -1005,12 +1020,6 @@ graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l", ylab="Lift acumulado",
 
 ```
 
-
-### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
-```{r}
-
-
-```
 
 ### EXTRA: XGB
 
