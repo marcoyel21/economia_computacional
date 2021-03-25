@@ -593,8 +593,8 @@ lasso_score <- predict(cvlasso_a,
 #lasso_predict <- as.numeric(lasso_score > 0.5)
 
 #dataframe
-A <- data.frame(data_validation$customer, churn_validation, lasso_score, lasso_predict)
-colnames(A)[3:4] <- c('lasso_score', 'lasso_predict')
+A <- data.frame(data_validation$customer, churn_validation, lasso_score)
+colnames(A)[3] <- c('lasso_score')
 
 ```
 
@@ -674,7 +674,7 @@ tree_class_predict <- predict(tree_cut,newdata=data_validation,type="class")
 
 # unir con base de predicciones
 A <- data.frame(A, tree_score_predict[,2], tree_class_predict)
-names(A)[5:6] <- c("tree_score","tree_predict")
+names(A)[4:5] <- c("tree_score","tree_predict")
 ```
 
 
@@ -762,7 +762,7 @@ pred_rf<-predict(best_rf, data = (data_validation[,-1]), type = "response")
 # añadir prediccion al data frame con las otras predicciones
 
 A <- data.frame(A,pred_rf$predictions)
-names(A)[7] <- "rf_predict"
+names(A)[6] <- "rf_predict"
 ```
 
 
@@ -786,8 +786,8 @@ stopCluster(cl)
 rf_score <- predict(best_rf2, data=data_validation[,-1])
 
 A <- data.frame(A, rf_score$predictions[,1])
-names(A)[8] <- "rf_score"
-A <- A[c(1,2,3,4,5,6,8,7)]
+names(A)[7] <- "rf_score"
+A <- A[c(1,2,3,4,5,7,6)]
 ```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
@@ -863,6 +863,9 @@ kable(aucs)
 Confirmamos que el mejor modelo es el Random Forest.
 
 ### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso?
+
+Para elegir el punto de corte, graficamos la Curva ROC para diferentes puntos de corte. Partimos de lo más general y lo fuimos acotando, con el 0.5 como punto central del intervalo.
+
 ```{r}
 # ------------------------------
 # Puntos de corte
@@ -871,15 +874,19 @@ Confirmamos que el mejor modelo es el Random Forest.
 #             se definió inicialmente el df A en la sección de LASSO.
 #             Lo hice en 0.5, y me parece que el resto de los modelos toman el mismo criterio.
 
+# Nota (ALF): Moví esa predicción hasta acá. Sí parece ser la más adecuada pero #             creo que en esta pregunta queda mejor justificarla y antes no 
+#             se usa.
+
 summary(A$lasso_score)
-summary(A$lasso_predict)
 
 # Loop que tome diferentes puntos de corte y grafique curva ROC sobre el predict
 
 gglist <- NULL
+auc_vector <- NULL
+corte <- NULL
 it <- 1 # iterador
 
-for (x in seq(0.3,0.8,0.1)){
+for (x in seq(0.45,0.55,0.01)){
 
   A$lasso_1 <- as.numeric(A$lasso_score > x)
   
@@ -889,27 +896,35 @@ for (x in seq(0.3,0.8,0.1)){
           event_level = "second") %>%
           ggplot(aes(x = 1-specificity, y = sensitivity)) +
           geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
-          ggtitle("Curva ROC del LASSO")+
           geom_path() +
           theme_bw()
   
-  gglist[[it]] <- curva
+  auc_vector[it] <- roc_auc(data = A, 
+                      truth = factor(churn_validation),
+                      lasso_1, 
+                      event_level = "second")[1,3]
   
+  gglist[[it]] <- curva
+  corte[it] <- x
   curva <- NULL
   it <- it + 1
 }
 
-grid.arrange(grobs=gglist,ncol=4)
-```
-Se puede ver que el mejor punto de corte es cercano al 0.5. 
 
-PENDIENTE: si les late esta forma de responder, sigo iterando para encontrar un óptimo.
+grid.arrange(grobs=gglist,ncol=4, nrow=4)
+data.frame(corte,unlist(auc_vector))
+
+```
+
+El máximo es 0.51, así que elegimos ese como nuestro punto de corte.
 
 
 ```{r}
 # ------------------------------
 # Matrices de confusión
 # ------------------------------
+
+A$lasso_predict <- as.numeric(A$lasso_score > 0.51)
 
 # LASSO
 caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
