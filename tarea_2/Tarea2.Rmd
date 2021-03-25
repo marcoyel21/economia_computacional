@@ -95,7 +95,9 @@ packages <- c(
   'gridExtra',
   'VIM',
   'smotefamily',
-  'stargazer'
+  'stargazer',
+  'xgboost',
+  'DiagrammeR'
   )
 
 # instala los que no tengas
@@ -856,3 +858,39 @@ roc_auc(eval, factor(validation), pred_rf, event_level = "second")
 ```{r}
 
 ```
+
+### EXTRA: XGB
+
+```{r}
+# Preparar la base de entrenamiento
+sparse_train <- sparse.model.matrix(~.+0, data = data_training_a[,-c(1,2)]) 
+label_train <- data_training_a[,2]
+dtrain <- xgb.DMatrix(sparse_train, label = label_train) # Label es el target
+
+# Preparar la base de validación
+data_validationn <- data[-training_rows,]
+sparse_test <- sparse.model.matrix(~.+0, data = data_validation[,-c(1)]) 
+label_test <- data_validationn[,2]
+dtest <- xgb.DMatrix(sparse_test, label = label_test)
+watchlist <- list(train = dtrain, eval = dtest) # Para evaluar el performance del modelo
+
+# Entrenamiento del modelo
+param <- list(max_depth = 6, eta = 0.3, objective = "binary:logistic", 
+              eval_metric = "auc", subsample = 0.8, colsample_bytree = 0.8)
+bst <- xgb.train(params = param, dtrain, early_stopping_rounds =  5, nrounds = 50, 
+                 watchlist)
+#bst <- xgboost(data = sparse_train, label = label_train, params = param, early_stopping_rounds =  5,
+#               nrounds = 30)
+
+# predict
+pred <- predict(bst, sparse_test)
+
+```
+
+```{r}
+# Plot: Grafica todos los trees. 
+# NOTA: Muy pesado y poco visible a menos que nround sea bajo.
+# xgb.plot.tree(model = bst)
+```
+
+
