@@ -702,7 +702,7 @@ for (i in c(100,200,300,500,700,800)){
   rf<-ranger(churn~.,
              data = data_training_a[-1],
              num.trees = i,
-             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             mtry = (ncol(data_training_a)-2) %>% sqrt() %>% floor(),
              min.node.size = 1,
              splitrule = "gini",
              classification = T,
@@ -734,7 +734,7 @@ cl
 best_rf <- ranger(churn~.,
              data = data_training_a[,-1],
              num.trees = 200,
-             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             mtry = (ncol(data_training_a)-2) %>% sqrt() %>% floor(),
              importance = "impurity",
              classification = T)
 
@@ -756,14 +756,12 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
 
 ### 15. Genera las predicciones OOS para el random forest. Guardalas en la misma data.frame que los otros modelos
 ```{r}
-pred_rf<-predict(best_rf,
-                 data = (data_validation[,-1]),
-                 type = "response")
-
+pred_rf<-predict(best_rf, data = (data_validation[,-1]), type = "response")
 
 # añadir prediccion al data frame con las otras predicciones
+
 A <- data.frame(A,pred_rf$predictions)
-names(A)[6] <- "pred_rf"
+names(A)[7] <- "rf_predict"
 ```
 
 
@@ -773,9 +771,9 @@ names(A)[6] <- "pred_rf"
 cl<- detectCores() %>% makeCluster()
 cl
 best_rf2 <- ranger(churn~.,
-             data = data_training_a,
+             data = data_training_a[,-1],
              num.trees = 200,
-             mtry = (ncol(data_training_a)-1) %>% sqrt() %>% floor(),
+             mtry = (ncol(data_training_a)-2) %>% sqrt() %>% floor(),
              importance = "impurity",
              classification = T,
              probability = T
@@ -783,7 +781,12 @@ best_rf2 <- ranger(churn~.,
 stopCluster(cl)
 
 # prediccion continua de churn==1
-eval$pred_rf_cont <- predict(best_rf2, data=data_validation)$predictions[,1]
+# eval$pred_rf_cont <- predict(best_rf2, data=data_validation)$predictions[,1]
+rf_score <- predict(best_rf2, data=data_validation[,-1])
+
+A <- data.frame(A, rf_score$predictions[,1])
+names(A)[8] <- "rf_score"
+A <- A[c(1,2,3,4,5,6,8,7)]
 ```
 
 ### 17 (4 pts). Genera graficas de las curvas ROC para los tres modelos. Cual parece ser mejor?
