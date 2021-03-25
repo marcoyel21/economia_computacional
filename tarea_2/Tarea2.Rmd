@@ -676,8 +676,8 @@ tree_score_predict_a <- predict(tree_cut_a,newdata=data_validation)
 tree_class_predict_a <- predict(tree_cut_a,newdata=data_validation,type="class")
 
 # unir con base de predicciones
-A <- data.frame(A,tree_score_predict_a[,1],tree_class_predict_a)
-names(A)[4] <- "tree_score_predict"
+A <- data.frame(A, tree_class_predict_a)
+#names(A)[4] <- "tree_score_predict"
 ```
 
 
