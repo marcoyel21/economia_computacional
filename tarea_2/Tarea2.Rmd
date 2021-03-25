@@ -547,7 +547,6 @@ plot(cvlasso_a)
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
 #plot(cv_lasso$gamlr, select=FALSE)
-
 plot(cvlasso_a$gamlr)
 ```
 
@@ -601,7 +600,7 @@ colnames(A)[3:4] <- c('lasso_score', 'lasso_predict')
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
 #A
-tree_control <- tree.control(nobs=nrow(data_training[,-1]),
+tree_control <- tree.control(nobs=nrow(data_training_a[,-1]),
              mincut = 1000,
              mindev = 0.05)
 
@@ -915,15 +914,10 @@ PENDIENTE: si les late esta forma de responder, sigo iterando para encontrar un 
 caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
 
 # TREE
-#data_validation$churn <- as.factor(data_validation$churn)
-caret::
-
-
-caret::confusionMatrix(A$tree_class_predict,as.factor(A$churn_validation))
+caret::confusionMatrix(as.factor(A$tree_predict),as.factor(A$churn_validation))
 
 # RANDOM FOREST
-
-
+caret::confusionMatrix(as.factor(A$rf_predict),as.factor(A$churn_validation))
 
 ```
 
