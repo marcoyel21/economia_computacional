@@ -70,7 +70,7 @@ header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphe
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
-                      fig.width = 7, fig.height = 4, fig.align = "right")
+                      fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
 ```{r, include=FALSE}
@@ -292,12 +292,13 @@ imp_roam<-lm(roam~peakvce+opeakvce+mourec+outcalls+callwait,data)
 ```
 
 ```{r, results='asis'}
-stargazer(imp_revenue,imp_mou,imp_recchrge,imp_directas,imp_overage,imp_overage,imp_roam,type="latex",
-          header=FALSE, 
-          single.row = TRUE, 
-          no.space = TRUE, 
-          column.sep.width = "3pt",
-          font.size = "small" )
+stargazer(imp_revenue,imp_recchrge,imp_directas,type="latex",
+          header=FALSE )
+```
+
+```{r, results='asis'}
+stargazer(imp_mou,imp_overage,imp_roam,type="latex",
+          header=FALSE )
 ```
 
 En esta tabla podemos observar que en general los  modelos nos dan una predicción mejor a la media, excepto en el último modelo sobre roam. Esta información nos da luz verde para realizar una imputación con base en una regresión lineal. En el caso de roam, solo se imputará la media muestral.
@@ -406,7 +407,7 @@ churn_validation <- data[-training_rows,2]
 # la muestra está balanceada? --> NO
 tabulado <- data_training %>% group_by(churn) %>% dplyr::summarise(frecuencia_absoluta=n()) %>%
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
-kable(tabulad, col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+kable(tabulado, col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 ```
