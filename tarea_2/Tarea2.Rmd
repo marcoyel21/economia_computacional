@@ -26,13 +26,7 @@ header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphe
 \textsc{\large }\\[1em]
 \textsc{\LARGE Equipo 7 }\\[1em]
 
-
 \textsc{\large }\\[1em]
-\textsc{\LARGE }\\[1em]
-
-
-\textsc{\large }\\[1em]
-\textsc{\LARGE }\\[1em]
 
 \textsc{\LARGE Prof. Isidoro García Urquieta}\\[1em]
 
@@ -79,7 +73,7 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
                       fig.width = 7, fig.height = 4, fig.align = "right")
 ```
 
-```{r, message=FALSE}
+```{r, include=FALSE}
 packages <- c(
   "tidyverse",
   "data.table",
@@ -112,14 +106,6 @@ if (any(installed_packages == FALSE)) {
 lapply(packages,
        library,
        character.only = TRUE)
-
-# funciones
-
-check_nas <- function(df){
-  df %>%
-    select_if(~sum(is.na(.)) > 0) %>%
-    miss_var_summary()
-}
 
 ```
 
@@ -169,7 +155,14 @@ rm(cell2cell)
 Primero revisamos las columnas que tienen missing values y su cantidad.
 
 ```{r,results='asis'}
-# Rafa
+
+# funcion para NAs
+check_nas <- function(df){
+  df %>%
+    select_if(~sum(is.na(.)) > 0) %>%
+    miss_var_summary()
+}
+
 # tabla resumen de missing values
 kable(check_nas(data),booktabs=T, align = 'c',
       col.names = c("Variale", "Cantidad","%"),digits = 2)%>%
@@ -749,7 +742,8 @@ ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
   geom_bar(stat="identity") +
   xlab("Variable")+
   ylab("importancia")+
-  coord_flip()
+  coord_flip()+
+  theme(axis.text.y = element_text(size = 9))
 
 ```
 
@@ -913,6 +907,9 @@ for (x in seq(0.45,0.55,0.01)){
 grid.arrange(grobs=gglist,ncol=4, nrow=4)
 data.frame(corte,unlist(auc_vector))
 
+# punto de corte elegido
+A$lasso_predict <- as.numeric(A$lasso_score > 0.51)
+
 ```
 
 El máximo es 0.51, así que elegimos ese como nuestro punto de corte.
@@ -922,8 +919,6 @@ El máximo es 0.51, así que elegimos ese como nuestro punto de corte.
 # ------------------------------
 # Matrices de confusión
 # ------------------------------
-
-A$lasso_predict <- as.numeric(A$lasso_score > 0.51)
 
 # LASSO
 matconf_lasso <- caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
