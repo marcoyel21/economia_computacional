@@ -293,12 +293,16 @@ imp_roam<-lm(roam~peakvce+opeakvce+mourec+outcalls+callwait,data)
 
 ```{r, results='asis'}
 stargazer(imp_revenue,imp_recchrge,imp_directas,type="latex",
-          header=FALSE )
+          header=FALSE,
+          column.sep.width = "3pt",
+          font.size = "small" )
 ```
 
 ```{r, results='asis'}
 stargazer(imp_mou,imp_overage,imp_roam,type="latex",
-          header=FALSE )
+          header=FALSE ,
+          column.sep.width = "3pt",
+          font.size = "small" )
 ```
 
 En esta tabla podemos observar que en general los  modelos nos dan una predicción mejor a la media, excepto en el último modelo sobre roam. Esta información nos da luz verde para realizar una imputación con base en una regresión lineal. En el caso de roam, solo se imputará la media muestral.
