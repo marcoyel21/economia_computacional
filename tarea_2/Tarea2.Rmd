@@ -829,11 +829,33 @@ roc_curve(data = A,
 
 ### 18. Genera una tabla con el AUC ROC. Cuál es el mejor modelo ?
 ```{r}
-roc_auc(eval, factor(validation), pred_rf, event_level = "second")
+# roc_auc(eval, factor(validation), pred_rf, event_level = "second")
+lasso_auc <- roc_auc(data = A, 
+                     truth = factor(churn_validation),
+                     lasso_score, 
+                     event_level = "second")
 
+tree_auc <- roc_auc(data = A, 
+                    truth = factor(churn_validation),
+                    tree_score, 
+                    event_level = "second")
+
+rf_auc <- roc_auc(data = A, 
+                  truth = factor(churn_validation),
+                  rf_score, 
+                  event_level = "second")
+
+aucs <- (full_join(lasso_auc, tree_auc) %>% 
+  full_join(rf_auc))[,3] %>% 
+  rename(AUC = .estimate) %>% as.data.frame()
+rownames(aucs) <- c('CV-Lasso','Pruned Tree','Random Forest')
+
+kable(aucs)
 
 
 ```
+
+El mejor modelo es el Random Forest.
 
 ### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso?
 ```{r}
