@@ -547,7 +547,6 @@ plot(cvlasso_a)
 ### 5. Grafica el Lasso de los coeficientes vs la complejidad del modelo.
 ```{r}
 #plot(cv_lasso$gamlr, select=FALSE)
-
 plot(cvlasso_a$gamlr)
 ```
 
@@ -601,7 +600,7 @@ colnames(A)[3] <- c('lasso_score')
 ### 8. Estima ahora tree. Usa `mindev = 0.05, mincut = 1000` Cuántos nodos terminales salen? Muestra el summary del árbol
 ```{r}
 #A
-tree_control <- tree.control(nobs=nrow(data_training[,-1]),
+tree_control <- tree.control(nobs=nrow(data_training_a[,-1]),
              mincut = 1000,
              mindev = 0.05)
 
@@ -927,29 +926,54 @@ El máximo es 0.51, así que elegimos ese como nuestro punto de corte.
 A$lasso_predict <- as.numeric(A$lasso_score > 0.51)
 
 # LASSO
-caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
+matconf_lasso <- caret::confusionMatrix(as.factor(A$lasso_predict),as.factor(A$churn_validation))
 
 # TREE
-#data_validation$churn <- as.factor(data_validation$churn)
-caret::
-
-
-caret::confusionMatrix(A$tree_class_predict,as.factor(A$churn_validation))
+matconf_tree <- caret::confusionMatrix(as.factor(A$tree_predict),as.factor(A$churn_validation))
 
 # RANDOM FOREST
+matconf_rf<-caret::confusionMatrix(as.factor(A$rf_predict),as.factor(A$churn_validation))
 
-
+matconf_lasso$table
+matconf_tree$table
+matconf_rf$table
 
 ```
+Como vimos en clase, a partir de las matrices de confusión es posible calcular 5 métricas de éxito:
+- Sensibilidad
+- Especificidad
+- Positivos Acertados
+- Negativos Acertados
+- Accuracy
 
-### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
+A continuación se comparan dichas métricas en una tabla:
+
 ```{r}
 
+exito<- as.data.frame(rbind(matconf_lasso$byClass[1:5],
+      matconf_tree$byClass[1:5],
+      matconf_rf$byClass[1:5]))
+
+Modelo <- c("Lasso","Tree","Random Forest")
+predictive_power <- cbind(Modelo,exito)
+rm(exito, Modelo)
+
+kable(predictive_power,booktabs=T, align = 'c',
+      col.names = c("Modelo","Sensibilidad", "Especificidad","Positivos acertados","Negativos acertados", "Accuracy"),digits = 3)%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 ```
+El modelo que arroja las mejores métricas de éxito es el _Random Forest_. 
+En este caso nos interesa una sensibilidad relativamente alta, ya que nos indica cuál es la probabilidad de que encontremos a clientes que efectivamente se van ($churn=1$).
+
+Adicionalmente, nos interesa ver el porcentaje de positivos acertados, lo que nos dice cuántos clientes que predecimos que se vayan efectivamente se irán.
+
+En este caso el error más pernicioso sería el error tipo II (falso negativo), o sea que el modelo nos diga que un cliente no se va cuando en realidad si se irá. El modelo con menos falsos negativos es el _Random Forest_ .
 
 
-### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
+
+### 20 (2pts). Finalmente, construye una lift table. Esto es, para 20 grupos del score predecido, genera 1) El promedio de las predicciones, 2) el promedio del churn observado. Existe monotonía? El mejor algoritmo es monotónico? (Tip: usa `ntile` para generar los grupos a partir de las predicciones)
 ```{r}
 # tablas
 tabla_lasso<-liftTable( A$lasso_score, A$churn_validation, resolution = 1/20)
@@ -983,6 +1007,13 @@ lift_tree<-tabla_lift(A$churn_validation , A$tree_score, groups = 20)
 graphics::plot(lift_tree$bucket, lift_tree$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Tree")
 lift_rf<-tabla_lift(A$churn_validation , A$rf_score, groups = 20)
 graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l", ylab="Lift acumulado", xlab="Cubeta",main = "Random Forest")
+
+```
+
+
+### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
+```{r}
+
 
 ```
 
