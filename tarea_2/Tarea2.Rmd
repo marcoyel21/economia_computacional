@@ -566,6 +566,20 @@ a_lambda<- colnames(coef(cvlasso_a, select="min"))
 cvlasso_a$gamlr$lambda[a_lambda]
 
 ```
+Son 6 variables a las que deja iguales a cero:
+1. blckvce: la media de las llamdas bloqueadas
+2. models: número de modelos expedidos 
+3. occcrft: la dummy de ocupación de artesanos
+4. occstud: la dummy de ocupación de estudiantes
+5. mailord: la dummy de los que compran vía mail
+6. incmiss: la dummy de faltantes de ingreso
+
+Se determinó que, dado el tamaño de su coeficiente, las tres variables más importantes para predecir el abandono son las siguientes:
+1. retcall: la dummy de que el cliente ha hecho llamadas al equipo de retención
+2. refurb: la dummy de que el celular está renovado
+3. uniqsubs: el número de personas incluidas en la cuenta del teléfono
+
+Las variables arrojadas por el modelo como las más importantes para la predicción son razonables ya que si el cliente ha hecho llamdas al equipo de retención, es posible que sea para efectuar una queja o reportar alguna deficiencia en el servicio; los clientes generalmente llaman para comunicar quejas o inconformidades, lo que implicaría que, ante tal desconento, puedan cancelar el servicio con la compañía telefónica. Asimismo, el que se haya hecho una renovación del teléfono celular, puede implicar que el cliente haya sido captado por otra compañía que le haya ofrecido el teléfono y por ello efectuó la renovación, o que la renovación haya estado aparejada de un paquete telefónico de manera que el cliente ya no necesite el servicio de telefonía de Cell2Cell. Por último, la media del número de personas incluidas en la cuenta telefónica es 1.5, es decir, menos de dos personas por cuenta, por tanto, es posible que sea más sencillo tomar la decisión de abandonar la compañía telefónica o cambiar de compañía cuando en tu servicio no están incluidas más personas.
 
 ### 7. Genera un data frame (usando el validation set) que tenga: `customer`, `churn` y las predicciones del LASSO.
 ```{r}
