@@ -122,6 +122,8 @@ Las preguntas que contestaremos son:
 
 1. Se puede predecir el abandono con los datos que nos compartieron?
 
+Del análisis llevado a cabo es factible afirmar que es posible predecir la tasa de abandono  a partir de los datos de la compañía telefónica y con ello poder generar un estrategia para su detección y mitigación. Esto dado que derivado de este análisis, fue posible determinar los elementos que motivan la pérdida de clientes, por lo que, habiendo detectado esto, es posible implementar mejores estrategias de retención con base en estos resultados y así anticiparse a la fuga de clientes. 
+
 2. Cuáles son las variables que explican en mayor medida el abandono?
 
 Acorde con el modelo que mejor logró predecir el abandono en nuestro análisis, el random forest, las variables más importantes que explican en mayor medida el abandono son las siguientes:
@@ -134,9 +136,15 @@ Como se menciona en el cuerpo del análisis, es factible que los clientes que te
 
 3. Qué incentivos da Cell2Cell a sus usarios para prevenir el abandono?
 
-Del anáisis de la base de datos de la compañía, fue posible identificar que la empresa envía mails con ofertas con el fin de lograr retener a sus clientes y tiene contabilizadas aquellas que fueron aceptadas (variable retaccpt) y aquellos que fueron respondidas (variable mailres, también envía mails a sus clientes con estas ofertas, también hace llamadas de atención a cliente periódicamente (variable custcare) y el director de la empresa responde personalmente algunas de las llamadas que efectúa el cliente (variable directas). Es decir, todos los incentivos de la compañía para prevenir el abandono se basan en la comunicación con el cliente; sin embargo, a falta de un buen modelo predictivo, es posible que no esté focalizando de manera óptima estos esfuerzos en la atención a sus clientes. 
+Del anáisis de la base de datos de la compañía, fue posible identificar que la empresa envía mails con ofertas con el fin de lograr retener a sus clientes y tiene contabilizadas aquellas que fueron aceptadas (variable retaccpt) y aquellas que fueron respondidas (variable mailres, también envía mails a sus clientes con estas ofertas y hace llamadas de atención periódicamente (variable custcare); incluso, la empresa cuenta con un “equipo de retención” para estos efectos. Asimismo, es posible observar que el director de la empresa responde personalmente algunas de las llamadas que efectúa el cliente (variable directas). Es decir, todos los incentivos de la compañía para prevenir el abandono se basan en la comunicación con el cliente; sin embargo, a falta de un buen modelo predictivo, es posible que no esté focalizando de manera óptima estos esfuerzos en la atención a sus clientes. 
 
 4. Cuál es el valor de una estrategia de prevención de abandono focalizada y cómo difiere entre los segmentos de los usuarios? Qué usuarios deberían de recibir incentivos de prevención? Qué montos de incentivos
+
+Un modelo predictivo como los que se llevaron a cabo en el análisis, permite anticipar potenciales fugas voluntarias de clientes en una empresa. El valor de una estrategia de prevención de abandono focalizada, derivada de estos modelos predictivos, es atacar el problema de pérdida de clientes desde la raíz y poder actuar de manera proactiva en la retención de clientes, toda vez que los modelos de predicción basados en datos, son ideales para descubrir los factores determinantes que están influyendo en los clientes para decidir su permanencia o cancelación del servicio, lo que facilita la personalización de estrategias como la atención a clientes, el ofrecimiento de ofertas, servicios y productos con base en el segmento específico al que pertenecen. Esto es, llevar acabo un análisis detallado de los datos y una comprensión profunda de los patrones que inciden en la tasa de abandono, es crucial para poder tener una segmentación efectiva y lograr establecer acciones de fidelización enfocadas y concretas para mitigiar esta pérdida. 
+
+Los usuarios que deberían recibir incentivos de prevención son precisamente aquellos para los cuales el modelo predijo que son los que tienden más al abandono del servicio, es decir, aquellos clientes que hayan permanecido mucho tiempo con su equipo telefónico actual y que sean intensivos en su uso. Es probable que sea necesario ofrecerles un incentivo monetario, por ejemplo, paquetes más atractivos en los que se les ofrezca un mayor número de gigabytes a un buen precio y/o que incluyan la renovación del equipo; lo anterior, sin descuidar la atención a clientes, que como ya se señaló, si bien la empresa tiene una estrategia al respecto, e incluso, un equipo de retención, es posible que, sin estar basada en datos, esta estrategia de atención no esté siendo lo suficientemente segmentada y por tanto, personalizada. 
+
+
 
 Nota: Voy a evaluar las tareas con base en la respuesta a cada pregunta. Como hay algunas preguntas que no tienen una respuesta clara, al final ponderaré de acuerdo al poder predictivo de su modelo vs las respuestas sugeridas.
 
