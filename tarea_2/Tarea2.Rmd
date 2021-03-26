@@ -1024,7 +1024,7 @@ graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l", ylab="Lift acumulado",
 
 ### EXTRA: XGB
 
-```{r}
+```{r results = 'hide'}
 # Preparar la base de entrenamiento
 sparse_train <- sparse.model.matrix(~.+0, data = data_training_a[,-c(1,2)]) 
 label_train <- data_training_a[,2]
@@ -1042,12 +1042,20 @@ param <- list(max_depth = 6, learning_rate = 0.06, objective = "binary:logistic"
               eval_metric = "auc", subsample = 0.85, colsample_bytree = 0.7)
 xgb_model <- xgb.train(params = param, dtrain, early_stopping_rounds =  10, nrounds = 100, 
                  watchlist)
-# Actualmente le pego al 0.676 con 6, 0.06, 0.85, 0.7, 10, 100
 
 # Predicción
 pred <- predict(xgb_model, sparse_test)
 
+
 ```
+Se muestran las evaluaciones del modelo, tanto in sample como out of sample, para las primeras y últimas iteraciones.
+
+```{r}
+kable(xgb_model$evaluation_log[c(1:3,98:100)], col.names = c('Iteración', 'In sample AUC','Out of sample AUC'))
+```
+Cabe destacar que la mejor iteración del modelo fue la `r xgb_model$best_iteration`. 
+
+También se presenta la matriz de importancia.
 
 ```{r}
 # Matriz de importancia
