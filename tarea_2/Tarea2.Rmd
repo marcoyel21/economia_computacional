@@ -1075,6 +1075,8 @@ graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l",
                ylab="Lift acumulado", xlab="Cubeta",main = "Random Forest")
 
 ```
+De este análisis es posible concluir que existe monotonía en los modelos LASSO y Random Forest, no así en el del árbol. La monotocidad implica que al ordenar el score de mayor a menor, necesariamente se debe atinar a más predicciones al principio (la parte más alta de la tabla) que al final. Esta propiedad se refleja visualmente en las gráficas, las del Random Forest y LASSO, efectivamente cumplen con la función de monotonicidad, a diferentcia de la gráfica del árbol. El mejor algoritmo de nuestro análisis es monotónico.
+
 ### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
 
 La estrategia general que se sugeriría implementar a partir del modelo es precisamente que la empresa focalice sus esfuerzos en la permanencia, retención y cuidado de sus clientes, toda vez que es muy común que las empresas dirijan toda su atención y centren su éxito en planes de crecimiento, es decir, en conseguir nuevos clientes, dejando de lado el monitoreo de los que ya tiene. Esta visión nublada de algunas compañías, puede incluso traducirse, en el largo plazo, en más gastos, ya que destina recursos de manera ineficiente. Las decisiones basadas en datos siempre tendrán un valor agregado, ya que serán las más acertadas, toda vez que que responden de manera precisa a la satisfacción de los clientes y al beneficio de cada compañía.
