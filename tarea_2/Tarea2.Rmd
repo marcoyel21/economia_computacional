@@ -434,7 +434,7 @@ churn_validation <- data[-training_rows,2]
 tabulado <- data_training %>% group_by(churn) %>%
   dplyr::summarise(frecuencia_absoluta=n()) %>%
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
-kable(tabulado,
+kable(tabulado, booktabs=T, caption="Balance en los datos originales",
       col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
@@ -452,9 +452,16 @@ freq_churn <- data_training %>% filter(churn==1) %>% nrow()
 undersampling_c0<-  sample_n((data_training %>% filter(churn==0)),
                              size=freq_churn,
                              replace = FALSE)
-
+# Evalúo balance
 undersampling<-rbind((data_training %>%
                         filter(churn==1)),undersampling_c0)
+tabulado <- undersampling %>% group_by(churn) %>%
+    dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+kable(tabulado, booktabs=T, caption="Balance con undersampling",
+      col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 
 ```
 
@@ -485,7 +492,7 @@ oversampled$churn <- oversampled$churn %>% as.numeric
 tabulado <- oversampled %>% group_by(churn) %>%
     dplyr::summarise(frecuencia_absoluta=n()) %>%
     mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
-kable(tabulado, 
+kable(tabulado, booktabs=T, caption="Balance con oversampling",
       col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
@@ -514,7 +521,7 @@ tabulado <- under_over_sampling %>% group_by(churn) %>%
   dplyr::summarise(frecuencia_absoluta=n()) %>%
     mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
 
-kable(tabulado,
+kable(tabulado,booktabs=T, caption="Balance con over y undersampling",
       col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
@@ -572,7 +579,6 @@ plot(cvlasso_a$gamlr)
 ### 6 (2 pts). Cuál es la $\lambda$ resultante? Genera una tabla con los coeficientes que selecciona el CV LASSO. Cuántas variables deja iguales a cero? Cuales son las 3 variables más importantes para predecir el abandono? Da una explicación intuitiva a la última pregunta
 
 ```{r}
-
 coef(cvlasso_a, select="min", k=2, corrected=TRUE)
 ```
 
@@ -739,7 +745,7 @@ stopCluster(cl)
 
 rf <- data.frame(trees,error)
 
-kable(rf, col.names = c("Trees","Error"))%>%
+kable(rf, col.names = c("Trees","Error"), booktabs=T, caption="Error en random forest")%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 
@@ -884,7 +890,7 @@ model_names <- c('CV-LASSO','Pruned Tree','Random Forest')
 aucs<-data.frame(model_names, aucs$AUC)
 
 
-kable(aucs, col.names = c("Modelos","AUC"))%>%
+kable(aucs, col.names = c("Modelos","AUC"), booktabs=T, caption="Comparación de modelos")%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 
@@ -959,13 +965,14 @@ matconf_rf<-caret::confusionMatrix(as.factor(A$rf_predict),
                                    as.factor(A$churn_validation))
 
 
-kable(matconf_lasso$table, caption = "Lasso")%>%
+kable(matconf_lasso$table,  booktabs=T, caption = "Lasso")%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
-kable(matconf_tree$table, caption="Tree")%>%
+
+kable(matconf_tree$table, caption="Tree", booktabs=T)%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
-kable(matconf_rf$table, caption="Random Forest")%>%
+kable(matconf_rf$table, caption="Random Forest",booktabs=T)%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 
@@ -1020,11 +1027,11 @@ tabla_lift<-data.frame(tabla_lasso$Percentile,
                     tabla_lasso$trueIncidence,
                     tabla_tree$trueIncidence,
                     tabla_rf$trueIncidence)
-kable(tabla_lift, col.names = c("Percentil",
+kable(tabla_lift, booktabs=T, col.names = c("Percentil",
                                 "Valor esperado",
                                 "Promedio Lasso",
                                 "Promedio Tree",
-                                "Promedio RF"))%>%
+                                "Promedio RF"), caption="Lift")%>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 
@@ -1075,7 +1082,7 @@ graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l",
                ylab="Lift acumulado", xlab="Cubeta",main = "Random Forest")
 
 ```
-De este análisis es posible concluir que existe monotonía en los modelos LASSO y Random Forest, no así en el del árbol. La monotocidad implica que al ordenar el score de mayor a menor, necesariamente se debe atinar a más predicciones al principio (la parte más alta de la tabla) que al final. Esta propiedad se refleja visualmente en las gráficas, las del Random Forest y LASSO, efectivamente cumplen con la función de monotonicidad, a diferentcia de la gráfica del árbol. El mejor algoritmo de nuestro análisis es monotónico.
+De este análisis es posible concluir que existe monotonía en los modelos LASSO y Random Forest, no así en el del árbol. La monotocidad implica que al ordenar el score de cada observación de mayor a menor, tendrémos una mayor cantidad de observaciones con etiqueta de churn igual a 1 al principio de la tabla. Si dividimos las observaciones ordenadas en grupos, la monotonicidad implicaría que el primer grupo es el que más contiene 1s en churn, el segundo grupo sería el segundo que más contiene 1s y así sucesivamente hasta llegar al último grupo. Esta propiedad se refleja visualmente en las gráficas, las del Random Forest y LASSO, efectivamente cumplen con la función de monotonicidad, a diferentcia de la gráfica del árbol. El mejor algoritmo de nuestro análisis, random forest, es monotónico.
 
 ### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
 
