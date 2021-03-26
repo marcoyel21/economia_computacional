@@ -738,13 +738,14 @@ df_imp <- data.frame(names=(importance(best_rf) %>%
               names()),importance=(importance(best_rf)))
 
 
-ggplot(df_imp,aes(x=reorder(names,importance),y=importance)) +
+ggplot(df_imp[df_imp$importance>250,],
+       aes(x=reorder(names,importance),y=importance)) +
   geom_bar(stat="identity") +
   xlab("Variable")+
   ylab("importancia")+
+  ggtitle('Importancia de variables, Random Forest')+
   coord_flip()+
-  theme(axis.text.y = element_text(size = 9))
-
+  theme(axis.text.y = element_text(size = 8))
 ```
 
 
@@ -848,34 +849,28 @@ aucs <- (full_join(lasso_auc, tree_auc) %>%
   rename(AUC = .estimate) %>% as.data.frame()
 rownames(aucs) <- c('CV-LASSO','Pruned Tree','Random Forest')
 
-kable(aucs)
-
+kable(aucs,booktabs=T, align = 'c')%>%
+  kable_styling(position = "center")
 
 ```
 
-Confirmamos que el mejor modelo es el Random Forest.
+Confirmamos que el mejor modelo es el Random Forest, seguido del CV-LASSO.
 
 ### 19 (2pts). Escoge un punto de corte para generar predicciones categoricas para el LASSO basado en la Curva ROC. Genera las matrices de confusión para cada modelo. Compáralas. Qué tipo de error es mas pernicioso?
 
-Para elegir el punto de corte, graficamos la Curva ROC para diferentes puntos de corte. Partimos de lo más general y lo fuimos acotando, con el 0.5 como punto central del intervalo.
+La curva ROC representa la sensibilidad y especificidad para ciertos puntos de corte. Para elegir un punto de corte óptimo, calculamos la sensibilidad y especificidad de distintos puntos de corte, buscando el óptimo en la gráfica, el cual está alrededor del 0.6 de sensibilidad y 0.5 de especificidad. 
 
 ```{r}
 # ------------------------------
 # Puntos de corte
 # ------------------------------
-# Nota (FVG): Ya hice el punto de corte para LASSO desde que 
-#             se definió inicialmente el df A en la sección de LASSO.
-#             Lo hice en 0.5, y me parece que el resto de los modelos toman el mismo criterio.
-
-# Nota (ALF): Moví esa predicción hasta acá. Sí parece ser la más adecuada pero #             creo que en esta pregunta queda mejor justificarla y antes no 
-#             se usa.
 
 summary(A$lasso_score)
 
-# Loop que tome diferentes puntos de corte y grafique curva ROC sobre el predict
+# Loop que tome diferentes puntos de corte y mida especificidad y sensibilidad
 
-gglist <- NULL
-auc_vector <- NULL
+sens <- NULL
+spec <- NULL
 corte <- NULL
 it <- 1 # iterador
 
@@ -883,36 +878,30 @@ for (x in seq(0.45,0.55,0.01)){
 
   A$lasso_1 <- as.numeric(A$lasso_score > x)
   
-  curva <- roc_curve(data = A,
-          truth = as.factor(churn_validation),
-          lasso_1,
-          event_level = "second") %>%
-          ggplot(aes(x = 1-specificity, y = sensitivity)) +
-          geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
-          geom_path() +
-          theme_bw()
+  confm <- caret::confusionMatrix(as.factor(A$lasso_1),
+                         as.factor(A$churn_validation))
   
-  auc_vector[it] <- roc_auc(data = A, 
-                      truth = factor(churn_validation),
-                      lasso_1, 
-                      event_level = "second")[1,3]
+  sens[it] <- confm$byClass['Sensitivity'] %>% as.numeric() %>% round(3)
   
-  gglist[[it]] <- curva
+  spec[it] <- confm$byClass['Specificity'] %>% as.numeric() %>% round(3)
+  
   corte[it] <- x
-  curva <- NULL
+  confm <- NULL
   it <- it + 1
 }
 
+x <- data.frame(corte,sens,spec)
 
-grid.arrange(grobs=gglist,ncol=4, nrow=4)
-data.frame(corte,unlist(auc_vector))
+  kable(x, booktabs=T, align = 'c',
+        col.names = c("Punto de Corte","Sensibilidad", "Especificidad"))%>%
+  kable_styling(position = "center")
 
 # punto de corte elegido
-A$lasso_predict <- as.numeric(A$lasso_score > 0.51)
+A$lasso_predict <- as.numeric(A$lasso_score > 0.52)
 
 ```
 
-El máximo es 0.51, así que elegimos ese como nuestro punto de corte.
+Siguiendo este criterio, y premiando sensibilidad frente a especificidad (por razones que se explican más abajo), elegimos 0.52 como punto de corte.
 
 
 ```{r}
