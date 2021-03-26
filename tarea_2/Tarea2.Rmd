@@ -124,7 +124,17 @@ Las preguntas que contestaremos son:
 
 2. Cuáles son las variables que explican en mayor medida el abandono?
 
+Acorde con el modelo que mejor logró predecir el abandono en nuestro análisis, el random forest, las variables más importantes que explican en mayor medida el abandono son las siguientes:
+
+1. Eqpdays: El número de días que el cliente permanece con el equipo telefónico 
+2. Chagem: El porcentaje de minutos de uso  
+3. Mou: La media mensual de minutos de uso
+
+Como se menciona en el cuerpo del análisis, es factible que los clientes que tengan mayor tiempo con su equipo, se vean tentados a buscar una compañía diferente cuando al fin toman la decisión de renovar y que el abandono de aquellos clientes que utilizan más el servicio medido en minutos, puede deberse a que, precisamente por su intensidad en el uso, estén en constante búsqueda de mejores servicios en términos de calidad y precio.
+
 3. Qué incentivos da Cell2Cell a sus usarios para prevenir el abandono?
+
+Del anáisis de la base de datos de la compañía, fue posible identificar que la empresa envía mails con ofertas con el fin de lograr retener a sus clientes y tiene contabilizadas aquellas que fueron aceptadas (variable retaccpt) y aquellos que fueron respondidas (variable mailres, también envía mails a sus clientes con estas ofertas, también hace llamadas de atención a cliente periódicamente (variable custcare) y el director de la empresa responde personalmente algunas de las llamadas que efectúa el cliente (variable directas). Es decir, todos los incentivos de la compañía para prevenir el abandono se basan en la comunicación con el cliente; sin embargo, a falta de un buen modelo predictivo, es posible que no esté focalizando de manera óptima estos esfuerzos en la atención a sus clientes. 
 
 4. Cuál es el valor de una estrategia de prevención de abandono focalizada y cómo difiere entre los segmentos de los usuarios? Qué usuarios deberían de recibir incentivos de prevención? Qué montos de incentivos
 
@@ -1061,7 +1071,7 @@ La estrategia general que se sugeriría implementar a partir del modelo es preci
 
 En este caso, el modelo detectó como principal determinante del abandono la variable eqpdays, que es el número de días que el cliente permanece con el equipo de teléfono actual, seguida del porcentaje de minutos de uso  -changem- y  la media mensual de minutos de uso -mou-.
 
-En consecuencia, a partir de los resultados arrojados por este modelo, la compañía debe plantarse una estrategía para lograr que el cliente permanezca el menor tiempo posible con su equipo telefónico, esto es, incentivar las renovaciones de teléfono, toda vez que es factilbe que los clientes que tengan mayor tiempo con su equipo, se vean tentados a buscar una compañía diferente cuando al fin toman la decisión de renovar. Por tanto, la empresa debe crear estrategias tal como un paquete que implique la renovación automática del equipo, anticiparse a aquellos al abandono identificando a los clientes que llevan más tiempo con su equipo para ofrecerles ofertas al renovar o al continuar con el servicio, la cración de un sisitema de recomedación personalizado para los clientes, entre otras. 
+En consecuencia, a partir de los resultados arrojados por este modelo, la compañía debe plantarse una estrategía para lograr que el cliente permanezca el menor tiempo posible con su equipo telefónico, esto es, incentivar las renovaciones de teléfono, toda vez que es factible que los clientes que tengan mayor tiempo con su equipo, se vean tentados a buscar una compañía diferente cuando al fin toman la decisión de renovar. Por tanto, la empresa debe crear estrategias tal como un paquete que implique la renovación automática del equipo, anticiparse a aquellos al abandono identificando a los clientes que llevan más tiempo con su equipo para ofrecerles ofertas al renovar o al continuar con el servicio, la cración de un sisitema de recomedación personalizado para los clientes, entre otras. 
 
 De igual manera el abandono de aquellos clientes que utilizan más el servicio medido en  minutos, puede deberse a que, precisamente por su intensidad en el uso, estén en constante búsqueda de mejores servicios en términos de calidad y precio, por lo que al haber identificado este motivante en el abandono a partir del modelo, se propone que la empresa fortalezca sus acciones de fidelización, para lo cual es clave valorar la experiencia del cliente, tomar en cuenta sus inquietudes, para finalmente tomar acciones con base en sus sugerencias; ya sea para mejorar la calidad de un producto, el precio, la atención al cliente o el mejoramiento del servicio.
 
