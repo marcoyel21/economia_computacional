@@ -683,9 +683,8 @@ Por lo general buscaríamos el árbol que nos de menor _deviance_ , en este caso
 ```{r}
 tree_cut <- prune.tree(tree_estimation, best = min_dev_size)
 
-
-plot(tree_cut)
-text(tree_cut,pretty=0, pos='3',cex=0.6)
+plot(tree_cut,type = "uniform")
+text(tree_cut,pretty=0, pos='2.8',cex=0.4)
 title("Árbol final para predicción de churn",line=0.5)
 
 ```
