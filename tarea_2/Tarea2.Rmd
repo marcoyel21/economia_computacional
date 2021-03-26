@@ -1066,7 +1066,7 @@ graphics::plot(lift_rf$bucket, lift_rf$Cumlift, type="l",
 
 ```
 ### 21. Concluye. Que estrategia harías con este modelo? Cómo generarías valor a partir de el?
-```{r}
+
 La estrategia general que se sugeriría implementar a partir del modelo es precisamente que la empresa focalice sus esfuerzos en la permanencia, retención y cuidado de sus clientes, toda vez que es muy común que las empresas dirijan toda su atención y centren su éxito en planes de crecimiento, es decir, en conseguir nuevos clientes, dejando de lado el monitoreo de los que ya tiene. Esta visión nublada de algunas compañías, puede incluso traducirse, en el largo plazo, en más gastos, ya que destina recursos de manera ineficiente. Las decisiones basadas en datos siempre tendrán un valor agregado, ya que serán las más acertadas, toda vez que que responden de manera precisa a la satisfacción de los clientes y al beneficio de cada compañía.
 
 En este caso, el modelo detectó como principal determinante del abandono la variable eqpdays, que es el número de días que el cliente permanece con el equipo de teléfono actual, seguida del porcentaje de minutos de uso  -changem- y  la media mensual de minutos de uso -mou-.
@@ -1078,9 +1078,7 @@ De igual manera el abandono de aquellos clientes que utilizan más el servicio m
 El potencial de este tipo de modelos radica en que pueden analizar datos a un nivel que ningún ser humano podría lograr, con lo cual puede ampliar abismalmente el campo de acción de cualquier estrategia y con insumos de calidad; a través del aprendizaje automatizado, es posible perfeccionar el modelo para que cada vez propocione resultados más precisos, y con ello poder tener cada vez mejores estrategias para reducir la tasa de abandono y afianzar la cartera de clientes de la empresa.
 
 
-```
-
-### EXTRA: XGB
+### EXTRA: XGBoosting
 
 ```{r results = 'hide'}
 # Preparar la base de entrenamiento
@@ -1107,8 +1105,8 @@ xgb_model <- xgb.train(params = param, dtrain,
                  watchlist)
 
 # Predicción
-pred <- predict(xgb_model, sparse_test)
-
+xgb_pred <- predict(xgb_model, sparse_test)
+A$XGB_score <- xgb_pred
 
 ```
 Se muestran las evaluaciones del modelo, tanto in sample como out of sample, para las primeras y últimas iteraciones.
@@ -1117,7 +1115,7 @@ Se muestran las evaluaciones del modelo, tanto in sample como out of sample, par
 kable(xgb_model$evaluation_log[c(1:3,98:100)], 
       col.names = c('Iteración', 'In sample AUC','Out of sample AUC'))
 ```
-Cabe destacar que la mejor iteración del modelo fue la `r xgb_model$best_iteration`.
+Cabe destacar que la mejor iteración del modelo fue la `r xgb_model$best_iteration`, y esta tiene un mejor AUC-ROC que cualquiera de los modelos presentados anteriormente.
 
 También se presenta la matriz de importancia.
 
@@ -1127,6 +1125,54 @@ names <- dimnames(data.matrix(data_training_a[,-c(1,2)]))[[2]]
 importance_matrix <- xgb.importance(names, model = xgb_model)
 
 # Gráfico
-xgb.plot.importance(importance_matrix)
+xgb.plot.importance(importance_matrix[1:30])
+
 
 ```
+Se presenta también la curva ROC
+```{r}
+
+roc_curve(data = A,
+          truth = as.factor(churn_validation),
+          XGB_score,
+          event_level = "second") %>%
+  ggplot(aes(x = 1-specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed') +
+  ggtitle("Curva ROC del XGB")+
+  geom_path() +
+  theme_bw()
+
+```
+Finalmente, se presenta una tabla con los valores de la sensibilidad y especificidad para distintos threshold de p.
+
+```{r}
+
+sens <- NULL
+spec <- NULL
+corte <- NULL
+it <- 1 # iterador
+
+for (x in seq(0.45,0.55,0.01)){
+
+  A$XGB_pred <- as.numeric(A$XGB_score > x)
+
+  confm <- caret::confusionMatrix(as.factor(A$XGB_pred),
+                         as.factor(A$churn_validation))
+
+  sens[it] <- confm$byClass['Sensitivity'] %>% as.numeric() %>% round(3)
+
+  spec[it] <- confm$byClass['Specificity'] %>% as.numeric() %>% round(3)
+
+  corte[it] <- x
+  confm <- NULL
+  it <- it + 1
+}
+
+x <- data.frame(corte,sens,spec)
+
+  kable(x, booktabs=T, align = 'c',
+        col.names = c("Punto de Corte","Sensibilidad", "Especificidad"))%>%
+  kable_styling(position = "center")
+
+```
+Nótese cómo para un valor de sensibilidad de 0.727, con este modelo se puede mantener una especificidad decente (0.535). Recordemos que lo que más nos preocupa es prevenir el abandono de los clientes, por lo que es válido elegir una sensibilidad alta al costo de la especificidad. En este caso, podríamos elegir 0.54 como corte para las predicciones finales.
