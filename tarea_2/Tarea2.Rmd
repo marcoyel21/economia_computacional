@@ -616,8 +616,8 @@ Obtenemos `r summary(tree_estimation)$size ` nodos finales
 
 ### 9. Grafica el árbol resultante
 ```{r}
-plot(tree_estimation)
-text(tree_estimation,pretty=0, pos='3',cex=0.6)
+plot(tree_estimation,type = "uniform")
+text(tree_estimation,pretty=0, pos='2.8',cex=0.4)
 title("Árbol para predicción de churn",line=0.5)
 
 ```
