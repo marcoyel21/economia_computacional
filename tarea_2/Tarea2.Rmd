@@ -1134,8 +1134,10 @@ También se presenta la matriz de importancia.
 names <- dimnames(data.matrix(data_training_a[,-c(1,2)]))[[2]]
 importance_matrix <- xgb.importance(names, model = xgb_model)
 
+library(Ckmeans.1d.dp)
 # Gráfico
-xgb.plot.importance(importance_matrix[1:30])
+gg <- xgb.ggplot.importance(importance_matrix[1:30], n_clusters = 1) 
+gg + ggtitle("Las 30 variables más importantes") + theme(legend.position = "none") 
 
 
 ```
