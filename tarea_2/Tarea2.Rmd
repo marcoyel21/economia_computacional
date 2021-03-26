@@ -1185,4 +1185,4 @@ x <- data.frame(corte,sens,spec)
   kable_styling(position = "center")
 
 ```
-Nótese cómo para un valor de sensibilidad de 0.727, con este modelo se puede mantener una especificidad decente (0.535). Recordemos que lo que más nos preocupa es prevenir el abandono de los clientes, por lo que es válido elegir una sensibilidad alta al costo de la especificidad. En este caso, podríamos elegir 0.54 como corte para las predicciones finales.
+Nótese cómo para un valor de sensibilidad con un corte en 0.54, con este modelo se puede mantener una especificidad decente. Recordemos que lo que más nos preocupa es prevenir el abandono de los clientes, por lo que es válido elegir una sensibilidad alta al costo de la especificidad. 
