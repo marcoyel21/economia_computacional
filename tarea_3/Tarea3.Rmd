@@ -155,6 +155,36 @@ rm(universo)
 
 ```{r}
 
+sharecontrol = seq(0,1,0.05)
+m <- matrix(nrow=21,ncol=1)
+n <- matrix(nrow=21,ncol=1)
+
+i <- 0
+for (a in sharecontrol){
+  i <- i+1
+  taumin<- tau_min(outcome_var=data$total_purchases,
+        N = nrow(data),
+        power = 0.8,
+        significance = 0.05,
+        share_control = a,
+        n_groups = 8)
+  
+m[i] <- taumin$tau_min_global
+n[i] <- taumin$tau_min_each_treat
+}
+m <- cbind(sharec,m,n)
+taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_trat"=V3)
+
+ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_global))+
+  geom_line(color='navyblue',size=1)+
+  theme_bw()+
+  xlab("Proporción de control")+
+  ylab("Efecto mínimo detectable ")+
+  ggtitle("Relación entre proporción de control y efecto mínimo detectable")+
+  scale_x_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1))+
+  geom_vline(xintercept=0.5, color='red',linetype='dashed')
+
+
 ```
 
 ### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
