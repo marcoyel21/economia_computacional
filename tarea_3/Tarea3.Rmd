@@ -81,7 +81,8 @@ packages <- c(
   "broom",
   "knitr",
   "lubridate",
-  "RCT"
+  "RCT",
+  "splitstackshape" #para hacer el muestreo estratificado
   )
 
 # instala los que no tengas
@@ -164,6 +165,12 @@ rm(universo)
 
 ### 4 (2ptos) Qué variables crees que puedan estar más correlacionadas con el impacto? Justifica tu respuesta y elige un set
 
+La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. 
+
+La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones
+
+
+
 ```{r}
 
 ```
@@ -171,6 +178,17 @@ rm(universo)
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
 
 ```{r}
+
+# OJO falta ajustar share_control y creo que n_T
+
+random_assignment <- treatment_assign(data=data,
+                 share_control = 0.5,
+                 n_t=7,
+                 strata_varlist = dplyr::vars(gender_F,phone_verified),
+                 missfits="strata",
+                 seed=123,key="user_id")
+
+out <- random_assignment$data
 
 ```
 
