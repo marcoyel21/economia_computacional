@@ -95,7 +95,8 @@ packages <- c(
   'DiagrammeR',
   'CustomerScoringMetrics',
   'ggthemes',
-  'yardstick'
+  'yardstick',
+  'Ckmeans.1d.dp'
   )
 
 # instala los que no tengas
@@ -683,9 +684,8 @@ Por lo general buscaríamos el árbol que nos de menor _deviance_ , en este caso
 ```{r}
 tree_cut <- prune.tree(tree_estimation, best = min_dev_size)
 
-
-plot(tree_cut)
-text(tree_cut,pretty=0, pos='3',cex=0.6)
+plot(tree_cut,type = "uniform")
+text(tree_cut,pretty=0, pos='2.8',cex=0.4)
 title("Árbol final para predicción de churn",line=0.5)
 
 ```
@@ -1143,7 +1143,6 @@ También se presenta la matriz de importancia.
 names <- dimnames(data.matrix(data_training_a[,-c(1,2)]))[[2]]
 importance_matrix <- xgb.importance(names, model = xgb_model)
 
-library(Ckmeans.1d.dp)
 # Gráfico
 gg <- xgb.ggplot.importance(importance_matrix[1:30], n_clusters = 1) 
 gg + ggtitle("Las 30 variables más importantes") + theme(legend.position = "none") 
