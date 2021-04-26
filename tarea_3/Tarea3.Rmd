@@ -197,13 +197,11 @@ ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_global))+
 
 La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. 
 
-La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones
+La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. AQUÍ PODRÍAMOS DEFINIR EDAD POR GRUPOS ?
 
 
 
-```{r}
 
-```
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
 
@@ -232,17 +230,26 @@ out <- random_assignment$data
 
 ```{r}
 
+balance_table()
+
 ```
 
 ### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
 
 ```{r}
 
+balance_regression()
+
 ```
 
 ### 9. Elabora porqué parecen cumplirse los 3 supuestos de la asignación
 
 ```{r}
+
+# Aquí creo que se refiere a los siguientes 3:
+# 1. SUTVA
+# 2. Overlap
+# 3. Unconfoundness
 
 ```
 
@@ -280,20 +287,33 @@ Carguemos la base
 rm(list = ls())
 
 load('base_evaluacion.Rdata')
+data2 <- universo_f 
 
-
+rm(universo_f)
 ```
 
 ### 10 (2ptos). Muestra el estimador ITT para la tasa de transaccionalidad. Recuerda que tu cliente es un grupo empresarial. Por ende, muestra una gráfica donde se aprecie la diferencia entre los grupos de tratamiento y las significancias de manera sencilla. Interpreta tus resultados 
 
 ```{r}
+#ITT intention-to-treat
+# OJO, hay que ver si hay que meter heterogenous vars, cluster vars o así
+
+impact_eval(data=data2,
+            endogenous_vars = "transacted",
+            treatment = "treat")
+
 
 ```
 
 ### 11. Repite el ejercicio sobre compras totales. Que resultados se aprecian? Que indica esto sobre la rentabilidad del sistema de incentivos? 
 
 ```{r}
+#ITT intention-to-treat
+# OJO, hay que ver si hay que meter heterogenous vars, cluster vars o así
 
+impact_eval(data=data2,
+            endogenous_vars = "total_purchases_after",
+            treatment = "treat")
 ```
 
 ### 12. Interpreta el impacto del gruop de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
@@ -305,12 +325,20 @@ load('base_evaluacion.Rdata')
 ### 13 (2ptos). Repite la medición en 11 pero ahora con `log(total_purchases_after+1)`. Que encuentras ahora? Interpreta las diferencias
 
 ```{r}
+#ITT intention-to-treat
+# OJO, hay que ver si hay que meter heterogenous vars, cluster vars o así
 
+data2 <- data2 %>% mutate(log_total_purchases_after = log(total_purchases_after+1))
+
+impact_eval(data=data2,
+            endogenous_vars = "log_total_purchases_after",
+            treatment = "treat")
 ```
 
 ### 14 (4ptos). Describre que variables necesitas para hacer un análisis costo beneficio completo. Les doy algunas: Ticket promedio $100, Customer Lifetime value: $1,100. Con esto, que sistema de incentivos recomendarías? Porqué? Muestra el razonamiento detrás de tu recomendación
 
 ```{r}
+
 
 ```
 
@@ -318,12 +346,39 @@ load('base_evaluacion.Rdata')
 
 ```{r}
 
+impact_eval(data=data2,
+            endogenous_vars = "transacted",
+            treatment = "treat",
+            heterogenous_vars = "population")
+
+impact_eval(data=data2,
+            endogenous_vars = "total_purchases_after",
+            treatment = "treat",
+            heterogenous_vars = "population")
+
+impact_eval(data=data2,
+            endogenous_vars = "log_total_purchases_after",
+            treatment = "treat",
+            heterogenous_vars = "population")
 ```
 
 ### 16 (2ptos). Repite el ejercicio para ``phone_verified`. 
 
 ```{r}
+impact_eval(data=data2,
+            endogenous_vars = "transacted",
+            treatment = "treat",
+            heterogenous_vars = "phone_verified")
 
+impact_eval(data=data2,
+            endogenous_vars = "total_purchases_after",
+            treatment = "treat",
+            heterogenous_vars = "phone_verified")
+
+impact_eval(data=data2,
+            endogenous_vars = "log_total_purchases_after",
+            treatment = "treat",
+            heterogenous_vars = "phone_verified")
 ```
 
 
