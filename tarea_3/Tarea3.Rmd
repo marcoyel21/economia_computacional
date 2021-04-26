@@ -1,0 +1,286 @@
+---
+output:
+  pdf_document: null
+  geometry: margin=1in
+  html_document:
+    df_print: paged
+fontsize: 11pt
+header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
+  \hbadness=10000 \linespread{1.2} \usepackage[justification=centering, font=bf, labelsep=period,
+  skip=5pt]{caption}
+  \usepackage{babel} \usepackage{fancyhdr}
+  \pagestyle{fancy} \fancyhead[L]{Maestría en Economía Aplicada} \fancyhead[R]{ITAM}
+---
+\begin{titlepage}
+\begin{center}
+
+\textsc{\Large Instituto Tecnológico Autónomo de México}\\[2em]
+
+\textbf{\LARGE Economía Computacional}\\[2em]
+
+
+\textsc{\LARGE }\\[1em]
+
+
+\textsc{\LARGE Tarea 3 }\\[1em]
+\textsc{\large }\\[1em]
+\textsc{\LARGE Equipo 7 }\\[1em]
+
+\textsc{\large }\\[1em]
+
+\textsc{\LARGE Prof. Isidoro García Urquieta}\\[1em]
+
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Alfredo Lefranc Flores}\\[1em]
+
+\textsc{\large 144346}\\[1em]
+
+\textsc{\LARGE Cynthia Raquel Valdivia Tirado }\\[1em]
+
+\textsc{\large 81358}\\[1em]
+
+\textsc{\LARGE Rafael Sandoval Fernández}\\[1em]
+
+\textsc{\large 143689}\\[1em]
+
+\textsc{\LARGE Marco Antonio Ramos Juárez}\\[1em]
+
+\textsc{\large 142244}\\[1em]
+
+\textsc{\LARGE Francisco Velazquez Guadarrama}\\[1em]
+
+\textsc{\large 175606}\\[1em]
+
+\end{center}
+
+\vspace*{\fill}
+\textsc{Ciudad de México \hspace*{\fill} 2021}
+
+\end{titlepage}
+
+
+\newpage
+
+
+\tableofcontents
+
+\newpage
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
+                      fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r, warning=FALSE}
+
+packages <- c(
+  "tidyverse",
+  "data.table",
+  "broom",
+  "knitr",
+  "lubridate",
+  "RCT"
+  )
+
+# instala los que no tengas
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# cargar paquetes
+lapply(packages,
+       library,
+       character.only = TRUE)
+
+```
+
+
+
+## Contexto
+
+Rappi te contrata para hacer una intervención que active a sus usuarios en la plataforma. La empresa quiere evaluar si es necesario darles cash los usuarios (y cuánto) para reactivar a los usuarios o si es suficiente con una campaña informativa. 
+
+Para ello, te decides a realizar un experimento factorial donde evaluas: 
+
+- El impacto de mandar un mensaje informativo donde muestres las nuevas tiendas afiliadas a Rappi, y 
+
+- El impacto de dar 100 ó 200 pesos en cupones
+
+Finalmente, les gustaría entender cómo interactuar el mostrar las nuevas tiendas aunado con dar dinero en cupones. 
+
+A la empresa le gustaría entender el impacto de la intervención sobre: 
+
+- Las compras 
+
+- La tasa de usuarios activos en la app (transaccionar: abrir app o hacer compras)
+
+\newpage
+
+## Datos
+
+Los datos para asignar los pueden encontrar en `universo.Rdata`. 
+
+Cargemos los datos
+```{r }
+load('universo.Rdata')
+
+data <- universo
+rm(universo)
+```
+
+### 1. Cuántos grupos de tratamiento debe de haber? Elabora sobre que intervención va a recibir cada uno 
+
+- Control: Ninguna intervención
+
+- Trat 1: Sólo mensaje
+
+- Treat 2: Sólo cupón $100
+
+- Treat 3: Sólo cupón de $200
+
+- Treat 4: Sólo cupón de $300
+
+- Treat 5: Mensaje + $100
+
+- Treat 6: Mensaje + $200
+
+- Treat 7: Mensaje + $300
+
+
+### 2 (2pts). Como pueden notar, tenemos 2 poblaciones: Usuarios inactivos y usuarios que nunca estuvieron activos. Para ellos, las tasas de transaccionalidad son hasta ahora 7.94% y 0%. Utiliza esta información para hacer pruebas de poder: Dada esta tasa y población, cuál es el efecto mínimo detectable sobre la tasa de transaccionalidad como función de cuantas observaciones asignamos al grupo control? Interpreta. (Tip: asegurate de dejar claros los grupos comparados en esta prueba)
+
+```{r}
+
+```
+
+### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
+
+```{r}
+
+```
+
+### 4 (2ptos) Qué variables crees que puedan estar más correlacionadas con el impacto? Justifica tu respuesta y elige un set
+
+```{r}
+
+```
+
+### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
+
+```{r}
+
+```
+
+### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
+
+```{r}
+
+```
+
+### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
+
+```{r}
+
+```
+
+### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
+
+```{r}
+
+```
+
+### 9. Elabora porqué parecen cumplirse los 3 supuestos de la asignación
+
+```{r}
+
+```
+
+### 10. Elabora un pitch de negocio sobre los beneficios que este experimento podría dejar a Rappi. 
+
+```{r}
+
+```
+## Evaluación 
+
+Pasemos a la evaluación de tu intervención. En este ejercicio, Rappi diseño un nuevo experimento con tus enseñanzas algo distinto al tuyo. 
+
+Este consistió en 6 grupos de tratamiento y un control:
+
+- T1: Dar 100 pesos en cupones (con mensaje)
+
+- T2: Dar 200 pesos en cupones (con mensaje)
+
+- T3: Dar un descuento de 20% en la siguiente compra 
+
+- T4: Dar un descuento de 25% en la siguiente compra
+
+- T5: Ofrecer 2% de descuento en la siguiente compra por cada usuario que refieran
+
+- T6: Ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran
+
+
+Te piden ahora medir este experimento (estratificado por `phone_verified`, `population` y `device_value`) en la base
+`base_evaluacion.Rdata`. Las variables endogenas son `total_purchases_after` que refleja el gasto total post-tratamiento y `transacted` que refleja abrir la app o hacer compras. 
+
+
+Carguemos la base 
+
+```{r }
+rm(list = ls())
+
+load('base_evaluacion.Rdata')
+
+
+```
+
+### 10 (2ptos). Muestra el estimador ITT para la tasa de transaccionalidad. Recuerda que tu cliente es un grupo empresarial. Por ende, muestra una gráfica donde se aprecie la diferencia entre los grupos de tratamiento y las significancias de manera sencilla. Interpreta tus resultados 
+
+```{r}
+
+```
+
+### 11. Repite el ejercicio sobre compras totales. Que resultados se aprecian? Que indica esto sobre la rentabilidad del sistema de incentivos? 
+
+```{r}
+
+```
+
+### 12. Interpreta el impacto del gruop de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
+
+```{r}
+
+```
+
+### 13 (2ptos). Repite la medición en 11 pero ahora con `log(total_purchases_after+1)`. Que encuentras ahora? Interpreta las diferencias
+
+```{r}
+
+```
+
+### 14 (4ptos). Describre que variables necesitas para hacer un análisis costo beneficio completo. Les doy algunas: Ticket promedio $100, Customer Lifetime value: $1,100. Con esto, que sistema de incentivos recomendarías? Porqué? Muestra el razonamiento detrás de tu recomendación
+
+```{r}
+
+```
+
+### 15 (2ptos). Realiza la estimación de efectos heterogeneos para ambas variables usando `population`. Que encuentras? existe alguna subpoblación para la que los efectos difieran del promedio? Para cada efecto, muestra gráficas como lo hiciste en los ITTs
+
+```{r}
+
+```
+
+### 16 (2ptos). Repite el ejercicio para ``phone_verified`. 
+
+```{r}
+
+```
+
+
+### 17. Presenta una propuesta de focalización con base en tus resultados generales y heterogeneos. 
+
+```{r}
+
+```
