@@ -167,8 +167,8 @@ data <- data %>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
                                                T ~ 0))
 
 sharecontrol = seq(0,1,0.05)
-m <- matrix(nrow=21,ncol=1)
-n <- matrix(nrow=21,ncol=1)
+m <- matrix(nrow=length(sharecontrol),ncol=1)
+n <- matrix(nrow=length(sharecontrol),ncol=1)
 
 i <- 0
 for (a in sharecontrol){
@@ -186,17 +186,17 @@ n[i] <- taumin$tau_min_each_treat
 m <- cbind(sharecontrol,m,n)
 taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_trat"=V3)
 
-ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_global))+
-  geom_line(color='navyblue',size=1)+
+ggplot(data=taus,aes(x=sharecontrol))+
+  geom_line(aes(y=taus$tau_min_global*100),color='navyblue',size=1)+
   theme_bw()+
   xlab("Proporción de control")+
-  ylab("Efecto mínimo detectable ")+
+  ylab("Efecto mínimo detectable (puntos porcentuales) ")+
   labs(title="Relación entre proporción de control y efecto mínimo detectable",
        subtitle="Sobre tasa de transaccionalidad")+
-  scale_x_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1))+
+  scale_x_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1),limits=c(0,1))+
   geom_vline(xintercept=0.5, color='red',linetype='dashed')
 
-
+# OJO Aquí estamos comparando el efeto mínimo detectable entre el control y todos los tratamientos juntos 
 
 ```
 
@@ -232,6 +232,10 @@ ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_global))+
        subtitle="Sobre número de compras")+
   scale_x_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1))+
   geom_vline(xintercept=0.5, color='red',linetype='dashed')
+
+# OJO Aquí estamos comparando el efeto mínimo detectable entre el control y todos los tratamientos juntos 
+
+
 ```
 
 ### 4 (2ptos) Qué variables crees que puedan estar más correlacionadas con el impacto? Justifica tu respuesta y elige un set
@@ -239,6 +243,8 @@ ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_global))+
 La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. 
 
 La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. AQUÍ PODRÍAMOS DEFINIR EDAD POR GRUPOS ?
+
+El valor del telefono
 
 
 
@@ -251,11 +257,12 @@ La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las 
 # OJO falta ajustar share_control y creo que n_T
 
 random_assignment <- treatment_assign(data=data,
-                 share_control = 0.5,
+                 share_control = 1/8,
                  n_t=7,
-                 strata_varlist = dplyr::vars(gender_F,phone_verified),
+                 strata_varlist = dplyr::vars(population_type,device_value_type,gender_F,phone_verified),
                  missfits="strata",
-                 seed=123,key="user_id")
+                 seed=123,
+                 key="user_id")
 
 out <- random_assignment$data
 
@@ -265,11 +272,14 @@ out <- random_assignment$data
 
 ```{r}
 
+# Missfits = strata para mejor balance
+
 ```
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
 ```{r}
+# ya las transformé al principio, son las que tienen " _type "
 
 balance_table()
 
