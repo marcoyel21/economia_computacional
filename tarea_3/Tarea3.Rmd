@@ -165,6 +165,14 @@ str(data)
 
 data <- data %>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
                                                T ~ 0))
+#A: opción más facil
+tau_min(data$tasa_trans,
+        N = nrow(data),
+        power = 0.8,
+        significance = 0.05,
+        share_control = seq(0,1,0.1),
+        n_groups = 8)
+
 
 sharecontrol = seq(0,1,0.05)
 m <- matrix(nrow=length(sharecontrol),ncol=1)
@@ -187,7 +195,7 @@ m <- cbind(sharecontrol,m,n)
 taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_trat"=V3)
 
 ggplot(data=taus,aes(x=sharecontrol))+
-  geom_line(aes(y=taus$tau_min_global*100),color='navyblue',size=1)+
+  geom_line(aes(y=tau_min_each_treat*100),color='navyblue',size=1)+
   theme_bw()+
   xlab("Proporción de control")+
   ylab("Efecto mínimo detectable (puntos porcentuales) ")+
@@ -203,6 +211,15 @@ ggplot(data=taus,aes(x=sharecontrol))+
 ### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
 
 ```{r}
+
+#A: opción más facil
+tau_min(data$total_purchases,
+        N = nrow(data),
+        power = 0.8,
+        significance = 0.05,
+        share_control = seq(0,1,0.1),
+        n_groups = 5)
+
 sharecontrol = seq(0,1,0.05)
 m <- matrix(nrow=21,ncol=1)
 n <- matrix(nrow=21,ncol=1)
@@ -223,7 +240,7 @@ n[i] <- taumin$tau_min_each_treat
 m <- cbind(sharecontrol,m,n)
 taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_trat"=V3)
 
-ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_global))+
+ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_each_trat))+
   geom_line(color='navyblue',size=1)+
   theme_bw()+
   xlab("Proporción de control")+
@@ -266,6 +283,8 @@ random_assignment <- treatment_assign(data=data,
 
 out <- random_assignment$data
 
+data <- left_join(data,out, by =c("user_id"))
+
 ```
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
@@ -273,7 +292,15 @@ out <- random_assignment$data
 ```{r}
 
 # Missfits = strata para mejor balance
-
+abc<-data.frame(key = c(1:1000), 
+                 ing_quartile = rep(c("Q1", "Q2", "Q3", "Q4"), each = 250), 
+                 age_quartile = rep(c("Q1", "Q2", "Q3", "Q4"), times = 250))
+assigment<-treatment_assign(data = abc, share_control = 0.1, n_t = 3,
+                            strata_varlist = dplyr::vars(ing_quartile, 
+                            age_quartile), missfits = "strata", 
+                            seed = 1990, key = "key")
+table(abc$treat, useNA = "ifany")
+prop.table(table(data$treat, useNA = "ifany"))
 ```
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
