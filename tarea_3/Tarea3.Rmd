@@ -405,6 +405,28 @@ load('base_evaluacion.Rdata')
 data2 <- universo_f 
 
 rm(universo_f)
+
+
+data2$population <- as.factor(data2$population)
+data2$device_value <- as.factor(data2$device_value)
+
+# bajo esta definicion, population_type: Inactive == 1 y never active == 2
+# device_value_type: 0-10mil == 1 | 10mil+ == 2 | No info == 3
+
+# ver como estan definidos los estratos
+table(data2$strata)
+# 1 a 6 y 1001 a 1006. Son doce grupos, combinaciones de population, device_value y phone_verified
+data2$population[data2$strata>10] %>% summary()
+data2$phone_verified[data2$strata<4] %>% summary()
+data2$phone_verified[data2$strata>1003] %>% summary()
+data2$device_value[data2$strata==1 | data2$strata==1001] %>% summary()
+data2$device_value[data2$strata==2 | data2$strata==1002] %>% summary()
+# 1-6 == Never active
+# 1001-1006 == Inactive
+# 4-6 y 1004-1006 == phone_verified
+# 1, 4, 1001 y 1004: device value == [$0-$10,000]
+# 2, 5, 1002 y 1005. device value == [$10,001+]
+# 3, 6, 1003 y 1006. device value == No info
 ```
 
 ### 10 (2ptos). Muestra el estimador ITT para la tasa de transaccionalidad. Recuerda que tu cliente es un grupo empresarial. Por ende, muestra una gráfica donde se aprecie la diferencia entre los grupos de tratamiento y las significancias de manera sencilla. Interpreta tus resultados 
@@ -412,11 +434,42 @@ rm(universo_f)
 ```{r}
 #ITT intention-to-treat
 # OJO, hay que ver si hay que meter heterogenous vars, cluster vars o así
+# elección de controles óptima?
+# podemos transformar alguna variable?
 
-impact_eval(data=data2,
+options(scipen = 999)
+
+itt10 <- impact_eval(data=data2,
             endogenous_vars = "transacted",
-            treatment = "treat")
+            treatment = "treat",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register")) %>%
+  as.data.frame()
 
+names(itt10) <- c("term","estimate","std_error","statistic","p_value")
+itt10$p_value <- itt10$p_value %>% round(3)
+itt10$term <- c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register")
+
+# resultados gráficos
+itt10 %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
+  ylim(-0.001,0.12)+
+  theme_minimal() +
+  labs(title = "Efecto Promedio de Tratamiento en transaccionalidad", 
+       x ="",
+       caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
+  theme(legend.position="none")
 
 ```
 
@@ -426,18 +479,47 @@ impact_eval(data=data2,
 #ITT intention-to-treat
 # OJO, hay que ver si hay que meter heterogenous vars, cluster vars o así
 
-impact_eval(data=data2,
+itt11 <- impact_eval(data=data2,
             endogenous_vars = "total_purchases_after",
-            treatment = "treat")
+            treatment = "treat",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register")) %>%
+  as.data.frame()
+
+names(itt11) <- c("term","estimate","std_error","statistic","p_value")
+itt11$p_value <- itt11$p_value %>% round(3)
+itt11$term <- c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register")
+
+
+
 ```
+
+Parece ser que el tratamiento es efectivo en transaccionalidad pero no en compras.
 
 ### 12. Interpreta el impacto del gruop de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
 
-```{r}
+El estimador es muy grande pero el error estándar es aún más grande, por lo que no es significativo. Esto significa que hay mucha variabilidad en el efecto promedio de tratamiento 6.
 
+
+```{r}
+summary(data2$total_purchases)
+summary(data2$total_purchases_after)
 ```
+Hay muchísimos ceros, y el máximo es enorme. Tuvo un gran efecto en pocos, y en muchos no tuvo efecto.
+
+
+Por la pregunta 13, quizá también tiene que ver con los niveles de compra?
 
 ### 13 (2ptos). Repite la medición en 11 pero ahora con `log(total_purchases_after+1)`. Que encuentras ahora? Interpreta las diferencias
+
+Aquí podemos probar meter en logs la de total_purchases como control.
 
 ```{r}
 #ITT intention-to-treat
@@ -445,9 +527,25 @@ impact_eval(data=data2,
 
 data2 <- data2 %>% mutate(log_total_purchases_after = log(total_purchases_after+1))
 
-impact_eval(data=data2,
+itt13 <- impact_eval(data=data2,
             endogenous_vars = "log_total_purchases_after",
-            treatment = "treat")
+            treatment = "treat",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register")) %>%
+  as.data.frame()
+
+names(itt13) <- c("term","estimate","std_error","statistic","p_value")
+itt13$p_value <- itt10$p_value %>% round(3)
+itt13$term <- c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register")
+
+itt13
 ```
 
 ### 14 (4ptos). Describre que variables necesitas para hacer un análisis costo beneficio completo. Les doy algunas: Ticket promedio $100, Customer Lifetime value: $1,100. Con esto, que sistema de incentivos recomendarías? Porqué? Muestra el razonamiento detrás de tu recomendación
@@ -460,40 +558,51 @@ impact_eval(data=data2,
 ### 15 (2ptos). Realiza la estimación de efectos heterogeneos para ambas variables usando `population`. Que encuentras? existe alguna subpoblación para la que los efectos difieran del promedio? Para cada efecto, muestra gráficas como lo hiciste en los ITTs
 
 ```{r}
-
-impact_eval(data=data2,
+itt151 <- impact_eval(data=data2,
             endogenous_vars = "transacted",
             treatment = "treat",
-            heterogenous_vars = "population")
+            heterogenous_vars = "population",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
 
-impact_eval(data=data2,
-            endogenous_vars = "total_purchases_after",
-            treatment = "treat",
-            heterogenous_vars = "population")
 
-impact_eval(data=data2,
+
+itt152 <- impact_eval(data=data2,
             endogenous_vars = "log_total_purchases_after",
             treatment = "treat",
-            heterogenous_vars = "population")
+            heterogenous_vars = "population",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
+
+
 ```
 
 ### 16 (2ptos). Repite el ejercicio para ``phone_verified`. 
 
 ```{r}
-impact_eval(data=data2,
+itt161 <- impact_eval(data=data2,
             endogenous_vars = "transacted",
             treatment = "treat",
-            heterogenous_vars = "phone_verified")
+            heterogenous_vars = "phone_verified",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
 
-impact_eval(data=data2,
-            endogenous_vars = "total_purchases_after",
-            treatment = "treat",
-            heterogenous_vars = "phone_verified")
 
-impact_eval(data=data2,
+
+itt162 <- impact_eval(data=data2,
             endogenous_vars = "log_total_purchases_after",
             treatment = "treat",
-            heterogenous_vars = "phone_verified")
+            heterogenous_vars = "phone_verified",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
 ```
 
 
@@ -502,3 +611,4 @@ impact_eval(data=data2,
 ```{r}
 
 ```
+
