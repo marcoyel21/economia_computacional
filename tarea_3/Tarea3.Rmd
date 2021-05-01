@@ -161,7 +161,10 @@ str(data)
 
 ```{r}
 
-# qué es la tasa de transaccionalidad ????
+# qué es la tasa de transaccionalidad ???? 
+
+# Respuesta: (transaccionar: abrir app o hacer compras)
+
 
 data <- data %>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
                                                T ~ 0))
@@ -211,6 +214,7 @@ ggplot(data=taus,aes(x=sharecontrol))+
 ### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
 
 ```{r}
+<<<<<<< HEAD
 
 #A: opción más facil
 tau_min(data$total_purchases,
@@ -221,6 +225,9 @@ tau_min(data$total_purchases,
         n_groups = 5)
 
 sharecontrol = seq(0,1,0.05)
+=======
+sharecontrol = seq(0,1,0.05)# muy bien 
+>>>>>>> 997ac7c2cdfba815169553c20d3a2eab073b61f0
 m <- matrix(nrow=21,ncol=1)
 n <- matrix(nrow=21,ncol=1)
 
@@ -263,8 +270,50 @@ La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las 
 
 El valor del telefono
 
+```{r}
+
+# ANALISIS INGENUO A
+#en lo que entendimos, hay dos impactos uno para transaccionalidad y otro para las compras
+#creo que amerita dos analisis
+
+#ESTE ES UN ANALISIS INGENUO PERO NOS AYUDA A CORRBORAR INTUICION
+
+library(GGally)
+data$device_value<-as.factor(data$device_value)
+data$population<-as.factor(data$population)
+
+data2 <- sapply(data, as.numeric)
+data2<-as.data.frame(data2)
+data2<-data2%>% select(device_value, phone_verified,age,
+                      population,gender_F,months_since_register,
+                      population_type,device_value_type,tasa_trans, total_purchases,)
+
+ggcorr(data2, method = c("everything", "pearson")) 
 
 
+#para taasa_trans(omitiendo population y populationtype que son colineales) parece que months_since_register,age y phone_verifed esta muy correlacionada.
+#En cambio, para total_purchase, ahi si aplica population type esta relacionada. Age tiene una correlacion un poco debil
+
+#ESTE
+
+
+```
+
+```{r}
+
+# ANALISIS INGENUO B
+
+#converito a factor lo importante
+data$phone_verified<-as.factor(data$phone_verified)
+data$gender_F<-as.factor(data$gender_F)
+data$population_type<-as.factor(data$population_type)
+data$device_value_type<-as.factor(data$device_value_type)
+
+modelo_a<-lm(tasa_trans~.-population_type-population-user_id,data)
+modelo_b<-lm(total_purchases~.-population_type-population-user_id,data)
+library(stargazer)
+stargazer(modelo_a,modelo_b, type="text")
+```
 
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
@@ -283,7 +332,11 @@ random_assignment <- treatment_assign(data=data,
 
 out <- random_assignment$data
 
+<<<<<<< HEAD
 data <- left_join(data,out, by =c("user_id"))
+=======
+#
+>>>>>>> 997ac7c2cdfba815169553c20d3a2eab073b61f0
 
 ```
 
@@ -336,6 +389,7 @@ balance_regression()
 ```{r}
 
 ```
+
 ## Evaluación 
 
 Pasemos a la evaluación de tu intervención. En este ejercicio, Rappi diseño un nuevo experimento con tus enseñanzas algo distinto al tuyo. 
