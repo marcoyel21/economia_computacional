@@ -214,8 +214,6 @@ ggplot(data=taus,aes(x=sharecontrol))+
 ### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
 
 ```{r}
-<<<<<<< HEAD
-
 #A: opción más facil
 tau_min(data$total_purchases,
         N = nrow(data),
@@ -224,10 +222,7 @@ tau_min(data$total_purchases,
         share_control = seq(0,1,0.1),
         n_groups = 5)
 
-sharecontrol = seq(0,1,0.05)
-=======
-sharecontrol = seq(0,1,0.05)# muy bien 
->>>>>>> 997ac7c2cdfba815169553c20d3a2eab073b61f0
+sharecontrol = seq(0,1,0.05) #muy bien
 m <- matrix(nrow=21,ncol=1)
 n <- matrix(nrow=21,ncol=1)
 
@@ -332,12 +327,7 @@ random_assignment <- treatment_assign(data=data,
 
 out <- random_assignment$data
 
-<<<<<<< HEAD
 data <- left_join(data,out, by =c("user_id"))
-=======
-#
->>>>>>> 997ac7c2cdfba815169553c20d3a2eab073b61f0
-
 ```
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
@@ -345,15 +335,8 @@ data <- left_join(data,out, by =c("user_id"))
 ```{r}
 
 # Missfits = strata para mejor balance
-abc<-data.frame(key = c(1:1000), 
-                 ing_quartile = rep(c("Q1", "Q2", "Q3", "Q4"), each = 250), 
-                 age_quartile = rep(c("Q1", "Q2", "Q3", "Q4"), times = 250))
-assigment<-treatment_assign(data = abc, share_control = 0.1, n_t = 3,
-                            strata_varlist = dplyr::vars(ing_quartile, 
-                            age_quartile), missfits = "strata", 
-                            seed = 1990, key = "key")
-table(abc$treat, useNA = "ifany")
-prop.table(table(data$treat, useNA = "ifany"))
+
+
 ```
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
@@ -369,7 +352,7 @@ balance_table()
 
 ```{r}
 
-balance_regression()
+balance_table()
 
 ```
 
