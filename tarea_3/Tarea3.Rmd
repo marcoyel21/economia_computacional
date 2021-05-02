@@ -392,9 +392,9 @@ balance_regression(data_4, 'treat')
 ```{r}
 
 # Aquí creo que se refiere a los siguientes 3:
-# 1. SUTVA
-# 2. Overlap
-# 3. Unconfoundness
+# 1. SUTVA # En principio cada mensaje y bono va direccionado al celular individual de cada persona, SUTVA solo se violaria si otra persona tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento.
+# 2. Overlap # Forzamos a que cada estrato tuviera 8 grupos, la probabilidad de pertenecer a uno es aproximadamente 1/8 siempre
+# 3. Unconfoundness # Los grupos estan balanceados (por construccion), las tablas de balance solo comprueban este supuesto.
 
 ```
 
