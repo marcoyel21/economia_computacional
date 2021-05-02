@@ -341,9 +341,27 @@ data$device_value_type<-as.factor(data$device_value_type)
 
 modelo_a<-lm(tasa_trans~.-population_type-population-user_id,data)
 modelo_b<-lm(total_purchases~.-population_type-population-user_id,data)
-library(stargazer)
+#library(stargazer)
 stargazer(modelo_a,modelo_b, type="text")
 ```
+
+
+```{r}
+# V2.0
+
+# Quité device_value porque ya tiene una dummy
+reg_a <- lm(tasa_trans ~ . -population_type -population -device_value -user_id, data) 
+
+reg_b <- lm(total_purchases ~ . -population_type -population -device_value -user_id, data = data)
+# Acá no quito population_type porque en teoría no se utiliza para llegar a total_purchases
+reg_b2 <- lm(total_purchases ~ . -population -device_value -user_id, data = data)
+
+stargazer(reg_a, reg_b, type="text")
+
+# Para tasa_trans: phone_verified, gender, months (chance podríamos jugar con rangos de edad como factor)
+# Para total_purchases: phone_verified, gender, months, device_value
+```
+
 
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
