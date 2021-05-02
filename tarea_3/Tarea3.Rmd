@@ -87,7 +87,8 @@ packages <- c(
   "magrittr",
   "kableExtra",
   "fastDummies",
-   "GGally"
+  "GGally",
+  "stargazer"
   )
 
 # instala los que no tengas
@@ -296,21 +297,16 @@ Entonces, usaremos un \textit{share} de control de 0.25 para
 
 ### 4 (2ptos) Qué variables crees que puedan estar más correlacionadas con el impacto? Justifica tu respuesta y elige un set
 
-La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. 
-
-La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. AQUÍ PODRÍAMOS DEFINIR EDAD POR GRUPOS ?
-
-El valor del telefono
+Inicialmente se realiza un análisis para el cual es fundamental mantener en mente que su principal función es servir de apoyo, no para obtener conclusiones directas. Esto se debe a que, en realidad, lo que es de interés para la estratificación es la relación entre las variables por las cuales se estratifica y el impacto, no con la tasa de usuarios activos o las ventas. Se procede a mostrar un correlograma y una regresión lineal (que aún existiendo un problema metodológico podría ser útil para este fin).
 
 ```{r}
-# Vamos a analizar la relacion con un correlograma y con una regresión, sin embargo, debemos hacer un analisis con la base bien codificada.
+# Se prepara la base
 
-#categorizó las categoricas
+# Categorizo las categoricas
 data$phone_verified<-as.factor(data$phone_verified)
 data$gender_F<-as.factor(data$gender_F)
 data$population_type<-as.factor(data$population_type)
 data$device_value_type<-as.factor(data$device_value_type)
-
 
 # Creo todo numerico (con base en dummies)
 data_correctly<-data%>%select(-user_id)
@@ -329,32 +325,28 @@ ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_siz
 
 
 ```{r}
-
+# Se crean categorías para distintos rangos de edad a partir de los cuartiles
+age_quart <- quantile(data$age)
+data$age_group <- ifelse(data$age <= age_quart[2], 1,
+                         ifelse(data$age <= age_quart[3], 2, 
+                                ifelse(data$age <= age_quart[4], 3, 
+                                       ifelse(data$age <= age_quart[5], 4, 0))))
+data$age_group <- as.factor(data$age_group)
 
 # REGRESION
-library(stargazer)
-modelo_a<-lm(tasa_trans~.-population_type-population-user_id-total_purchases,data) #quito las variables colineales y las objetivo
-modelo_b<-lm(total_purchases~.-population_type-population-user_id-tasa_trans,data)#quito las variables colineales y las objetivo
+# Quito las variables colineales y las objetivo
+modelo_a<-lm(tasa_trans~.-population_type-population-user_id-total_purchases-age-device_value,data) 
+
+modelo_b<-lm(total_purchases~.-population_type-population-user_id-tasa_trans-age-device_value,data)
+
 stargazer(modelo_a,modelo_b, type="text")
 ```
 
-
-```{r}
-# V2.0
-
-# Quité device_value porque ya tiene una dummy
-reg_a <- lm(tasa_trans ~ . -population_type -population -device_value -user_id, data) 
-
-reg_b <- lm(total_purchases ~ . -population_type -population -device_value -user_id, data = data)
-# Acá no quito population_type porque en teoría no se utiliza para llegar a total_purchases
-reg_b2 <- lm(total_purchases ~ . -population -device_value -user_id, data = data)
-
-stargazer(reg_a, reg_b, type="text")
-
-# Para tasa_trans: phone_verified, gender, months (chance podríamos jugar con rangos de edad como factor)
-# Para total_purchases: phone_verified, gender, months, device_value
-```
-
+Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
+* La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
+* La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles).
+* El valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo. Nuevamente, la variable es significativa y de relativa importancia.
+* Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, population podría resultar también relevante.
 
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
@@ -362,6 +354,9 @@ stargazer(reg_a, reg_b, type="text")
 ```{r}
 
 # OJO falta ajustar share_control y creo que n_T
+
+# FVG: Yo quitaría gender. No veo intuitivamente un motivo para esa variable
+#      Igualmente agregaría en su lugar la estratificación por edad que ya cree arriba (age_group)
 
 random_assignment <- treatment_assign(data=data,
                  share_control = 1/4,
@@ -378,9 +373,12 @@ data <- left_join(data,out, by =c("user_id"))
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
+Si bien el número de misfits es muy bajo relativo al total de observaciones y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que me haya sido asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico. 
+
 ```{r}
 
 # Missfits = strata para mejor balance
+# FVG: Creo que no es tan importante el balance con tan pocos misfits (relativo al total de observaciones)
 
 
 ```
@@ -409,7 +407,7 @@ balance_regression(data_4, 'treat')
 
 
 ```{r}
-
+# FVG: Confirmo, sólo podría cambiar el número de bloques. Haces un buen punto y argumento en favor de mejor asignar misfits por estrato y no global como sugerí en la 6.
 # Aquí creo que se refiere a los siguientes 3:
 # 1. SUTVA # En principio cada mensaje y bono va direccionado al celular individual de cada persona, SUTVA solo se violaria si otra persona tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento.
 # 2. Overlap # Forzamos a que cada estrato tuviera 8 grupos, la probabilidad de pertenecer a uno es aproximadamente 1/8 siempre
