@@ -377,18 +377,17 @@ data_4<-dummy_cols(data_3, remove_first_dummy = T,
 
 # Imprimo las tablas de balance
 balance_table(data_4,'treat')
-
+#Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares.
 ```
 
 ### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
 
 ```{r}
-
-#balance_table()
-
+balance_regression(data_4, 'treat')
 ```
 
 ### 9. Elabora porqué parecen cumplirse los 3 supuestos de la asignación
+
 
 ```{r}
 
