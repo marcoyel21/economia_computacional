@@ -343,8 +343,13 @@ data <- left_join(data,out, by =c("user_id"))
 
 ```{r}
 # ya las transformé al principio, son las que tienen " _type "
+library(fastDummies)
+data_3<-data%>%select(population_type,device_value_type,gender_F,phone_verified,treat)
+data_4<-dummy_cols(data_3, remove_first_dummy = T,
+           select_columns = c('population_type','device_value_type','gender_F','phone_verified'),
+           remove_selected_columns = T)
 
-balance_table()
+balance_table(data_4,'treat')
 
 ```
 
