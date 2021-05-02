@@ -330,12 +330,31 @@ ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_siz
 
 ```{r}
 
+
 # REGRESION
 library(stargazer)
 modelo_a<-lm(tasa_trans~.-population_type-population-user_id-total_purchases,data) #quito las variables colineales y las objetivo
 modelo_b<-lm(total_purchases~.-population_type-population-user_id-tasa_trans,data)#quito las variables colineales y las objetivo
 stargazer(modelo_a,modelo_b, type="text")
 ```
+
+
+```{r}
+# V2.0
+
+# Quité device_value porque ya tiene una dummy
+reg_a <- lm(tasa_trans ~ . -population_type -population -device_value -user_id, data) 
+
+reg_b <- lm(total_purchases ~ . -population_type -population -device_value -user_id, data = data)
+# Acá no quito population_type porque en teoría no se utiliza para llegar a total_purchases
+reg_b2 <- lm(total_purchases ~ . -population -device_value -user_id, data = data)
+
+stargazer(reg_a, reg_b, type="text")
+
+# Para tasa_trans: phone_verified, gender, months (chance podríamos jugar con rangos de edad como factor)
+# Para total_purchases: phone_verified, gender, months, device_value
+```
+
 
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
