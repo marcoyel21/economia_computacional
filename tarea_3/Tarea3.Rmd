@@ -73,7 +73,7 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
                       fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
-```{r, warning=FALSE}
+```{r, include=FALSE}
 
 packages <- c(
   "tidyverse",
@@ -82,7 +82,10 @@ packages <- c(
   "knitr",
   "lubridate",
   "RCT",
-  "splitstackshape" #para hacer el muestreo estratificado
+  "splitstackshape",
+  "truncnorm",#para hacer el muestreo estratificado
+  "magrittr",
+  "kableExtra"
   )
 
 # instala los que no tengas
@@ -125,7 +128,7 @@ A la empresa le gustaría entender el impacto de la intervención sobre:
 Los datos para asignar los pueden encontrar en `universo.Rdata`. 
 
 Cargemos los datos
-```{r }
+```{r, include=FALSE}
 load('universo.Rdata')
 
 data <- universo
@@ -159,28 +162,34 @@ str(data)
 
 ### 2 (2pts). Como pueden notar, tenemos 2 poblaciones: Usuarios inactivos y usuarios que nunca estuvieron activos. Para ellos, las tasas de transaccionalidad son hasta ahora 7.94% y 0%. Utiliza esta información para hacer pruebas de poder: Dada esta tasa y población, cuál es el efecto mínimo detectable sobre la tasa de transaccionalidad como función de cuantas observaciones asignamos al grupo control? Interpreta. (Tip: asegurate de dejar claros los grupos comparados en esta prueba)
 
+En primer lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable. 
+
 ```{r}
-
-# qué es la tasa de transaccionalidad ???? 
-
+# Qué es la tasa de transaccionalidad ?
 # Respuesta: (transaccionar: abrir app o hacer compras)
 
-
-data <- data %>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
+data %<>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
                                                T ~ 0))
-#A: opción más facil
-tau_min(data$tasa_trans,
-        N = nrow(data),
-        power = 0.8,
-        significance = 0.05,
-        share_control = seq(0,1,0.1),
-        n_groups = 8)
+# =============================
+# Tabla
+# =============================
+tabla_tasa_trans <- tau_min(data$tasa_trans,
+                            N = nrow(data),
+                            power = 0.8,
+                            significance = 0.05,
+                            share_control = seq(0,1,0.1),
+                            n_groups = 8)
 
+kable(tabla_tasa_trans,booktabs=T, align = 'c',digits = 4)%>%
+  kable_styling(position = "center",
+                latex_options=c("scale_down","HOLD_position"))
+# =============================
+# Grafica
+# =============================
 
 sharecontrol = seq(0,1,0.05)
 m <- matrix(nrow=length(sharecontrol),ncol=1)
 n <- matrix(nrow=length(sharecontrol),ncol=1)
-
 i <- 0
 for (a in sharecontrol){
   i <- i+1
@@ -194,37 +203,54 @@ for (a in sharecontrol){
 m[i] <- taumin$tau_min_global
 n[i] <- taumin$tau_min_each_treat
 }
+
 m <- cbind(sharecontrol,m,n)
-taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_trat"=V3)
+taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_treat"=V3)
+taus_noinf <- taus[-nrow(taus),]
+taus_noinf <- taus_noinf[-1,]
+share_optimo <- min(taus_noinf$sharecontrol[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+tau_optima <- min(taus_noinf$tau_min_each_treat[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
 
 ggplot(data=taus,aes(x=sharecontrol))+
   geom_line(aes(y=tau_min_each_treat*100),color='navyblue',size=1)+
-  theme_bw()+
   xlab("Proporción de control")+
   ylab("Efecto mínimo detectable (puntos porcentuales) ")+
-  labs(title="Relación entre proporción de control y efecto mínimo detectable",
-       subtitle="Sobre tasa de transaccionalidad")+
-  scale_x_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1),limits=c(0,1))+
-  geom_vline(xintercept=0.5, color='red',linetype='dashed')
-
-# OJO Aquí estamos comparando el efeto mínimo detectable entre el control y todos los tratamientos juntos 
+  labs(title="Efecto mínimo detectable* (EMD) en función de la proporción de control",
+       subtitle="EMD sobre tasa de transaccionalidad",
+       caption="*EMD entre el grupo de control y cada tratamiento")+
+  scale_x_continuous(breaks = sharecontrol,limits=c(0,1))+
+  geom_vline(xintercept= share_optimo, color='red',linetype='dashed')+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5))
 
 ```
+Se puede observar que para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima*100), 4), nsmall=0, big.mark=",")` puntos porcentuales
+
 
 ### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
 
-```{r}
-#A: opción más facil
-tau_min(data$total_purchases,
+```{r,results='asis'}
+
+# =============================
+# Tabla
+# =============================
+table_total_purchases <- tau_min(data$total_purchases,
         N = nrow(data),
         power = 0.8,
         significance = 0.05,
-        share_control = seq(0,1,0.1),
-        n_groups = 5)
+        share_control = seq(0,1,0.05),
+        n_groups = 8)
 
+kable(table_total_purchases,booktabs=T, align = 'c',digits = 4)%>%
+  kable_styling(position = "center",
+                latex_options=c("scale_down","HOLD_position"))
+
+# =============================
+# Grafica
+# =============================
 sharecontrol = seq(0,1,0.05) #muy bien
-m <- matrix(nrow=21,ncol=1)
-n <- matrix(nrow=21,ncol=1)
+m <- matrix(nrow=length(sharecontrol),ncol=1)
+n <- matrix(nrow=length(sharecontrol),ncol=1)
 
 i <- 0
 for (a in sharecontrol){
@@ -240,22 +266,31 @@ m[i] <- taumin$tau_min_global
 n[i] <- taumin$tau_min_each_treat
 }
 m <- cbind(sharecontrol,m,n)
-taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_trat"=V3)
+taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_treat"=V3)
+taus_noinf <- taus[-nrow(taus),]
+taus_noinf <- taus_noinf[-1,]
+share_optimo <- min(taus_noinf$sharecontrol[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+tau_optima <- min(taus_noinf$tau_min_each_treat[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
 
-ggplot(data=taus,aes(x=sharecontrol,y=taus$tau_min_each_trat))+
-  geom_line(color='navyblue',size=1)+
-  theme_bw()+
+ggplot(data=taus,aes(x=sharecontrol))+
+  geom_line(aes(y=tau_min_each_treat),color='navyblue',size=1)+
   xlab("Proporción de control")+
-  ylab("Efecto mínimo detectable ")+
-  labs(title="Relación entre proporción de control y efecto mínimo detectable",
-       subtitle="Sobre número de compras")+
-  scale_x_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1))+
-  geom_vline(xintercept=0.5, color='red',linetype='dashed')
-
-# OJO Aquí estamos comparando el efeto mínimo detectable entre el control y todos los tratamientos juntos 
-
+  ylab("Efecto mínimo detectable (número de compras) ")+
+  labs(title="Efecto mínimo detectable* (EMD) en función de la proporción de control",
+       subtitle="EMD sobre número de compras",
+       caption="*EMD entre el grupo de control y cada tratamiento")+
+  scale_x_continuous(breaks = sharecontrol,limits=c(0,1))+
+  geom_vline(xintercept= share_optimo, color='red',linetype='dashed')+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5))
 
 ```
+
+Se puede observar que, nuevamente, para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima), 4), nsmall=0, big.mark=",")` compras.
+
+Entonces, usaremos un \textit{share} de control de 0.25 para 
+
+
 
 ### 4 (2ptos) Qué variables crees que puedan estar más correlacionadas con el impacto? Justifica tu respuesta y elige un set
 
@@ -318,7 +353,7 @@ stargazer(modelo_a,modelo_b, type="text")
 # OJO falta ajustar share_control y creo que n_T
 
 random_assignment <- treatment_assign(data=data,
-                 share_control = 1/8,
+                 share_control = 1/4,
                  n_t=7,
                  strata_varlist = dplyr::vars(population_type,device_value_type,gender_F,phone_verified),
                  missfits="strata",
@@ -344,7 +379,7 @@ data <- left_join(data,out, by =c("user_id"))
 ```{r}
 # ya las transformé al principio, son las que tienen " _type "
 
-balance_table()
+#balance_table()
 
 ```
 
@@ -352,7 +387,7 @@ balance_table()
 
 ```{r}
 
-balance_table()
+#balance_table()
 
 ```
 
