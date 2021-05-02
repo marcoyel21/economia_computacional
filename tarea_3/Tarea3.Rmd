@@ -85,7 +85,9 @@ packages <- c(
   "splitstackshape",
   "truncnorm",#para hacer el muestreo estratificado
   "magrittr",
-  "kableExtra"
+  "kableExtra",
+  "fastDummies",
+   "GGally"
   )
 
 # instala los que no tengas
@@ -301,47 +303,37 @@ La edad, ya que probablemente usuarios más jóvenes interactúan mejor con las 
 El valor del telefono
 
 ```{r}
+# Vamos a analizar la relacion con un correlograma y con una regresión, sin embargo, debemos hacer un analisis con la base bien codificada.
 
-# ANALISIS INGENUO A
-#en lo que entendimos, hay dos impactos uno para transaccionalidad y otro para las compras
-#creo que amerita dos analisis
-
-#ESTE ES UN ANALISIS INGENUO PERO NOS AYUDA A CORRBORAR INTUICION
-
-library(GGally)
-data$device_value<-as.factor(data$device_value)
-data$population<-as.factor(data$population)
-
-data2 <- sapply(data, as.numeric)
-data2<-as.data.frame(data2)
-data2<-data2%>% select(device_value, phone_verified,age,
-                      population,gender_F,months_since_register,
-                      population_type,device_value_type,tasa_trans, total_purchases,)
-
-ggcorr(data2, method = c("everything", "pearson")) 
-
-
-#para taasa_trans(omitiendo population y populationtype que son colineales) parece que months_since_register,age y phone_verifed esta muy correlacionada.
-#En cambio, para total_purchase, ahi si aplica population type esta relacionada. Age tiene una correlacion un poco debil
-
-#ESTE
-
-
-```
-
-```{r}
-
-# ANALISIS INGENUO B
-
-#converito a factor lo importante
+#categorizó las categoricas
 data$phone_verified<-as.factor(data$phone_verified)
 data$gender_F<-as.factor(data$gender_F)
 data$population_type<-as.factor(data$population_type)
 data$device_value_type<-as.factor(data$device_value_type)
 
-modelo_a<-lm(tasa_trans~.-population_type-population-user_id,data)
-modelo_b<-lm(total_purchases~.-population_type-population-user_id,data)
+
+# Creo todo numerico (con base en dummies)
+data_correctly<-data%>%select(-user_id)
+data_correctly<-dummy_cols(data_correctly, remove_first_dummy = F,
+           select_columns = c('device_value','phone_verified','population','gender_F','population_type','device_value_type'),
+           remove_selected_columns = T)
+
+#imprimo el correlograma
+ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_size = 6,
+  size = 3,
+  hjust = 0.75,
+  angle = -45) 
+#Evidentemente hay colinealidad perfecta en algunas variables, entonces aguas al interpretar esto.
+
+```
+
+
+```{r}
+
+# REGRESION
 library(stargazer)
+modelo_a<-lm(tasa_trans~.-population_type-population-user_id-total_purchases,data) #quito las variables colineales y las objetivo
+modelo_b<-lm(total_purchases~.-population_type-population-user_id-tasa_trans,data)#quito las variables colineales y las objetivo
 stargazer(modelo_a,modelo_b, type="text")
 ```
 
@@ -377,18 +369,14 @@ data <- left_join(data,out, by =c("user_id"))
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
 ```{r}
-# ya las transformé al principio, son las que tienen " _type "
-library(fastDummies)
+# Selecciono solo las variables que use para estratificar
 data_3<-data%>%select(population_type,device_value_type,gender_F,phone_verified,treat)
 data_4<-dummy_cols(data_3, remove_first_dummy = T,
            select_columns = c('population_type','device_value_type','gender_F','phone_verified'),
            remove_selected_columns = T)
 
-<<<<<<< HEAD
-#balance_table()
-=======
+# Imprimo las tablas de balance
 balance_table(data_4,'treat')
->>>>>>> 3207825107ceec48971c8dc07b8df5137b7ac431
 
 ```
 
