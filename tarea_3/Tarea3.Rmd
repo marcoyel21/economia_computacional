@@ -82,7 +82,8 @@ packages <- c(
   "knitr",
   "lubridate",
   "RCT",
-  "splitstackshape" #para hacer el muestreo estratificado
+  "splitstackshape", #para hacer el muestreo estratificado
+  "gridExtra"
   )
 
 # instala los que no tengas
@@ -410,8 +411,8 @@ rm(universo_f)
 data2$population <- as.factor(data2$population)
 data2$device_value <- as.factor(data2$device_value)
 
-# bajo esta definicion, population_type: Inactive == 1 y never active == 2
-# device_value_type: 0-10mil == 1 | 10mil+ == 2 | No info == 3
+# bajo esta definicion, population: Inactive == 1 y never active == 2
+# device_value: 0-10mil == 1 | 10mil+ == 2 | No info == 3
 
 # ver como estan definidos los estratos
 table(data2$strata)
@@ -472,6 +473,8 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   theme(legend.position="none")
 
 ```
+Se observan efectos promedio de los seis tratamientos positivos y significativos. El efecto entre tratamientos varía. El tratamiento con mayor impacto en la transaccionalidad es ofrecer un 25% de descuento en la siguiente compra, lo cual provoca un aumento de 10 puntos porcentuales. Ofrecer 4% de descuento por cada referido también tuvo un impacto mayor a 7.5 puntos porcentuales. Como es de esperarse, la magnitud del efecto es proporcional al tamaño del descuento. Esto es visible al contrastar los tratamientos 2, 4 y 6 con el 1, 3 y 5, respectivamente. Es curioso que, los descuentos en porcentaje fueran más exitosos que los \$100 y \$200. Esto podría reflejar que los usuarios aprovechan el beneficio con compras grandes, lo cual exploramos a continuación.
+
 
 ### 11. Repite el ejercicio sobre compras totales. Que resultados se aprecian? Que indica esto sobre la rentabilidad del sistema de incentivos? 
 
@@ -497,11 +500,27 @@ itt11$term <- c("Control",
                 "total_purchases",
                 "months_since_register")
 
-
+# resultados gráficos
+itt11 %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
+  ylim(-50,120)+
+  theme_minimal() +
+  labs(title = "Efecto Promedio de Tratamiento en compras totales", 
+       x ="",
+       caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
+  theme(legend.position="none")
 
 ```
 
-Parece ser que el tratamiento es efectivo en transaccionalidad pero no en compras.
+Como puede verse en la gráfica, los tratamientos 1 a 5 son negativos y ninguno de los efectos de tratamiento es significativo. Considerando estos resultados junto con los de transaccionalidad, se concluye que los incentivos de descuentos atraen a los usuarios a la app, pero no capitalizan comprando más que antes. También debe notarse que independientemente del monto de los descuentos, omitiendo los descuentos por referir personas, tienen coeficientes muy parecidos, por lo que parece no haber relación entre el monto del descuento y el impacto en compras.
+
+Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por lo menos no en el periodo de estudio. Es posible que los usuarios deban recibir más de un descuento para terminar por volverse usuarios frecuentes de la app, y que de recibir un sólo descuento el efecto sea muy débil.
+
+**DUDA. TOTAL PURCHASES AFTER incluye los montos de los descuentos? o es el monto de compras que paga el usuario, neto de cualquier código de descuento que pongan?**
 
 ### 12. Interpreta el impacto del gruop de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
 
@@ -537,7 +556,7 @@ itt13 <- impact_eval(data=data2,
   as.data.frame()
 
 names(itt13) <- c("term","estimate","std_error","statistic","p_value")
-itt13$p_value <- itt10$p_value %>% round(3)
+itt13$p_value <- itt13$p_value %>% round(3)
 itt13$term <- c("Control", 
                 "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
                 "age",
@@ -545,19 +564,45 @@ itt13$term <- c("Control",
                 "total_purchases",
                 "months_since_register")
 
-itt13
+# resultados gráficos
+itt13 %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
+  theme_minimal() +
+  ylim(0,0.2)+
+  labs(title = "Efecto Promedio de Tratamiento en compras totales (log)", 
+       x ="",
+       caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
+  theme(legend.position="none")
 ```
 
 ### 14 (4ptos). Describre que variables necesitas para hacer un análisis costo beneficio completo. Les doy algunas: Ticket promedio $100, Customer Lifetime value: $1,100. Con esto, que sistema de incentivos recomendarías? Porqué? Muestra el razonamiento detrás de tu recomendación
 
-```{r}
+Variables necesarias para el costo beneficio de los primeros 4 tratamientos:
+
++ Ticket promedio ($100)
++ Customer lifetime value
++ costo por mensaje
++ promedio del margen de ganancia por ticket
++ /% de usuarios invitados que sí aprovechan la promoción
 
 
-```
+Variables adicionales para el costo beneficio de los últimos 2 tratamientos:
+
++ promedio de compras por usuario
++ probabilidad de que el usuario sea activo (activos/inactivos)
+
+
+Recomendaría el 6 porque ofrecer un descuento de 4% en una compra es sustancialmente menos costoso que los otros, y porque el lifetime value del customer no es muy grande. Es más rentable apuntar al volumen que al precio, y buscar incrementar la base de usuarios parece ser una mejor estrategia. El 6 y no el 5 porque además el 6 tiene un efecto positivo en las compras de los clientes, mientras que no se puede asegurar lo mismo del 5.
 
 ### 15 (2ptos). Realiza la estimación de efectos heterogeneos para ambas variables usando `population`. Que encuentras? existe alguna subpoblación para la que los efectos difieran del promedio? Para cada efecto, muestra gráficas como lo hiciste en los ITTs
 
 ```{r}
+
+# Estimaciones
 itt151 <- impact_eval(data=data2,
             endogenous_vars = "transacted",
             treatment = "treat",
@@ -566,8 +611,6 @@ itt151 <- impact_eval(data=data2,
                              "gender_F",
                              "total_purchases",
                              "months_since_register"))
-
-
 
 itt152 <- impact_eval(data=data2,
             endogenous_vars = "log_total_purchases_after",
@@ -578,12 +621,66 @@ itt152 <- impact_eval(data=data2,
                              "total_purchases",
                              "months_since_register"))
 
+# Ediciones pre grafica
+pop_trans <- itt151$transacted_population %>% as.data.frame()
+
+pop_trans$p.value <- pop_trans$p.value %>% round(3)
+pop_trans$term <- rep(c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+pop_compras <- itt152$log_total_purchases_after_population %>% as.data.frame()
+
+pop_compras$p.value <- pop_compras$p.value %>% round(3)
+pop_compras$term <- rep(c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+
+# resultados gráficos
+
+row151 <- pop_trans %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~population)+
+  ylim(-0.02,0.2)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title = "Transaccionalidad", 
+       x ="") +
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+row152 <- pop_compras %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~population)+
+  ylim(-0.15,0.3)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title="Compras totales (log)",
+       x="")+
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+grid.arrange(row151,row152, ncol=1,
+             top = "Efectos Promedio de Tratamiento por Población",
+             bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 
 ```
 
 ### 16 (2ptos). Repite el ejercicio para ``phone_verified`. 
 
 ```{r}
+# Estimaciones
 itt161 <- impact_eval(data=data2,
             endogenous_vars = "transacted",
             treatment = "treat",
@@ -593,8 +690,6 @@ itt161 <- impact_eval(data=data2,
                              "total_purchases",
                              "months_since_register"))
 
-
-
 itt162 <- impact_eval(data=data2,
             endogenous_vars = "log_total_purchases_after",
             treatment = "treat",
@@ -603,6 +698,66 @@ itt162 <- impact_eval(data=data2,
                              "gender_F",
                              "total_purchases",
                              "months_since_register"))
+
+# Ediciones pre grafica
+phone_trans <- itt161$transacted_phone_verified %>% as.data.frame()
+
+phone_trans$p.value <- phone_trans$p.value %>% round(3)
+phone_trans$term <- rep(c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+phone_compras <- itt162$log_total_purchases_after_phone_verified %>% as.data.frame()
+
+phone_compras$p.value <- phone_compras$p.value %>% round(3)
+phone_compras$term <- rep(c("Control", 
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+#convertir phone_verified a factor
+summary(data2$phone_verified)
+data2$phone_verified <- data2$phone_verified %>% as.factor
+levels(data2$phone_verified) <- c("not verified", "verified")
+
+
+
+# resultados gráficos
+
+row161 <- phone_trans %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~phone_verified)+
+  ylim(-0.001,0.18)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title = "Transaccionalidad", 
+       x ="") +
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+row162 <- phone_compras %>% 
+  filter(term!="age" & term != "gender_F" & 
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~phone_verified)+
+  ylim(-0.06,0.5)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title="Compras totales (log)",
+       x="")+
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+grid.arrange(row161,row162, ncol=1,
+             top = "Efectos Promedio de Tratamiento por Verificación del Teléfono",
+             bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 ```
 
 
