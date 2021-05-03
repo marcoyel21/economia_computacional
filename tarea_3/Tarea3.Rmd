@@ -345,9 +345,11 @@ stargazer(modelo_a,modelo_b, type="text")
 Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
 * La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
 * La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles).
-* El valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo. Nuevamente, la variable es significativa y de relativa importancia.
+* El valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, por lo que cabría pensar que un usuario con mayor ingreso tienda a realizar más compras y estar más activo en las aplicaciones para tal fin. Nuevamente, la variable es significativa y de relativa importancia.
 * Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, population podría resultar también relevante.
 
+
+**Cyn:Duda sobre si months since register no podría ser coherente que esté correlacionada… sale significativa en el análisis de la regresión, lo mismo gender F.
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta 
 
@@ -357,6 +359,9 @@ Ahora, se plantean variables por las cuales se estratificará, y se comenta si e
 
 # FVG: Yo quitaría gender. No veo intuitivamente un motivo para esa variable
 #      Igualmente agregaría en su lugar la estratificación por edad que ya cree arriba (age_group)
+
+#CYN: Duda sobre si en la asignación aleatoria no tiene que ser n_t=8 y no 7.
+#Duda sobre si "months since register" no valdría ponerla en la estratificación
 
 random_assignment <- treatment_assign(data=data,
                  share_control = 1/4,
@@ -370,6 +375,7 @@ out <- random_assignment$data
 
 data <- left_join(data,out, by =c("user_id"))
 ```
+Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness).
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
@@ -380,12 +386,16 @@ Si bien el número de misfits es muy bajo relativo al total de observaciones y p
 # Missfits = strata para mejor balance
 # FVG: Creo que no es tan importante el balance con tan pocos misfits (relativo al total de observaciones)
 
+#CYN: Duda sobre la asignación de los misfits: en la descripción se señala que se eligió asignar los misfits de manera global, pero en el código de la pregunta 5 se la asignación fue “strata” y no “global”
+
 
 ```
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
 ```{r}
+#CYN. Duda: Si en la pregunta 5 se elige la opción de francisco de incluir la edad por estrato y no el género en la estratificación, habría que modificar este código. Aunque no pasa nada si se mantiene la variable de género porque, aunque se elijan variables no correlacionadas, como es el caso de esa variable, sólo no se ganaría tanta eficiencia, entonces podría dejarse.  
+
 # Selecciono solo las variables que use para estratificar
 data_3<-data%>%select(population_type,device_value_type,gender_F,phone_verified,treat)
 data_4<-dummy_cols(data_3, remove_first_dummy = T,
@@ -409,13 +419,15 @@ balance_regression(data_4, 'treat')
 ```{r}
 # FVG: Confirmo, sólo podría cambiar el número de bloques. Haces un buen punto y argumento en favor de mejor asignar misfits por estrato y no global como sugerí en la 6.
 # Aquí creo que se refiere a los siguientes 3:
-# 1. SUTVA # En principio cada mensaje y bono va direccionado al celular individual de cada persona, SUTVA solo se violaria si otra persona tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento.
-# 2. Overlap # Forzamos a que cada estrato tuviera 8 grupos, la probabilidad de pertenecer a uno es aproximadamente 1/8 siempre
+# 1. SUTVA # En principio cada mensaje y bono va direccionado al celular individual de cada persona, SUTVA solo se violaria si otra persona tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento. En consecuencia, dado que no hay posibilidad de que los usuarios que recibieron tratamiento -que recibieron mensaje o r dinero a través de cupones- afecten al grupo de usuarios que no lo recibió, no hay contaminación entre los  grupos.
+# 2. Overlap # Forzamos a que cada estrato tuviera 8 grupos, la probabilidad de pertenecer a uno es aproximadamente 1/8 siempre, es decir, siempre positiva, dentro del intervalo (0,1) pero diferente de 0 y 1.
 # 3. Unconfoundness # Los grupos estan balanceados (por construccion), las tablas de balance solo comprueban este supuesto.
 
 ```
 
 ### 10. Elabora un pitch de negocio sobre los beneficios que este experimento podría dejar a Rappi. 
+
+Para garantizar el éxito de un negocio, previo a ir en búsqueda de más clientes, es indispensable proteger a los que ya se tiene. A través de este experimento se logran detectar las características esenciales de los usuarios que han disminuido su actividad o que se registraron pero nunca han utilizado la plataforma, con el fin de encontrar la fórmula ideal de incentivos -envío de mensajes publicitarios, cupones o ambos- que generen un impacto en cada grupo de clientes para retomar su interés y actividad en la aplicación y  volverse ávidos usuarios de la plataforma, incrementar sus compras y con ello lograr aumentar las ganancias de la empresa. No más usuarios dormidos o apáticos, por el contrario, siempre interactuando y generando valor para la empresa.
 
 ```{r}
 
