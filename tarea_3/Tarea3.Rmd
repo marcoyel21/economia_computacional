@@ -166,6 +166,8 @@ str(data)
 
 ### 2 (2pts). Como pueden notar, tenemos 2 poblaciones: Usuarios inactivos y usuarios que nunca estuvieron activos. Para ellos, las tasas de transaccionalidad son hasta ahora 7.94% y 0%. Utiliza esta información para hacer pruebas de poder: Dada esta tasa y población, cuál es el efecto mínimo detectable sobre la tasa de transaccionalidad como función de cuantas observaciones asignamos al grupo control? Interpreta. (Tip: asegurate de dejar claros los grupos comparados en esta prueba)
 
+El efecto mínimo detectable (EMD) representa el efecto que queremos detectar en el experimento dado un nivel de significancia y un poder estadístico. Si nuestro experimento arroja un efecto que es igual o mayor al EMD, entonces tendremos significancia dado el tamaño de la muestra $N$. Si el experimento arroja un efecto menor al EMD, entonces no tendremos significancia.\\
+
 En primer lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable.
 
 ```{r}
@@ -228,7 +230,11 @@ ggplot(data=taus,aes(x=sharecontrol))+
   theme(axis.text.x = element_text(angle=90, vjust=.5))
 
 ```
-Se puede observar que para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima*100), 4), nsmall=0, big.mark=",")` puntos porcentuales
+Se puede observar que para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima*100), 4), nsmall=0, big.mark=",")` puntos porcentuales entre el grupo de control y cada tratamiento.
+
+
+
+
 
 
 ### 3. Repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo. Elige un share de control con base en tu respuesta de esta y la anterior pregunta
@@ -290,7 +296,7 @@ ggplot(data=taus,aes(x=sharecontrol))+
 
 ```
 
-Se puede observar que, nuevamente, para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima), 4), nsmall=0, big.mark=",")` compras.
+Se puede observar que, nuevamente, para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima), 4), nsmall=0, big.mark=",")` compras entre el grupo de control y cada tratamiento
 
 Entonces, usaremos un \textit{share} de control de 0.25 para
 
@@ -380,7 +386,7 @@ Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
-Si bien el número de misfits es muy bajo relativo al total de observaciones y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que me haya sido asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
+Si bien el número de misfits es muy bajo relativo al total de observaciones y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
 
 ```{r}
 
@@ -388,6 +394,8 @@ Si bien el número de misfits es muy bajo relativo al total de observaciones y p
 # FVG: Creo que no es tan importante el balance con tan pocos misfits (relativo al total de observaciones)
 
 #CYN: Duda sobre la asignación de los misfits: en la descripción se señala que se eligió asignar los misfits de manera global, pero en el código de la pregunta 5 se la asignación fue “strata” y no “global”
+
+#R misma duda
 
 
 ```
@@ -424,15 +432,15 @@ balance_regression(data_4, 'treat')
 # 2. Overlap # Forzamos a que cada estrato tuviera 8 grupos, la probabilidad de pertenecer a uno es aproximadamente 1/8 siempre, es decir, siempre positiva, dentro del intervalo (0,1) pero diferente de 0 y 1.
 # 3. Unconfoundness # Los grupos estan balanceados (por construccion), las tablas de balance solo comprueban este supuesto.
 
+
+#R: duda, nos quedamos con asignación de missfits global o por estrato ?
 ```
 
 ### 10. Elabora un pitch de negocio sobre los beneficios que este experimento podría dejar a Rappi.
 
 Para garantizar el éxito de un negocio, previo a ir en búsqueda de más clientes, es indispensable proteger a los que ya se tiene. A través de este experimento se logran detectar las características esenciales de los usuarios que han disminuido su actividad o que se registraron pero nunca han utilizado la plataforma, con el fin de encontrar la fórmula ideal de incentivos -envío de mensajes publicitarios, cupones o ambos- que generen un impacto en cada grupo de clientes para retomar su interés y actividad en la aplicación y  volverse ávidos usuarios de la plataforma, incrementar sus compras y con ello lograr aumentar las ganancias de la empresa. No más usuarios dormidos o apáticos, por el contrario, siempre interactuando y generando valor para la empresa.
 
-```{r}
 
-```
 
 ## Evaluación
 
@@ -582,9 +590,10 @@ Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por 
 
 **DUDA. TOTAL PURCHASES AFTER incluye los montos de los descuentos? o es el monto de compras que paga el usuario, neto de cualquier código de descuento que pongan?**
 
+
 ### 12. Interpreta el impacto del gruop de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
 
-El estimador es muy grande pero el error estándar es aún más grande, por lo que no es significativo. Esto significa que hay mucha variabilidad en el efecto promedio de tratamiento 6.
+El estimador es muy grande pero el error estándar es aún más grande, por lo que no es significativo. Esto quiere decir que hay mucha variabilidad en el efecto promedio de tratamiento 6.
 
 
 ```{r}
