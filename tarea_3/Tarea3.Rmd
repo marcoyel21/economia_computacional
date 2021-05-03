@@ -648,6 +648,8 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   theme(legend.position="none")
 ```
 
+El tratamiento 6, el ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran, resultó tener mayor impacto cuando la variable de las compras totales posteriores se usa en forma logarítmica, probablemente porque se vuelve más estable y se suavizan los outliers que pudieran estar influyendo sobre el impacto en la variable original.  
+
 ### 14 (4ptos). Describre que variables necesitas para hacer un análisis costo beneficio completo. Les doy algunas: Ticket promedio $100, Customer Lifetime value: $1,100. Con esto, que sistema de incentivos recomendarías? Porqué? Muestra el razonamiento detrás de tu recomendación
 
 Variables necesarias para el costo beneficio de los primeros 4 tratamientos:
@@ -663,9 +665,15 @@ Variables adicionales para el costo beneficio de los últimos 2 tratamientos:
 
 + promedio de compras por usuario
 + probabilidad de que el usuario sea activo (activos/inactivos)
++ Porcentaje de usuarios que hacen efectivas las compras
 
 
 Recomendaría el 6 porque ofrecer un descuento de 4% en una compra es sustancialmente menos costoso que los otros, y porque el lifetime value del customer no es muy grande. Es más rentable apuntar al volumen que al precio, y buscar incrementar la base de usuarios parece ser una mejor estrategia. El 6 y no el 5 porque además el 6 tiene un efecto positivo en las compras de los clientes, mientras que no se puede asegurar lo mismo del 5.
+
+Es posible respaldar lo anterior dado que si un cliente desembolsará en promedio 100 pesos en cada compra, con la estrategia 6 implica que, por haber referido a un nuevo usuario, se le dará un 4% en la compra siguiente, esto es 4 pesos de descuento en promedio por una nueva compra, por lo que esta estrategia resulta ser rentable. El costo de adquirir un nuevo cliente potencial es $4 y cuyo CLTV de $1100, lo que implica que su adquisición resulta lucrativa. 
+
+Por el contrario, en el caso, por ejemplo, del tratamiento 4, otorgar un descuento del 25% en la siguiente compra, el costo del descuento incluso podría superar el CLTV del usuario, dependiendo del monto de la compra. 
+
 
 ### 15 (2ptos). Realiza la estimación de efectos heterogeneos para ambas variables usando `population`. Que encuentras? existe alguna subpoblación para la que los efectos difieran del promedio? Para cada efecto, muestra gráficas como lo hiciste en los ITTs
 
