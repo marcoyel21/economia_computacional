@@ -753,6 +753,9 @@ grid.arrange(row151,row152, ncol=1,
              bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 
 ```
+Como era de esperarse, para los usuarios que nunca estuvieron activos (never actives), el impacto del tratamiento (mensajes y descuentos) es mayor en la tasa de transacción dado que nunca habían registrado actividad en la plataforma, a diferencia de los que ya habían iteractuado pero dejaron de hacerlo (inactivos). En particular para los never actives, los tratamientos 3, 4 y 6 superan el promedio. 
+
+En cuanto al impacto en las compras totales, el resultado fue híbrido, por una parte para la población que nunca estuvo activa, el impacto fue mayor en los tratamientos 3 y 6 y para la población inactiva los tratamientos que tuvieron mayor impacto fueron los 6 y 2 (por arriba del promedio). 
 
 ### 16 (2ptos). Repite el ejercicio para ``phone_verified`.
 
