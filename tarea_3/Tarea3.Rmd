@@ -174,8 +174,12 @@ En primer lugar se construye una tabla con el efecto mínimo detectable variando
 # Qué es la tasa de transaccionalidad ?
 # Respuesta: (transaccionar: abrir app o hacer compras)
 
-data %<>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
-                                               T ~ 0))
+#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea population_type==1, y 0 en otro caso.
+data_2<-data%>%filter(population_type==1) %>% mutate(tasa_trans=rnorm(14084, 0.0794,.02))
+data<-merge(data,data_2, all.x = T)
+data$tasa_trans[is.na(data$tasa_trans)] <- 0
+
+
 # =============================
 # Tabla
 # =============================
