@@ -432,7 +432,8 @@ data<-merge(data,out, by= "user_id")
 # Tablas
 # =============================
 
-out_no_misfits_summary<-out%>% filter(missfit==0)%>%
+out_no_misfits_summary<-out%>% 
+        filter(missfit==0)%>%
         group_by(strata) %>%
         summarize(n())
 
@@ -456,8 +457,9 @@ strats<-out%>% filter(missfit==0)%>%
                   ifelse(strata==15,`n()`/13692,
                   ifelse(strata==16,`n()`/3584,0
                          )))))))))))))))))
-kable(strats,booktabs=T, align = 'c',col.names = c("Estrato","Tratamiento","n","Probabilidad"))%>%
-  kable_styling(position = "center")
+                         
+kable(strats,booktabs=T, align = 'c',col.names = c("Estrato","Tratamiento","n","Probabilidad"),longtable=T)%>%
+  kable_styling(position = "center",latex_options = c("repeat_header"))
 ```
 Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
 
