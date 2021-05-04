@@ -92,7 +92,7 @@ packages <- c(
   "gridExtra"
   )
 
-# instala los que no tengas
+# instala los paquetes que no se tengan
 installed_packages <- packages %in% rownames(installed.packages())
 if (any(installed_packages == FALSE)) {
   install.packages(packages[!installed_packages])
@@ -171,11 +171,16 @@ El efecto mínimo detectable (EMD) representa el efecto que queremos detectar en
 En primer lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable.
 
 ```{r}
-# Qué es la tasa de transaccionalidad ?
-# Respuesta: (transaccionar: abrir app o hacer compras)
+# =============================
+# Variable
+# =============================
 
-data %<>% mutate(tasa_trans = case_when(population_type==1 ~ 0.0794,
-                                               T ~ 0))
+#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea population_type==1, y 0 en otro caso.
+data_2<-data%>%filter(population_type==1) %>% mutate(tasa_trans=rnorm(14084, 0.0794,.02))
+data<-merge(data,data_2, all.x = T)
+data$tasa_trans[is.na(data$tasa_trans)] <- 0
+
+
 # =============================
 # Tabla
 # =============================
@@ -347,56 +352,117 @@ modelo_a<-lm(tasa_trans~.-population_type
 modelo_b<-lm(total_purchases~.-population_type
              -population-user_id-tasa_trans-age-device_value,data)
 
-stargazer(modelo_a,modelo_b, type="text")
+stargazer(modelo_a,modelo_b, type="latex")
 ```
 
+
 Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
+
 * La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
-* La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles).
-* El valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, por lo que cabría pensar que un usuario con mayor ingreso tienda a realizar más compras y estar más activo en las aplicaciones para tal fin. Nuevamente, la variable es significativa y de relativa importancia.
+
+* La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles). En este sentido, proponemos solamente agrupar la edad en dos grupos, la mitad más grande y la mitad más jóven.
+
 * Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, population podría resultar también relevante.
 
+* Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por edad y por sexo.
 
-**Cyn:Duda sobre si months since register no podría ser coherente que esté correlacionada… sale significativa en el análisis de la regresión, lo mismo gender F.
+```{r}
+modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
+
+modelo_b<-lm(total_purchases~age_group+gender_F+I(age_group:gender_F),data)
+
+stargazer(modelo_a,modelo_b, type="latex")
+```
+
+
+* Ahora bien, nos hubiera gustado incluir el valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
+
+```{r}
+modelo_a<-lm(tasa_trans~device_value,data)
+
+modelo_b<-lm(total_purchases~device_value,data)
+
+stargazer(modelo_a,modelo_b, type="latex")
+```
+
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta
 
 ```{r}
 
-# OJO falta ajustar share_control y creo que n_T
-
-# FVG: Yo quitaría gender. No veo intuitivamente un motivo para esa variable
-#      Igualmente agregaría en su lugar la estratificación por edad que ya cree arriba (age_group)
-
-#CYN: Duda sobre si en la asignación aleatoria no tiene que ser n_t=8 y no 7.
-#Duda sobre si "months since register" no valdría ponerla en la estratificación
-
+#Agrupo la variable de edad para que sea una dummy que discrimine a la mitad más jóven de la más grande.
+data<-data%>%mutate(age_dummy=ifelse(age_group==1,1,
+                              ifelse(age_group==2,1,0)))
+# =============================
+# Asignacion
+# =============================
 random_assignment <- treatment_assign(data=data,
                  share_control = 1/4,
                  n_t=7,
-                 strata_varlist = dplyr::vars(population_type,device_value_type,gender_F,phone_verified),
-                 missfits="strata",
+                 strata_varlist = dplyr::vars(population_type,phone_verified,age_dummy, gender_F),
+                 missfits="global",
                  seed=123,
                  key="user_id")
 
 out <- random_assignment$data
+# agrego asignación en la base de datos
+data<-merge(data,out, by= "user_id")
 
-data <- left_join(data,out, by =c("user_id"))
+
+# =============================
+# Tablas
+# =============================
+
+out_no_misfits_summary<-out%>% filter(missfit==0)%>%
+        group_by(strata) %>%
+        summarize(n())
+
+strats<-out%>% filter(missfit==0)%>%
+        group_by(strata,treat) %>%
+        summarize(n()) %>%
+        mutate(p=ifelse(strata==1,`n()`/2268,
+                  ifelse(strata==2,`n()`/1372,
+                  ifelse(strata==3,`n()`/1344,
+                  ifelse(strata==4,`n()`/448,
+                  ifelse(strata==5,`n()`/3304,
+                  ifelse(strata==6,`n()`/2100,
+                  ifelse(strata==7,`n()`/2240,
+                  ifelse(strata==8,`n()`/896,
+                  ifelse(strata==9,`n()`/14812,
+                  ifelse(strata==10,`n()`/6552,
+                  ifelse(strata==11,`n()`/27776,
+                  ifelse(strata==12,`n()`/5768,
+                  ifelse(strata==13,`n()`/12488,
+                  ifelse(strata==14,`n()`/5320,
+                  ifelse(strata==15,`n()`/13692,
+                  ifelse(strata==16,`n()`/3584,0
+                         )))))))))))))))))
+kable(strats,col.names = c("Estrato","Tratamiento","n","Probabilidad"))
 ```
-Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness).
+Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
-Si bien el número de misfits es muy bajo relativo al total de observaciones y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
+Si bien el número de misfits es muy bajo relativo al total de observaciones (227 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
+
+El único riesgo sería sería que la asignación fuera desproporcional para los grupos pequeños, (particularmente el 4 y el 8) sin embargo, en promedio se le asignaron 14 personas a cada estrato: 21 para el grupo 4 (4%) y 3 para el 8 (.3%). Sin embargo, como tenemos la claisifiación, podríamos realizar nuestras esitmaciones con y sin misfits.
 
 ```{r}
 
-# Missfits = strata para mejor balance
-# FVG: Creo que no es tan importante el balance con tan pocos misfits (relativo al total de observaciones)
+# =============================
+# Tablas de misfits
+# =============================
 
-#CYN: Duda sobre la asignación de los misfits: en la descripción se señala que se eligió asignar los misfits de manera global, pero en el código de la pregunta 5 se la asignación fue “strata” y no “global”
+out_misfits_summary<-out%>% filter(missfit==1)%>%
+        group_by(strata) %>%
+        summarize(n())
 
-#R misma duda
+m_t<-out%>% filter(missfit==1)%>%
+        group_by(treat) %>%
+        summarize(n())
+
+kable(out_misfits_summary, col.names = c("Estrato","n"))
+kable(m_t,col.names=c("Tratamiento","n"))
 
 
 ```
@@ -404,22 +470,29 @@ Si bien el número de misfits es muy bajo relativo al total de observaciones y p
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
 ```{r}
-#CYN. Duda: Si en la pregunta 5 se elige la opción de francisco de incluir la edad por estrato y no el género en la estratificación, habría que modificar este código. Aunque no pasa nada si se mantiene la variable de género porque, aunque se elijan variables no correlacionadas, como es el caso de esa variable, sólo no se ganaría tanta eficiencia, entonces podría dejarse.  
 
+# =============================
+# Preprocesamiento
+# =============================
 # Selecciono solo las variables que use para estratificar
-data_3<-data%>%select(population_type,device_value_type,gender_F,phone_verified,treat)
-data_4<-dummy_cols(data_3, remove_first_dummy = T,
-           select_columns = c('population_type','device_value_type','gender_F','phone_verified'),
+data_3<-data%>%select(population_type,phone_verified,age_dummy, gender_F,treat)
+data_4<-dummy_cols(data_3, remove_first_dummy = F,
+           select_columns = c('population_type','phone_verified','gender_F','age_dummy'),
            remove_selected_columns = T)
 
-# Imprimo las tablas de balance
+# =============================
+# Tablas de balance
+# =============================
 balance_table(data_4,'treat')
-#Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares.
+#Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares
 ```
 
 ### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
 
 ```{r}
+# =============================
+# Regresión de balance
+# =============================
 balance_regression(data_4, 'treat')
 ```
 
@@ -587,7 +660,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
 
 Como puede verse en la gráfica, los tratamientos 1 a 5 son negativos y ninguno de los efectos de tratamiento es significativo. Considerando estos resultados junto con los de transaccionalidad, se concluye que los incentivos de descuentos atraen a los usuarios a la app, pero no capitalizan comprando más que antes. También debe notarse que independientemente del monto de los descuentos, omitiendo los descuentos por referir personas, tienen coeficientes muy parecidos, por lo que parece no haber relación entre el monto del descuento y el impacto en compras.
 
-Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por lo menos en el periodo de estudio. De hecho, aunque estos resultados fueran positivos y significativos, aún se tendrían que considerar los costos de dichas políticas. 
+Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por lo menos en el periodo de estudio. De hecho, aunque estos resultados fueran positivos y significativos, aún se tendrían que considerar los costos de dichas políticas.
 
 Sin embargo, una posibilidad que no contempla este estudio es que los usuarios deban recibir más de un descuento para terminar por volverse usuarios frecuentes de la app, y que de recibir un sólo descuento el efecto sea muy débil.
 
@@ -647,7 +720,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   theme(legend.position="none")
 ```
 
-En efecto, ahora los coeficientes de los tratamientos son positivos, y los de los tratamientos 3 y 6 son estadísticamente significativos. Medir los cambios porcentuales en compras totales permite asesorar mejor la efectividad del tratamiento debido a la presencia de valores extremos y a la abundancia de ceros.
+En efecto, ahora los coeficientes de los tratamientos son positivos, y los de los tratamientos 3 y 6 son estadísticamente significativos. Medir los cambios porcentuales en compras totales permite asesorar mejor la efectividad del tratamiento debido a que  se suavizan valores extremos, lo cual es más relevante dada la abundancia de ceros.
 
 Aún así, 4 de los 6 tratamientos no pueden distinguirse del grupo de control. Esto en general confirma la no rentabilidad de otorgar incentivos a los usuarios, por lo menos sin una estrategia clara de focalización y diseño del incentivo.
 
@@ -657,9 +730,9 @@ Variables necesarias para el costo beneficio de los primeros 4 tratamientos:
 
 + Ticket promedio ($100)
 + Customer lifetime value ($1,100)
-+ costo por comunicar la promo al usuario (ya sea msj o funcionalidad en la app)
-+ promedio del margen de ganancia por ticket
-+ /% de usuarios invitados que sí aprovechan la promoción
++ Costo por comunicar la promo al usuario (ya sea msj o funcionalidad en la app)
++ Promedio del margen de ganancia por ticket
++ Porcentaje de usuarios que hacen efectivas las compras
 
 También sería necesario tener mayor información sobre las variables actuales en cuanto la representatividad de esta muestra en relación a la población de usuarios completa y diferencias con los usuarios activos. Además, saber si las compras totales post-tratamiento son netas o incluyen los montos descontados.
 
@@ -667,7 +740,7 @@ Por simplicidad, asumiremos que los cupones de \$100 y \$200 sólo aplican para 
 
 Variable adicional para el costo beneficio de los últimos 2 tratamientos:
 
-+ probabilidad de que un nuevo usuario sea activo (activos/inactivos)
++ Probabilidad de que el usuario sea activo (activos/inactivos)
 
 A continuación realizamos los cálculos.
 
@@ -685,11 +758,11 @@ margen <- 10 # margen de ganancia por ticket sin promo
 # Beneficios
 
 # margenes de ganancia por tratamiento
-ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5), 
-               (itt11$estimate[itt11$term=="Treat2"]*margen*2.5), 
-               (itt11$estimate[itt11$term=="Treat3"]*margen*0.8), 
-               (itt11$estimate[itt11$term=="Treat4"]*margen*0.75), 
-               (itt11$estimate[itt11$term=="Treat5"]*margen*0.98), 
+ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5),
+               (itt11$estimate[itt11$term=="Treat2"]*margen*2.5),
+               (itt11$estimate[itt11$term=="Treat3"]*margen*0.8),
+               (itt11$estimate[itt11$term=="Treat4"]*margen*0.75),
+               (itt11$estimate[itt11$term=="Treat5"]*margen*0.98),
                (itt11$estimate[itt11$term=="Treat6"]*margen*0.96))
 
 # Aumentos en la probabilidad de que se vuelva un usuario activo = ITT transaccionalidad
@@ -698,7 +771,7 @@ pr_activar <- itt10$estimate[2:7]
 # suponemos que las ventas ya descontaron la promoción del monto total (monto post descuento)
 
 # % de receptividad de la promo. tal vez sea menor para referir gente
-recep <- c(0.5,0.5,0.5,0.5,0.4,0.4) 
+recep <- c(0.5,0.5,0.5,0.5,0.4,0.4)
 
 beneficios <- recep*(pr_activar*clv + ganancias)
 
@@ -706,7 +779,7 @@ beneficios <- recep*(pr_activar*clv + ganancias)
 pr_new_active <- 0.6
 
 crecimientos <- recep*pr_new_active*clv
-crecimientos[1:4] <- 0 
+crecimientos[1:4] <- 0
 
 # Costos
 cmsj <- 0.1 #costo por mensaje
@@ -731,7 +804,11 @@ kbl(data.frame(tratamiento,beneficios,crecimientos,costos,diferencia),
 ```
 Dados nuestros montos supuestos y los resultados obtenidos, se obtienen los beneficios y costos mostrados en la tabla. Éstos no consideran errores estándar, por lo que deberían interpretarse con cuidado, sobre todo porque se basan en las estimaciones de compras totales, las cuales tienen coeficientes grandes pero no significativos.
 
-Recomendaría el 6 porque ofrecer un descuento de 4% en una compra es sustancialmente menos costoso que los otros, y porque el lifetime value del customer no es muy grande. Es más rentable apuntar al volumen que al precio, y buscar incrementar la base de usuarios parece ser una mejor estrategia. El 6 y no el 5 porque además el 6 tiene un efecto positivo en las compras de los clientes, mientras que no se puede asegurar lo mismo del 5.
+Recomendaríamos  el 6 porque ofrecer un descuento de 4% en una compra es sustancialmente menos costoso que los otros, y porque el lifetime value del customer no es muy grande. Es más rentable apuntar al volumen que al precio, y buscar incrementar la base de usuarios parece ser una mejor estrategia. Preferimos el tratamiento 6 por encima del 5 porque el 6 tiene un efecto positivo en las compras de los clientes, mientras que no se puede asegurar lo mismo para el 5.
+
+Es posible respaldar lo anterior, ya que si un cliente desembolsara en promedio 100 pesos en cada compra; con la estrategia 6 esto implicaría que por haber referido a un nuevo usuario, se le dará un 4% de descuento en la compra siguiente, esto es 4 pesos de descuento en promedio por una nueva compra, por lo que esta estrategia resulta ser rentable. El costo de adquirir un nuevo cliente potencial es \$4 y su CLTV es de \$1100, lo que implica que su adquisición resulta lucrativa.
+
+Por el contrario, en el caso del tratamiento 4, por ejemplo, al otorgar un descuento del 25% en la siguiente compra, el costo del descuento incluso podría superar el CLTV del usuario, dependiendo del monto de la compra.
 
 ### 15 (2ptos). Realiza la estimación de efectos heterogeneos para ambas variables usando `population`. Que encuentras? existe alguna subpoblación para la que los efectos difieran del promedio? Para cada efecto, muestra gráficas como lo hiciste en los ITTs
 
@@ -811,6 +888,9 @@ grid.arrange(row151,row152, ncol=1,
              bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 
 ```
+Como era de esperarse, para los usuarios que nunca estuvieron activos (never actives), el impacto del tratamiento (mensajes y descuentos) es mayor en la tasa de transacción dado que nunca habían registrado actividad en la plataforma, a diferencia de los que ya habían iteractuado pero dejaron de hacerlo (inactivos). En particular para los never actives, los tratamientos 3, 4 y 6 superan el promedio.
+
+En cuanto al impacto en las compras totales, el resultado fue híbrido, por una parte para la población que nunca estuvo activa, el impacto fue mayor en los tratamientos 3 y 6 y para la población inactiva los tratamientos que tuvieron mayor impacto fueron los 6 y 2 (por arriba del promedio).
 
 ### 16 (2ptos). Repite el ejercicio para ``phone_verified`.
 
@@ -894,6 +974,10 @@ grid.arrange(row161,row162, ncol=1,
              top = "Efectos Promedio de Intención a Tratar por Verificación del Teléfono",
              bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 ```
+
+En general, para los usuarios que verificaron su celular, el impacto de los tratamientos en las transacciones es mayor que para aquellos que no, lo cual resulta lógico en el sentido de que aquellos que verificaron sus teléfonos, probablemente tenían más interés en el uso de la plataforma que los que no lo hicieron. Sólo el tratamiento 5, resultó con mayor mayor impacto para quienes no verificaron su número.
+
+En cuanto a las compras totales, se observa que el tratamiento 6 fue el que tuvo mucho mayor impacto para aquellos que verificaron su celular.
 
 
 ### 17. Presenta una propuesta de focalización con base en tus resultados generales y heterogeneos.
