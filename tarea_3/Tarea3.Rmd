@@ -179,8 +179,10 @@ En primer lugar se construye una tabla con el efecto mínimo detectable variando
 # Variable
 # =============================
 
-#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea population_type==1, y 0 en otro caso.
-data_2<-data%>%filter(population_type==1) %>% mutate(tasa_trans=rnorm(14084, 0.0794,.02))
+#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea 
+# population_type==1, y 0 en otro caso.
+data_2<-data%>%filter(population_type==1) %>% 
+  mutate(tasa_trans=rnorm(14084, 0.0794,.02))
 data<-merge(data,data_2, all.x = T)
 data$tasa_trans[is.na(data$tasa_trans)] <- 0
 
@@ -214,17 +216,19 @@ for (a in sharecontrol){
         significance = 0.05,
         share_control = a,
         n_groups = 8)
-
-m[i] <- taumin$tau_min_global
-n[i] <- taumin$tau_min_each_treat
+  
+  m[i] <- taumin$tau_min_global
+  n[i] <- taumin$tau_min_each_treat
 }
 
 m <- cbind(sharecontrol,m,n)
 taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_treat"=V3)
 taus_noinf <- taus[-nrow(taus),]
 taus_noinf <- taus_noinf[-1,]
-share_optimo <- min(taus_noinf$sharecontrol[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
-tau_optima <- min(taus_noinf$tau_min_each_treat[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+share_optimo <- min(taus_noinf$sharecontrol[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+tau_optima <- min(taus_noinf$tau_min_each_treat[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
 
 ggplot(data=taus,aes(x=sharecontrol))+
   geom_line(aes(y=tau_min_each_treat*100),color='navyblue',size=1)+
@@ -280,16 +284,18 @@ for (a in sharecontrol){
         significance = 0.05,
         share_control = a,
         n_groups = 8)
-
-m[i] <- taumin$tau_min_global
-n[i] <- taumin$tau_min_each_treat
+  
+  m[i] <- taumin$tau_min_global
+  n[i] <- taumin$tau_min_each_treat
 }
 m <- cbind(sharecontrol,m,n)
 taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_treat"=V3)
 taus_noinf <- taus[-nrow(taus),]
 taus_noinf <- taus_noinf[-1,]
-share_optimo <- min(taus_noinf$sharecontrol[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
-tau_optima <- min(taus_noinf$tau_min_each_treat[taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+share_optimo <- min(taus_noinf$sharecontrol[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+tau_optima <- min(taus_noinf$tau_min_each_treat[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
 
 ggplot(data=taus,aes(x=sharecontrol))+
   geom_line(aes(y=tau_min_each_treat),color='navyblue',size=1)+
@@ -325,12 +331,11 @@ data$phone_verified<-as.factor(data$phone_verified)
 data$gender_F<-as.factor(data$gender_F)
 data$population_type<-as.factor(data$population_type)
 data$device_value_type<-as.factor(data$device_value_type)
-data_correctly<-data %>% select(tasa_trans,device_value, phone_verified,age,population,total_purchases,gender_F,months_since_register)
-
-
+data_correctly<-data %>% select(tasa_trans, device_value, phone_verified, 
+                                age,population, total_purchases, gender_F, 
+                                months_since_register)
 
 # Creo dummies para hacer el calculo del coef de regresión de manera correcta
-
 data_correctly<-dummy_cols(data_correctly, remove_first_dummy = F,
            select_columns = c('device_value','phone_verified','population','gender_F'),
            remove_selected_columns = T)
@@ -350,7 +355,7 @@ ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_siz
 
 ```{r,results='asis'}
 # =============================
-# Regresiones 
+# Regresiones: Table 1
 # =============================
 # Procesamiento
 # Se crean categorías para distintos rangos de edad a partir de los cuartiles
@@ -375,17 +380,17 @@ stargazer(modelo_a,modelo_b, type="latex")
 
 Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
 
-* La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
+* La **verificación del teléfono**, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
 
-* La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles). En este sentido, proponemos solamente agrupar la edad en dos grupos, la mitad más grande y la mitad más jóven.
+* La **edad** (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles). En este sentido, proponemos solamente agrupar la edad en dos grupos, la mitad más grande y la mitad más jóven.
 
-* Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, population podría resultar también relevante.
+* Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, **population** podría resultar también relevante.
 
-* Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por edad y por sexo.
+* Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por **edad y por sexo**.
 
 ```{r,results='asis'}
 # =============================
-# Regresion aux
+# Regresion aux: Table 2
 # =============================
 modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
 
@@ -399,7 +404,7 @@ stargazer(modelo_a,modelo_b, type="latex")
 
 ```{r,results='asis'}
 # =============================
-# Regresion aux
+# Regresion aux: Table 3
 # =============================
 modelo_a<-lm(tasa_trans~device_value,data)
 
@@ -413,7 +418,8 @@ stargazer(modelo_a,modelo_b, type="latex")
 
 ```{r}
 
-#Agrupo la variable de edad para que sea una dummy que discrimine a la mitad más jóven de la más grande.
+# Agrupo la variable de edad para que sea una dummy que discrimine a la mitad más
+# jóven de la más grande.
 data<-data%>%mutate(age_dummy=ifelse(age_group==1,1,
                               ifelse(age_group==2,1,0)))
 # =============================
@@ -422,15 +428,15 @@ data<-data%>%mutate(age_dummy=ifelse(age_group==1,1,
 random_assignment <- treatment_assign(data=data,
                  share_control = 1/4,
                  n_t=7,
-                 strata_varlist = dplyr::vars(population_type,phone_verified,age_dummy, gender_F),
+                 strata_varlist = dplyr::vars(
+                   population_type,phone_verified,age_dummy, gender_F),
                  missfits="global",
                  seed=123,
                  key="user_id")
-
 out <- random_assignment$data
+
 # agrego asignación en la base de datos
 data<-merge(data,out, by= "user_id")
-
 
 # =============================
 # Tablas
@@ -474,11 +480,9 @@ Si bien el número de misfits es muy bajo relativo al total de observaciones (22
 El único riesgo sería sería que la asignación fuera desproporcional para los grupos pequeños, (particularmente el 4 y el 8) sin embargo, en promedio se le asignaron 14 personas a cada estrato: 21 para el grupo 4 (4%) y 3 para el 8 (.3%). Sin embargo, como tenemos la claisifiación, podríamos realizar nuestras esitmaciones con y sin misfits.
 
 ```{r}
-
 # =============================
 # Tablas de misfits
 # =============================
-
 out_misfits_summary<-out%>% filter(missfit==1)%>%
         group_by(strata) %>%
         summarize(n())
@@ -491,13 +495,9 @@ kable(out_misfits_summary,booktabs=T, align = 'c', col.names = c("Estrato","n"))
   kable_styling(position = "center")
 kable(m_t,booktabs=T, align = 'c',col.names=c("Tratamiento","n"))%>%
   kable_styling(position = "center")
-
-
 ```
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
-
-
 
 ```{r}
 
@@ -515,7 +515,8 @@ data_4<-dummy_cols(data_3, remove_first_dummy = F,
 # =============================
 kable((balance_table(data_4,'treat')), align = 'c',booktabs=T,digits = 2)%>%
   kable_styling(position = "center",latex_options="scale_down")
-#Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares
+# Parece haber balance debido a que ningun pvalue es estadisticamente significativo. 
+# Las medias son muy similares
 ```
 
 Efectivamente, parece haber balance. Esto debido a que los valores p reportados en la matriz de p-values son muy grandes, ninguno nos indica que las medias son diferentes de manera estadísticamente significativa. 
@@ -580,9 +581,7 @@ rm(list = ls())
 
 load('base_evaluacion.Rdata')
 data2 <- universo_f
-
 rm(universo_f)
-
 
 data2$population <- as.factor(data2$population)
 data2$device_value <- as.factor(data2$device_value)
@@ -592,7 +591,8 @@ data2$device_value <- as.factor(data2$device_value)
 
 # ver como estan definidos los estratos
 table(data2$strata)
-# 1 a 6 y 1001 a 1006. Son doce grupos, combinaciones de population, device_value y phone_verified
+# 1 a 6 y 1001 a 1006. Son doce grupos, combinaciones de population, 
+# device_value y phone_verified
 data2$population[data2$strata>10] %>% summary()
 data2$phone_verified[data2$strata<4] %>% summary()
 data2$phone_verified[data2$strata>1003] %>% summary()
@@ -802,7 +802,8 @@ ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5),
 # Aumentos en la probabilidad de que se vuelva un usuario activo = ITT transaccionalidad
 pr_activar <- itt10$estimate[2:7]
 
-# suponemos que las ventas ya descontaron la promoción del monto total (monto post descuento)
+# Suponemos que las ventas ya descontaron la promoción del monto 
+# total (monto post descuento)
 
 # % de receptividad de la promo. tal vez sea menor para referir gente
 recep <- c(0.5,0.5,0.5,0.5,0.4,0.4)
@@ -919,7 +920,8 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
 
 grid.arrange(row151,row152, ncol=1,
              top = "Efectos Promedio de Intención a Tratar por Población",
-             bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
+             bottom = "Se controla por edad, sexo, compras totales y meses 
+             desde el registro")
 
 ```
 Como era de esperarse, para los usuarios que nunca estuvieron activos (never actives), el impacto del tratamiento (mensajes y descuentos) es mayor en la tasa de transacción dado que nunca habían registrado actividad en la plataforma, a diferencia de los que ya habían iteractuado pero dejaron de hacerlo (inactivos). En particular para los never actives, los tratamientos 3, 4 y 6 superan el promedio.
@@ -1005,8 +1007,10 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
         plot.title = element_text(size=10, hjust=0.5))
 
 grid.arrange(row161,row162, ncol=1,
-             top = "Efectos Promedio de Intención a Tratar por Verificación del Teléfono",
-             bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
+             top = "Efectos Promedio de Intención a Tratar por 
+             Verificación del Teléfono",
+             bottom = "Se controla por edad, sexo, compras totales 
+             y meses desde el registro")
 ```
 
 En general, para los usuarios que verificaron su celular, el impacto de los tratamientos en las transacciones es mayor que para aquellos que no, lo cual resulta lógico en el sentido de que aquellos que verificaron sus teléfonos, probablemente tenían más interés en el uso de la plataforma que los que no lo hicieron. Sólo el tratamiento 5, resultó con mayor mayor impacto para quienes no verificaron su número.
