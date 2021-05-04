@@ -529,7 +529,6 @@ De manera conjunta, ninga F es mayor a .011, en consecuencia, los valores p son 
 # Regresión de balance
 # =============================
 br<-balance_regression(data_4, 'treat')
-br$F_test
 kable(br$F_test, 
       align = 'c',booktabs=T,digits = 2)%>%
   kable_styling(position = "center")
