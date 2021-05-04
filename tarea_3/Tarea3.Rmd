@@ -341,12 +341,16 @@ data_correctly<-dummy_cols(data_correctly, remove_first_dummy = F,
            remove_selected_columns = T)
 
 # imprimo el correlograma
-ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_size = 6,
-  size = 3,
+ggcorr(data_correctly, method = c("everything", "pearson"), 
+       label = TRUE,max_size = 6,
+  size = 1.5,
   hjust = 0.75,
   angle = -45)+ 
+  
   labs(title="Correlograma de la base de datos")+
+  
   theme_bw()+
+  
   theme(axis.text.x = element_text(angle=90, vjust=.5))
 ```
 
