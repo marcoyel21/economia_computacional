@@ -450,9 +450,9 @@ Ahora, se plantean variables por las cuales se estratificará, y se comenta si e
 # =============================
 # Regresion aux: Table 2
 # =============================
-modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
+modelo_a<-lm(tasa_trans~age_group+gender_F+age_group*gender_F,data)
 
-modelo_b<-lm(total_purchases~age_group+gender_F+I(age_group:gender_F),data)
+modelo_b<-lm(total_purchases~age_group+gender_F+ age_group*gender_F,data)
 
 stargazer(modelo_a,modelo_b, type="latex", header=FALSE, no.space=TRUE)
 ```
