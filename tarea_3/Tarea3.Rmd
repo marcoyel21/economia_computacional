@@ -320,13 +320,12 @@ data_correctly<-data%>%select(-user_id)
 data_correctly<-dummy_cols(data_correctly, remove_first_dummy = F,
            select_columns = c('device_value','phone_verified','population','gender_F','population_type','device_value_type'),
            remove_selected_columns = T)
-
 #imprimo el correlograma
 ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_size = 6,
   size = 3,
   hjust = 0.75,
   angle = -45)
-#Evidentemente hay colinealidad perfecta en algunas variables, entonces aguas al interpretar esto.
+#Evidentemente hay colinealidad perfecta en algunas variables, entonces cuidado al interpretar esto.
 
 ```
 
@@ -342,9 +341,11 @@ data$age_group <- as.factor(data$age_group)
 
 # REGRESION
 # Quito las variables colineales y las objetivo
-modelo_a<-lm(tasa_trans~.-population_type-population-user_id-total_purchases-age-device_value,data)
+modelo_a<-lm(tasa_trans~.-population_type
+             -population-user_id-total_purchases-age-device_value,data)
 
-modelo_b<-lm(total_purchases~.-population_type-population-user_id-tasa_trans-age-device_value,data)
+modelo_b<-lm(total_purchases~.-population_type
+             -population-user_id-tasa_trans-age-device_value,data)
 
 stargazer(modelo_a,modelo_b, type="text")
 ```
@@ -535,7 +536,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
   ylim(-0.001,0.12)+
   theme_minimal() +
-  labs(title = "Efecto Promedio de Tratamiento en transaccionalidad",
+  labs(title = "Efecto Promedio de Intención a Tratar, transaccionalidad",
        x ="",
        caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
   theme(legend.position="none")
@@ -577,7 +578,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
   ylim(-50,120)+
   theme_minimal() +
-  labs(title = "Efecto Promedio de Tratamiento en compras totales",
+  labs(title = "Efectos Promedio de Intención a Tratar, compras totales",
        x ="",
        caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
   theme(legend.position="none")
@@ -586,28 +587,26 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
 
 Como puede verse en la gráfica, los tratamientos 1 a 5 son negativos y ninguno de los efectos de tratamiento es significativo. Considerando estos resultados junto con los de transaccionalidad, se concluye que los incentivos de descuentos atraen a los usuarios a la app, pero no capitalizan comprando más que antes. También debe notarse que independientemente del monto de los descuentos, omitiendo los descuentos por referir personas, tienen coeficientes muy parecidos, por lo que parece no haber relación entre el monto del descuento y el impacto en compras.
 
-Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por lo menos no en el periodo de estudio. Es posible que los usuarios deban recibir más de un descuento para terminar por volverse usuarios frecuentes de la app, y que de recibir un sólo descuento el efecto sea muy débil.
+Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por lo menos en el periodo de estudio. De hecho, aunque estos resultados fueran positivos y significativos, aún se tendrían que considerar los costos de dichas políticas. 
 
-**DUDA. TOTAL PURCHASES AFTER incluye los montos de los descuentos? o es el monto de compras que paga el usuario, neto de cualquier código de descuento que pongan?**
+Sin embargo, una posibilidad que no contempla este estudio es que los usuarios deban recibir más de un descuento para terminar por volverse usuarios frecuentes de la app, y que de recibir un sólo descuento el efecto sea muy débil.
 
 
-### 12. Interpreta el impacto del gruop de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
-
-El estimador es muy grande pero el error estándar es aún más grande, por lo que no es significativo. Esto quiere decir que hay mucha variabilidad en el efecto promedio de tratamiento 6.
-
+### 12. Interpreta el impacto del grupo de referidos 4%. Porque el estimador es tan diferente y a la vez es no significativo? Por que esto no paso en la tasa de transaccionalidad?
 
 ```{r}
 summary(data2$total_purchases)
 summary(data2$total_purchases_after)
+
+summary(data2$total_purchases[data2$treat==6])
+summary(data2$total_purchases_after[data2$treat==6])
 ```
-Hay muchísimos ceros, y el máximo es enorme. Tuvo un gran efecto en pocos, y en muchos no tuvo efecto.
+El estimador de dicho tratamiento es muy grande pero su error estándar es aún más grande, por lo que no es significativo. Esto quiere decir que hay mucha variabilidad en el efecto promedio de tratamiento 6, y que así como algunos usuarios responden muy favorablemente ante dicho incentivo, otros usuarios simplemente no responden. Un escenario como éste muestra la necesidad de buscar heterogeneidad en el impacto del tratamiento.
 
-
-Por la pregunta 13, quizá también tiene que ver con los niveles de compra?
 
 ### 13 (2ptos). Repite la medición en 11 pero ahora con `log(total_purchases_after+1)`. Que encuentras ahora? Interpreta las diferencias
 
-Aquí podemos probar meter en logs la de total_purchases como control.
+Intuitivamente, la transformación va a mejorar la estimación, pues en logaritmos, los valores grandes se vuelven relativamente más cercanos a los valores cercanos o iguales a cero. Esto debería reducir el error estándar del coeficiente del tratamiento 6.
 
 ```{r}
 #ITT intention-to-treat
@@ -642,28 +641,95 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
   theme_minimal() +
   ylim(0,0.2)+
-  labs(title = "Efecto Promedio de Tratamiento en compras totales (log)",
+  labs(title = "Efecto Promedio de Intención a Tratar, compras totales (log)",
        x ="",
        caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
   theme(legend.position="none")
 ```
+
+En efecto, ahora los coeficientes de los tratamientos son positivos, y los de los tratamientos 3 y 6 son estadísticamente significativos. Medir los cambios porcentuales en compras totales permite asesorar mejor la efectividad del tratamiento debido a la presencia de valores extremos y a la abundancia de ceros.
+
+Aún así, 4 de los 6 tratamientos no pueden distinguirse del grupo de control. Esto en general confirma la no rentabilidad de otorgar incentivos a los usuarios, por lo menos sin una estrategia clara de focalización y diseño del incentivo.
 
 ### 14 (4ptos). Describre que variables necesitas para hacer un análisis costo beneficio completo. Les doy algunas: Ticket promedio $100, Customer Lifetime value: $1,100. Con esto, que sistema de incentivos recomendarías? Porqué? Muestra el razonamiento detrás de tu recomendación
 
 Variables necesarias para el costo beneficio de los primeros 4 tratamientos:
 
 + Ticket promedio ($100)
-+ Customer lifetime value
-+ costo por mensaje
++ Customer lifetime value ($1,100)
++ costo por comunicar la promo al usuario (ya sea msj o funcionalidad en la app)
 + promedio del margen de ganancia por ticket
 + /% de usuarios invitados que sí aprovechan la promoción
 
+También sería necesario tener mayor información sobre las variables actuales en cuanto la representatividad de esta muestra en relación a la población de usuarios completa y diferencias con los usuarios activos. Además, saber si las compras totales post-tratamiento son netas o incluyen los montos descontados.
 
-Variables adicionales para el costo beneficio de los últimos 2 tratamientos:
+Por simplicidad, asumiremos que los cupones de \$100 y \$200 sólo aplican para compras mayores a dichos montos, y en promedio, el ticket promedio en esos grupos de tratamiento es de \$150 y \$250.
 
-+ promedio de compras por usuario
-+ probabilidad de que el usuario sea activo (activos/inactivos)
+Variable adicional para el costo beneficio de los últimos 2 tratamientos:
 
++ probabilidad de que un nuevo usuario sea activo (activos/inactivos)
+
+A continuación realizamos los cálculos.
+
+```{r}
+# Definimos algunos valores
+ticket <- 100 # ticket promedio
+
+clv <- 1100 # customer lifetime value
+
+num_compras <- clv/ticket # numero de compras del cliente promedio
+
+margen <- 10 # margen de ganancia por ticket sin promo
+
+
+# Beneficios
+
+# margenes de ganancia por tratamiento
+ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5), 
+               (itt11$estimate[itt11$term=="Treat2"]*margen*2.5), 
+               (itt11$estimate[itt11$term=="Treat3"]*margen*0.8), 
+               (itt11$estimate[itt11$term=="Treat4"]*margen*0.75), 
+               (itt11$estimate[itt11$term=="Treat5"]*margen*0.98), 
+               (itt11$estimate[itt11$term=="Treat6"]*margen*0.96))
+
+# Aumentos en la probabilidad de que se vuelva un usuario activo = ITT transaccionalidad
+pr_activar <- itt10$estimate[2:7]
+
+# suponemos que las ventas ya descontaron la promoción del monto total (monto post descuento)
+
+# % de receptividad de la promo. tal vez sea menor para referir gente
+recep <- c(0.5,0.5,0.5,0.5,0.4,0.4) 
+
+beneficios <- recep*(pr_activar*clv + ganancias)
+
+# beneficios adicionales de que la app sea referida a nuevos usuarios
+pr_new_active <- 0.6
+
+crecimientos <- recep*pr_new_active*clv
+crecimientos[1:4] <- 0 
+
+# Costos
+cmsj <- 0.1 #costo por mensaje
+capp <- 0.05 # costo por poner funcionalidad en la app que notifique la promo al usuario
+
+# costo que no depende de si se usa la promo ofrecida
+costo_itt <- c(cmsj,cmsj,capp,capp,capp,capp)
+
+# costo que solo se incurre al ser usada la app
+costo_tot <- recep*c(100,200,ticket*0.2,ticket*0.25,ticket*0.98,ticket*0.96)
+
+costos <- costo_itt + costo_tot
+
+
+# Estimaciones costo-beneficio
+tratamiento <- itt10$term[2:7]
+diferencia <- beneficios + crecimientos - costos
+kbl(data.frame(tratamiento,beneficios,crecimientos,costos,diferencia),
+    booktabs = T, align = 'c', digits = 2) %>%
+  kable_styling(position = 'center',
+                latex_options=c("scale_down","HOLD_position"))
+```
+Dados nuestros montos supuestos y los resultados obtenidos, se obtienen los beneficios y costos mostrados en la tabla. Éstos no consideran errores estándar, por lo que deberían interpretarse con cuidado, sobre todo porque se basan en las estimaciones de compras totales, las cuales tienen coeficientes grandes pero no significativos.
 
 Recomendaría el 6 porque ofrecer un descuento de 4% en una compra es sustancialmente menos costoso que los otros, y porque el lifetime value del customer no es muy grande. Es más rentable apuntar al volumen que al precio, y buscar incrementar la base de usuarios parece ser una mejor estrategia. El 6 y no el 5 porque además el 6 tiene un efecto positivo en las compras de los clientes, mientras que no se puede asegurar lo mismo del 5.
 
@@ -741,7 +807,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
         plot.title = element_text(size=10, hjust=0.5))
 
 grid.arrange(row151,row152, ncol=1,
-             top = "Efectos Promedio de Tratamiento por Población",
+             top = "Efectos Promedio de Intención a Tratar por Población",
              bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 
 ```
@@ -749,6 +815,12 @@ grid.arrange(row151,row152, ncol=1,
 ### 16 (2ptos). Repite el ejercicio para ``phone_verified`.
 
 ```{r}
+
+#convertir phone_verified a factor
+summary(data2$phone_verified)
+data2$phone_verified <- data2$phone_verified %>% as.factor
+levels(data2$phone_verified) <- c("not verified", "verified")
+
 # Estimaciones
 itt161 <- impact_eval(data=data2,
             endogenous_vars = "transacted",
@@ -789,12 +861,6 @@ phone_compras$term <- rep(c("Control",
                 "total_purchases",
                 "months_since_register"),2)
 
-#convertir phone_verified a factor
-summary(data2$phone_verified)
-data2$phone_verified <- data2$phone_verified %>% as.factor
-levels(data2$phone_verified) <- c("not verified", "verified")
-
-
 
 # resultados gráficos
 
@@ -825,7 +891,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
         plot.title = element_text(size=10, hjust=0.5))
 
 grid.arrange(row161,row162, ncol=1,
-             top = "Efectos Promedio de Tratamiento por Verificación del Teléfono",
+             top = "Efectos Promedio de Intención a Tratar por Verificación del Teléfono",
              bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 ```
 
