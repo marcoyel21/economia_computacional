@@ -1007,6 +1007,10 @@ En cuanto a las compras totales, se observa que el tratamiento 6 fue el que tuvo
 
 ### 17. Presenta una propuesta de focalización con base en tus resultados generales y heterogeneos.
 
+Una empresa debe basar su focalización en los productos y clientes estrella, es decir, en aquellos consumidores y productos que realmente sean rentables. Es indispensabe contar con una buena estrategia de focalización previo a vender, con el fin de evitar el desperdicio de medios, recursos y capacidades. En este caso los esfuerzos de la empresa Rappi deberán centrarse en implementar el tratamiento que haya provocado mayor impacto en el aumento de transacciones y compras en usuarios inactivos y que haya impactado más en el inicio de las mismas, en el caso de usuarios que nunca han estado activos; es decir, el tratamiento con el que se haya logrado reactivar o activar a los usuarios y con el que, en consecuencia, se hayan generado mayores transacciones y compras. 
+
+De acuerdo a los resultados anteriores el mayor impacto de tratamiento tanto en transacciones como en compras totales, ocurrió con el tratamiento 6, esto es, al ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran, con aquellos usuarios que verificaron su teléfono, por lo que la estrategia de focalización se basará en este segmento. Asimismo, fue posible observar que este tratamiento también impactó en mayor proporción en las transacciones de los usuarios que nunca estuvieron activos y en las compras de los usuarios que estaban inactivos, por lo que resulta rentable enfocarse en ambas poblaciones con este tratamiento.  
+
 ```{r}
 
 ```
