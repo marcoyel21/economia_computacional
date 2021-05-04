@@ -102,7 +102,7 @@ if (any(installed_packages == FALSE)) {
 lapply(packages,
        library,
        character.only = TRUE)
-       
+
 # desactiva notación científica       
 options(scipen = 999)
 
@@ -181,9 +181,9 @@ En segundo lugar se construye una tabla con el efecto mínimo detectable variand
 # Variable
 # =============================
 
-#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea 
+#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea
 # population_type==1, y 0 en otro caso.
-data_2<-data%>%filter(population_type==1) %>% 
+data_2<-data%>%filter(population_type==1) %>%
   mutate(tasa_trans=rnorm(14084, 0.0794,.02))
 data<-merge(data,data_2, all.x = T)
 data$tasa_trans[is.na(data$tasa_trans)] <- 0
@@ -218,7 +218,7 @@ for (a in sharecontrol){
         significance = 0.05,
         share_control = a,
         n_groups = 8)
-  
+
   m[i] <- taumin$tau_min_global
   n[i] <- taumin$tau_min_each_treat
 }
@@ -286,7 +286,7 @@ for (a in sharecontrol){
         significance = 0.05,
         share_control = a,
         n_groups = 8)
-  
+
   m[i] <- taumin$tau_min_global
   n[i] <- taumin$tau_min_each_treat
 }
@@ -333,8 +333,8 @@ data$phone_verified<-as.factor(data$phone_verified)
 data$gender_F<-as.factor(data$gender_F)
 data$population_type<-as.factor(data$population_type)
 data$device_value_type<-as.factor(data$device_value_type)
-data_correctly<-data %>% select(tasa_trans, device_value, phone_verified, 
-                                age,population, total_purchases, gender_F, 
+data_correctly<-data %>% select(tasa_trans, device_value, phone_verified,
+                                age,population, total_purchases, gender_F,
                                 months_since_register)
 
 # Creo dummies para hacer el calculo del coef de regresión de manera correcta
@@ -343,16 +343,16 @@ data_correctly<-dummy_cols(data_correctly, remove_first_dummy = F,
            remove_selected_columns = T)
 
 # imprimo el correlograma
-ggcorr(data_correctly, method = c("everything", "pearson"), 
+ggcorr(data_correctly, method = c("everything", "pearson"),
        label = TRUE,max_size = 6,
   size = 1.5,
   hjust = 0.75,
-  angle = -45)+ 
-  
+  angle = -45)+
+
   labs(title="Correlograma de la base de datos")+
-  
+
   theme_bw()+
-  
+
   theme(axis.text.x = element_text(angle=90, vjust=.5))
 ```
 
@@ -381,58 +381,58 @@ modelo_a<-lm(tasa_trans~.-population_type
 modelo_b<-lm(total_purchases~.-population_type
              -population-user_id-tasa_trans-age-device_value,data)
 
-stargazer(modelo_a,modelo_b, type="latex")
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
 ```
 
-\begin{table}[!htbp] \centering 
-  \caption{} 
-  \label{} 
-\begin{tabular}{@{\extracolsep{5pt}}lcc} 
-\\[-1.8ex]\hline 
-\hline \\[-1.8ex] 
- & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
-\cline{2-3} 
-\\[-1.8ex] & tasa\_trans & total\_purchases \\ 
-\\[-1.8ex] & (1) & (2)\\ 
-\hline \\[-1.8ex] 
- phone\_verified1 & 0.004$^{***}$ & 22.084$^{***}$ \\ 
-  & (0.0002) & (3.748) \\ 
-  & & \\ 
- gender\_F1 & 0.004$^{***}$ & 39.182$^{***}$ \\ 
-  & (0.0002) & (4.193) \\ 
-  & & \\ 
- months\_since\_register & 0.002$^{***}$ & 3.104$^{***}$ \\ 
-  & (0.00002) & (0.426) \\ 
-  & & \\ 
- device\_value\_type2 & 0.001 & 43.122 \\ 
-  & (0.003) & (66.302) \\ 
-  & & \\ 
- device\_value\_type3 & $-$0.008$^{***}$ & $-$24.085$^{***}$ \\ 
-  & (0.0002) & (3.664) \\ 
-  & & \\ 
- age\_group2 & 0.004$^{***}$ & 17.226$^{***}$ \\ 
-  & (0.0002) & (4.969) \\ 
-  & & \\ 
- age\_group3 & 0.006$^{***}$ & 30.945$^{***}$ \\ 
-  & (0.0002) & (5.333) \\ 
-  & & \\ 
- age\_group4 & 0.010$^{***}$ & 93.189$^{***}$ \\ 
-  & (0.0002) & (5.192) \\ 
-  & & \\ 
- Constant & $-$0.002$^{***}$ & $-$1.421 \\ 
-  & (0.0002) & (4.782) \\ 
-  & & \\ 
-\hline \\[-1.8ex] 
-Observations & 104,191 & 104,191 \\ 
-R$^{2}$ & 0.137 & 0.007 \\ 
-Adjusted R$^{2}$ & 0.137 & 0.007 \\ 
-Residual Std. Error (df = 104182) & 0.026 & 577.544 \\ 
-F Statistic (df = 8; 104182) & 2,070.410$^{***}$ & 92.636$^{***}$ \\ 
-\hline 
-\hline \\[-1.8ex] 
-\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
-\end{tabular} 
-\end{table} 
+\begin{table}[!htbp] \centering
+  \caption{}
+  \label{}
+\begin{tabular}{@{\extracolsep{5pt}}lcc}
+\\[-1.8ex]\hline
+\hline \\[-1.8ex]
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\
+\cline{2-3}
+\\[-1.8ex] & tasa\_trans & total\_purchases \\
+\\[-1.8ex] & (1) & (2)\\
+\hline \\[-1.8ex]
+ phone\_verified1 & 0.004$^{***}$ & 22.084$^{***}$ \\
+  & (0.0002) & (3.748) \\
+  & & \\
+ gender\_F1 & 0.004$^{***}$ & 39.182$^{***}$ \\
+  & (0.0002) & (4.193) \\
+  & & \\
+ months\_since\_register & 0.002$^{***}$ & 3.104$^{***}$ \\
+  & (0.00002) & (0.426) \\
+  & & \\
+ device\_value\_type2 & 0.001 & 43.122 \\
+  & (0.003) & (66.302) \\
+  & & \\
+ device\_value\_type3 & $-$0.008$^{***}$ & $-$24.085$^{***}$ \\
+  & (0.0002) & (3.664) \\
+  & & \\
+ age\_group2 & 0.004$^{***}$ & 17.226$^{***}$ \\
+  & (0.0002) & (4.969) \\
+  & & \\
+ age\_group3 & 0.006$^{***}$ & 30.945$^{***}$ \\
+  & (0.0002) & (5.333) \\
+  & & \\
+ age\_group4 & 0.010$^{***}$ & 93.189$^{***}$ \\
+  & (0.0002) & (5.192) \\
+  & & \\
+ Constant & $-$0.002$^{***}$ & $-$1.421 \\
+  & (0.0002) & (4.782) \\
+  & & \\
+\hline \\[-1.8ex]
+Observations & 104,191 & 104,191 \\
+R$^{2}$ & 0.137 & 0.007 \\
+Adjusted R$^{2}$ & 0.137 & 0.007 \\
+Residual Std. Error (df = 104182) & 0.026 & 577.544 \\
+F Statistic (df = 8; 104182) & 2,070.410$^{***}$ & 92.636$^{***}$ \\
+\hline
+\hline \\[-1.8ex]
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\
+\end{tabular}
+\end{table}
 
 Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
 
@@ -444,7 +444,9 @@ Ahora, se plantean variables por las cuales se estratificará, y se comenta si e
 
 * Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por **edad y por sexo**.
 
-```{r,results='asis', message=FALSE, eval=FALSE}
+\newpage
+
+```{r,results='asis'}
 # =============================
 # Regresion aux: Table 2
 # =============================
@@ -452,59 +454,16 @@ modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
 
 modelo_b<-lm(total_purchases~age_group+gender_F+I(age_group:gender_F),data)
 
-stargazer(modelo_a,modelo_b, type="latex", no.space=TRUE)
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE, no.space=TRUE)
 ```
 
-\begin{table}[!htbp] \centering 
-  \caption{} 
-  \label{} 
-\begin{tabular}{@{\extracolsep{5pt}}lcc} 
-\\[-1.8ex]\hline 
-\hline \\[-1.8ex] 
- & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
-\cline{2-3} 
-\\[-1.8ex] & tasa\_trans & total\_purchases \\ 
-\\[-1.8ex] & (1) & (2)\\ 
-\hline \\[-1.8ex] 
- age\_group2 & 0.005$^{***}$ & 1.129 \\ 
-  & (0.001) & (11.058) \\ 
-  age\_group3 & 0.007$^{***}$ & 0.087 \\ 
-  & (0.001) & (11.180) \\ 
-  age\_group4 & 0.011$^{***}$ & 89.364$^{***}$ \\ 
-  & (0.0003) & (5.916) \\ 
-  gender\_F1 & 0.005$^{***}$ & 62.452$^{***}$ \\ 
-  & (0.0004) & (7.518) \\ 
-  I(age\_group:gender\_F)1:1 & $-$0.003$^{***}$ & $-$48.808$^{***}$ \\ 
-  & (0.001) & (12.287) \\ 
-  I(age\_group:gender\_F)2:0 & 0.001$^{*}$ & 18.451$^{*}$ \\ 
-  & (0.001) & (11.061) \\ 
-  I(age\_group:gender\_F)2:1 &  &  \\ 
-  &  &  \\ 
-  I(age\_group:gender\_F)3:0 & 0.002$^{***}$ & 41.348$^{***}$ \\ 
-  & (0.001) & (11.427) \\ 
-  I(age\_group:gender\_F)3:1 &  &  \\ 
-  &  &  \\ 
-  I(age\_group:gender\_F)4:0 &  &  \\ 
-  &  &  \\ 
-  I(age\_group:gender\_F)4:1 &  &  \\ 
-  &  &  \\ 
-  Constant & 0.004$^{***}$ & 8.079$^{**}$ \\ 
-  & (0.0002) & (3.844) \\ 
- \hline \\[-1.8ex] 
-Observations & 104,191 & 104,191 \\ 
-R$^{2}$ & 0.031 & 0.006 \\ 
-Adjusted R$^{2}$ & 0.031 & 0.006 \\ 
-Residual Std. Error (df = 104183) & 0.028 & 577.884 \\ 
-F Statistic (df = 7; 104183) & 477.175$^{***}$ & 88.134$^{***}$ \\ 
-\hline 
-\hline \\[-1.8ex] 
-\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
-\end{tabular} 
-\end{table} 
 
-* Ahora bien, nos hubiera gustado incluir el valor del teléfono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
+* Ahora bien, nos hubiera gustado incluir el valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
 
-```{r,results='asis', message=FALSE, eval=FALSE}
+\newpage
+
+
+```{r,results='asis', eval=FALSE}
 # =============================
 # Regresion aux: Table 3
 # =============================
@@ -512,39 +471,36 @@ modelo_a<-lm(tasa_trans~device_value,data)
 
 modelo_b<-lm(total_purchases~device_value,data)
 
-stargazer(modelo_a,modelo_b, type="latex")
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
 ```
-\begin{table}[!htbp] \centering 
-  \caption{} 
-  \label{} 
-\begin{tabular}{@{\extracolsep{5pt}}lcc} 
-\\[-1.8ex]\hline 
-\hline \\[-1.8ex] 
- & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
-\cline{2-3} 
-\\[-1.8ex] & tasa\_trans & total\_purchases \\ 
-\\[-1.8ex] & (1) & (2)\\ 
-\hline \\[-1.8ex] 
- 10,001+] & 0.00004 & 46.025 \\ 
-  & (0.003) & (66.504) \\ 
-  & & \\ 
- device\_valueNo info & $-$0.009$^{***}$ & $-$34.145$^{***}$ \\ 
-  & (0.0002) & (3.595) \\ 
-  & & \\ 
+\begin{table}[!htbp] \centering
+  \caption{}
+  \label{}
+\begin{tabular}{@{\extracolsep{5pt}}lcc}
+\\[-1.8ex]\hline
+\hline \\[-1.8ex]
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\
+\cline{2-3}
+\\[-1.8ex] & tasa\_trans & total\_purchases \\
+\\[-1.8ex] & (1) & (2)\\
+\hline \\[-1.8ex]
+ 10,001+] & 0.00004 & 46.025 \\
+  & (0.003) & (66.504) \\
+ device\_valueNo info & $-$0.009$^{***}$ & $-$34.145$^{***}$ \\
+  & (0.0002) & (3.595) \\
  Constant & 0.015$^{***}$ & 72.488$^{***}$ \\ 
-  & (0.0001) & (2.599) \\ 
-  & & \\ 
-\hline \\[-1.8ex] 
-Observations & 104,191 & 104,191 \\ 
-R$^{2}$ & 0.025 & 0.001 \\ 
-Adjusted R$^{2}$ & 0.025 & 0.001 \\ 
-Residual Std. Error (df = 104188) & 0.028 & 579.325 \\ 
-F Statistic (df = 2; 104188) & 1,325.217$^{***}$ & 45.578$^{***}$ \\ 
-\hline 
-\hline \\[-1.8ex] 
-\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
-\end{tabular} 
-\end{table} 
+  & (0.0001) & (2.599) \\
+\hline \\[-1.8ex]
+Observations & 104,191 & 104,191 \\
+R$^{2}$ & 0.025 & 0.001 \\
+Adjusted R$^{2}$ & 0.025 & 0.001 \\
+Residual Std. Error (df = 104188) & 0.028 & 579.325 \\
+F Statistic (df = 2; 104188) & 1,325.217$^{***}$ & 45.578$^{***}$ \\
+\hline
+\hline \\[-1.8ex]
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\
+\end{tabular}
+\end{table}
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta
 
@@ -574,7 +530,7 @@ data<-merge(data,out, by= "user_id")
 # Tablas
 # =============================
 
-out_no_misfits_summary<-out%>% 
+out_no_misfits_summary<-out%>%
         filter(missfit==0)%>%
         group_by(strata) %>%
         summarize(n())
@@ -599,12 +555,16 @@ strats<-out%>% filter(missfit==0)%>%
                   ifelse(strata==15,`n()`/13692,
                   ifelse(strata==16,`n()`/3584,0
                          )))))))))))))))))
-                         
-kable(strats,booktabs=T, align = 'c',col.names = c("Estrato","Tratamiento","n","Probabilidad"),
+
+kable(strats, align = 'c', digits=3, booktabs=T,linesep="",
+      col.names = c("Estrato","Tratamiento","n","Probabilidad"),
 longtable=T,caption = "Distribución de grupos por estrato (sin misfits)")%>%
   kable_styling(position = "center",latex_options = c("repeat_header"))
 ```
 Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
+
+\newpage
+
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
@@ -632,6 +592,9 @@ col.names=c("Tratamiento","n"), caption = "Misfits por tratamiento")%>%
   kable_styling(position = "center")
 ```
 
+\newpage
+
+
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
 ```{r}
@@ -651,11 +614,11 @@ data_4<-dummy_cols(data_3, remove_first_dummy = F,
 kable((balance_table(data_4,'treat')), align = 'c',
 booktabs=T,digits = 2,caption = "Tabla de balance")%>%
   kable_styling(position = "center",latex_options="scale_down")
-# Parece haber balance debido a que ningun pvalue es estadisticamente significativo. 
+# Parece haber balance debido a que ningun pvalue es estadisticamente significativo.
 # Las medias son muy similares
 ```
 
-Efectivamente, parece haber balance. Esto debido a que los valores p reportados en la matriz de p-values son muy grandes, ninguno nos indica que las medias son diferentes de manera estadísticamente significativa. 
+Efectivamente, parece haber balance. Esto debido a que los valores p reportados en la matriz de p-values son muy grandes, ninguno nos indica que las medias son diferentes de manera estadísticamente significativa.
 
 ### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
 
@@ -666,7 +629,7 @@ De manera conjunta, ninga F es mayor a .011, en consecuencia, los valores p son 
 # Regresión de balance
 # =============================
 br<-balance_regression(data_4, 'treat')
-kable(br$F_test, 
+kable(br$F_test,
       align = 'c',booktabs=T,digits = 2,
       caption = "Regresión de balance")%>%
   kable_styling(position = "center")
@@ -728,7 +691,7 @@ data2$device_value <- as.factor(data2$device_value)
 
 # ver como estan definidos los estratos
 table(data2$strata)
-# 1 a 6 y 1001 a 1006. Son doce grupos, combinaciones de population, 
+# 1 a 6 y 1001 a 1006. Son doce grupos, combinaciones de population,
 # device_value y phone_verified
 data2$population[data2$strata>10] %>% summary()
 data2$phone_verified[data2$strata<4] %>% summary()
@@ -887,7 +850,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   ylim(0,0.2)+
   labs(title = "Efecto Promedio de Intención a Tratar, compras totales (log)",
        x ="",
-       caption = "Se controla por edad, sexo, compras totales 
+       caption = "Se controla por edad, sexo, compras totales
        y meses desde el registro") +
   theme(legend.position="none")
 ```
@@ -966,7 +929,7 @@ diferencia <- beneficios + crecimientos - costos
 kbl(data.frame(tratamiento,beneficios,crecimientos,costos,diferencia),
     booktabs = T, align = 'c', digits = 2) %>%
   kable_styling(position = 'center',
-                latex_options=c("scale_down","HOLD_position"))
+                latex_options=c("HOLD_position"))
 ```
 Dados nuestros montos supuestos y los resultados obtenidos, se obtienen los beneficios y costos mostrados en la tabla. Éstos no consideran errores estándar, por lo que deberían interpretarse con cuidado, sobre todo porque se basan en las estimaciones de compras totales, las cuales tienen coeficientes grandes pero no significativos.
 
@@ -1051,7 +1014,7 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
 
 grid.arrange(row151,row152, ncol=1,
              top = "Efectos Promedio de Intención a Tratar por Población",
-             bottom = "Se controla por edad, sexo, compras totales y meses 
+             bottom = "Se controla por edad, sexo, compras totales y meses
              desde el registro")
 
 ```
@@ -1138,9 +1101,9 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
         plot.title = element_text(size=10, hjust=0.5))
 
 grid.arrange(row161,row162, ncol=1,
-             top = "Efectos Promedio de Intención a Tratar por 
+             top = "Efectos Promedio de Intención a Tratar por
              Verificación del Teléfono",
-             bottom = "Se controla por edad, sexo, compras totales 
+             bottom = "Se controla por edad, sexo, compras totales
              y meses desde el registro")
 ```
 
@@ -1151,8 +1114,6 @@ En cuanto a las compras totales, se observa que el tratamiento 6 fue el que tuvo
 
 ### 17. Presenta una propuesta de focalización con base en tus resultados generales y heterogeneos.
 
-Una empresa debe basar su focalización en los productos y clientes estrella, es decir, en aquellos consumidores y productos que realmente sean rentables. Es indispensabe contar con una buena estrategia de focalización previo a vender, con el fin de evitar el desperdicio de medios, recursos y capacidades. En este caso los esfuerzos de la empresa Rappi deberán centrarse en implementar el tratamiento que haya provocado mayor impacto en el aumento de transacciones y compras en usuarios inactivos y que haya impactado más en el inicio de las mismas, en el caso de usuarios que nunca han estado activos; es decir, el tratamiento con el que se haya logrado reactivar o activar a los usuarios y con el que, en consecuencia, se hayan generado mayores transacciones y compras. 
+Una empresa debe basar su focalización en los productos y clientes estrella, es decir, en aquellos consumidores y productos que realmente sean rentables. Es indispensabe contar con una buena estrategia de focalización previo a vender, con el fin de evitar el desperdicio de medios, recursos y capacidades. En este caso los esfuerzos de la empresa Rappi deberán centrarse en implementar el tratamiento que haya provocado mayor impacto en el aumento de transacciones y compras en usuarios inactivos y que haya impactado más en el inicio de las mismas, en el caso de usuarios que nunca han estado activos; es decir, el tratamiento con el que se haya logrado reactivar o activar a los usuarios y con el que, en consecuencia, se hayan generado mayores transacciones y compras.
 
 De acuerdo a los resultados anteriores el mayor impacto de tratamiento tanto en transacciones como en compras totales, ocurrió con el tratamiento 6, esto es, al ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran, con aquellos usuarios que verificaron su teléfono, por lo que la estrategia de focalización se basará en este segmento. Asimismo, fue posible observar que este tratamiento también impactó en mayor proporción en las transacciones de los usuarios que nunca estuvieron activos y en las compras de los usuarios que estaban inactivos, por lo que resulta rentable enfocarse en ambas poblaciones con este tratamiento. Por otro lado, valdría la pena focalizar este tratamiento en usuarios que ya hayan registrado su teléfono.  
-
-
