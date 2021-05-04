@@ -261,7 +261,7 @@ table_total_purchases <- tau_min(data$total_purchases,
         N = nrow(data),
         power = 0.8,
         significance = 0.05,
-        share_control = seq(0,1,0.05),
+        share_control = seq(0,1,0.1),
         n_groups = 8)
 
 kable(table_total_purchases,booktabs=T, align = 'c',digits = 4)%>%
@@ -313,7 +313,7 @@ ggplot(data=taus,aes(x=sharecontrol))+
 
 Se puede observar que, nuevamente, para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima), 4), nsmall=0, big.mark=",")` compras entre el grupo de control y cada tratamiento
 
-Entonces, usaremos un \textit{share} de control de 0.25 para
+Entonces, usaremos un \textit{share} de control de 0.25 para llevar a cabo la asignación aleatoria.
 
 
 
