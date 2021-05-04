@@ -855,7 +855,7 @@ diferencia <- beneficios + crecimientos - costos
 kbl(data.frame(tratamiento,beneficios,crecimientos,costos,diferencia),
     booktabs = T, align = 'c', digits = 2) %>%
   kable_styling(position = 'center',
-                latex_options=c("scale_down","HOLD_position"))
+                latex_options=c("HOLD_position"))
 ```
 Dados nuestros montos supuestos y los resultados obtenidos, se obtienen los beneficios y costos mostrados en la tabla. Éstos no consideran errores estándar, por lo que deberían interpretarse con cuidado, sobre todo porque se basan en las estimaciones de compras totales, las cuales tienen coeficientes grandes pero no significativos.
 
