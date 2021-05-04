@@ -472,7 +472,8 @@ strats<-out%>% filter(missfit==0)%>%
                   ifelse(strata==16,`n()`/3584,0
                          )))))))))))))))))
                          
-kable(strats,booktabs=T, align = 'c',col.names = c("Estrato","Tratamiento","n","Probabilidad"),longtable=T)%>%
+kable(strats,booktabs=T, align = 'c',col.names = c("Estrato","Tratamiento","n","Probabilidad"),
+longtable=T,caption = "Distribución de grupos por estrato (sin misfits)")%>%
   kable_styling(position = "center",latex_options = c("repeat_header"))
 ```
 Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
@@ -495,9 +496,11 @@ m_t<-out%>% filter(missfit==1)%>%
         group_by(treat) %>%
         summarize(n())
 
-kable(out_misfits_summary,booktabs=T, align = 'c', col.names = c("Estrato","n"))%>%
+kable(out_misfits_summary,booktabs=T, align = 'c',
+col.names = c("Estrato","n"),caption = "Misfits por estrato")%>%
   kable_styling(position = "center")
-kable(m_t,booktabs=T, align = 'c',col.names=c("Tratamiento","n"))%>%
+kable(m_t,booktabs=T, align = 'c',
+col.names=c("Tratamiento","n"), caption = "Misfits por tratamiento")%>%
   kable_styling(position = "center")
 ```
 
@@ -517,7 +520,8 @@ data_4<-dummy_cols(data_3, remove_first_dummy = F,
 # =============================
 # Tablas de balance
 # =============================
-kable((balance_table(data_4,'treat')), align = 'c',booktabs=T,digits = 2)%>%
+kable((balance_table(data_4,'treat')), align = 'c',
+booktabs=T,digits = 2,caption = "Tabla de balance")%>%
   kable_styling(position = "center",latex_options="scale_down")
 # Parece haber balance debido a que ningun pvalue es estadisticamente significativo. 
 # Las medias son muy similares
@@ -535,7 +539,8 @@ De manera conjunta, ninga F es mayor a .011, en consecuencia, los valores p son 
 # =============================
 br<-balance_regression(data_4, 'treat')
 kable(br$F_test, 
-      align = 'c',booktabs=T,digits = 2)%>%
+      align = 'c',booktabs=T,digits = 2,
+      caption = "Regresión de balance")%>%
   kable_styling(position = "center")
 ```
 
