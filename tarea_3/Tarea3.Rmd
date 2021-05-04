@@ -456,7 +456,8 @@ strats<-out%>% filter(missfit==0)%>%
                   ifelse(strata==15,`n()`/13692,
                   ifelse(strata==16,`n()`/3584,0
                          )))))))))))))))))
-kable(strats,col.names = c("Estrato","Tratamiento","n","Probabilidad"))
+kable(strats,booktabs=T, align = 'c',col.names = c("Estrato","Tratamiento","n","Probabilidad"))%>%
+  kable_styling(position = "center")
 ```
 Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
 
@@ -480,8 +481,10 @@ m_t<-out%>% filter(missfit==1)%>%
         group_by(treat) %>%
         summarize(n())
 
-kable(out_misfits_summary, col.names = c("Estrato","n"))
-kable(m_t,col.names=c("Tratamiento","n"))
+kable(out_misfits_summary,booktabs=T, align = 'c', col.names = c("Estrato","n"))%>%
+  kable_styling(position = "center")
+kable(m_t,booktabs=T, align = 'c',col.names=c("Tratamiento","n"))%>%
+  kable_styling(position = "center")
 
 
 ```
