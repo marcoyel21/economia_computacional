@@ -392,6 +392,8 @@ Ahora, se plantean variables por las cuales se estratificará, y se comenta si e
 
 * Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por **edad y por sexo**.
 
+\newpage
+
 ```{r,results='asis'}
 # =============================
 # Regresion aux: Table 2
@@ -405,6 +407,9 @@ stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
 
 
 * Ahora bien, nos hubiera gustado incluir el valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
+
+\newpage
+
 
 ```{r,results='asis'}
 # =============================
@@ -478,6 +483,9 @@ longtable=T,caption = "Distribución de grupos por estrato (sin misfits)")%>%
 ```
 Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
 
+\newpage
+
+
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
 Si bien el número de misfits es muy bajo relativo al total de observaciones (227 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas (más que por estrato). Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
@@ -503,6 +511,9 @@ kable(m_t,booktabs=T, align = 'c',
 col.names=c("Tratamiento","n"), caption = "Misfits por tratamiento")%>%
   kable_styling(position = "center")
 ```
+
+\newpage
+
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
