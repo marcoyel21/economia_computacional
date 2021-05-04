@@ -389,8 +389,12 @@ stargazer(modelo_a,modelo_b, type="latex")
 
 ```{r}
 
+#Agrupo la variable de edad para que sea una dummy que discrimine a la mitad más jóven de la más grande.
 data<-data%>%mutate(age_dummy=ifelse(age_group==1|2,0,1))
 
+# =============================
+# Asignacion
+# =============================
 random_assignment <- treatment_assign(data=data,
                  share_control = 1/4,
                  n_t=7,
@@ -400,6 +404,13 @@ random_assignment <- treatment_assign(data=data,
                  key="user_id")
 
 out <- random_assignment$data
+# agrego asignación en la base de datos
+data<-merge(data,out, by= "user_id")
+
+
+# =============================
+# Tablas
+# =============================
 
 out_no_misfits_summary<-out%>% filter(missfit==0)%>%
         group_by(strata) %>% 
@@ -426,6 +437,10 @@ Si bien el número de misfits es muy bajo relativo al total de observaciones (11
 
 ```{r}
 
+# =============================
+# Tablas de misfits
+# =============================
+
 out_misfits_summary<-out%>% filter(missfit==1)%>%
         group_by(strata) %>% 
         summarize(n())
@@ -443,7 +458,7 @@ kable(m_t,col.names=c("Tratamiento","n"))
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
 ```{r}
-#CYN. Duda: Si en la pregunta 5 se elige la opción de francisco de incluir la edad por estrato y no el género en la estratificación, habría que modificar este código. Aunque no pasa nada si se mantiene la variable de género porque, aunque se elijan variables no correlacionadas, como es el caso de esa variable, sólo no se ganaría tanta eficiencia, entonces podría dejarse.  
+
 
 # Selecciono solo las variables que use para estratificar
 data_3<-data%>%select(population_type,device_value_type,gender_F,phone_verified,treat)
