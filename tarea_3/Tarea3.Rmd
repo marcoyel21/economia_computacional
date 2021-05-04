@@ -470,21 +470,28 @@ kable(m_t,col.names=c("Tratamiento","n"))
 
 ```{r}
 
-
+# =============================
+# Preprocesamiento
+# =============================
 # Selecciono solo las variables que use para estratificar
-data_3<-data%>%select(population_type,device_value_type,gender_F,phone_verified,treat)
-data_4<-dummy_cols(data_3, remove_first_dummy = T,
-           select_columns = c('population_type','device_value_type','gender_F','phone_verified'),
+data_3<-data%>%select(population_type,phone_verified,age_dummy, gender_F,treat)
+data_4<-dummy_cols(data_3, remove_first_dummy = F,
+           select_columns = c('population_type','phone_verified','gender_F','age_dummy'),
            remove_selected_columns = T)
 
-# Imprimo las tablas de balance
+# =============================
+# Tablas de balance
+# =============================
 balance_table(data_4,'treat')
-#Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares.
+#Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares
 ```
 
 ### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
 
 ```{r}
+# =============================
+# Regresión de balance
+# =============================
 balance_regression(data_4, 'treat')
 ```
 
