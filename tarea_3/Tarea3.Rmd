@@ -479,9 +479,9 @@ Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
-Si bien el número de misfits es muy bajo relativo al total de observaciones (227 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
+Si bien el número de misfits es muy bajo relativo al total de observaciones (227 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas (más que por estrato). Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
 
-El único riesgo sería sería que la asignación fuera desproporcional para los grupos pequeños, (particularmente el 4 y el 8) sin embargo, en promedio se le asignaron 14 personas a cada estrato: 21 para el grupo 4 (4%) y 3 para el 8 (.3%). Sin embargo, como tenemos la claisifiación, podríamos realizar nuestras esitmaciones con y sin misfits.
+El único riesgo sería sería que la asignación fuera desproporcional para los estratos pequeños, (particularmente el 4 y el 8) sin embargo, en promedio se le asignaron 14 personas a cada estrato: 21 para el grupo 4 (4% del total) y 3 para el 8 (.3%). Sin embargo, como tenemos la clasificación, podríamos realizar nuestras esitmaciones con y sin misfits.
 
 ```{r}
 # =============================
