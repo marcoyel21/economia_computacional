@@ -390,8 +390,8 @@ stargazer(modelo_a,modelo_b, type="latex")
 ```{r}
 
 #Agrupo la variable de edad para que sea una dummy que discrimine a la mitad más jóven de la más grande.
-data<-data%>%mutate(age_dummy=ifelse(age_group==1|2,0,1))
-
+data<-data%>%mutate(age_dummy=ifelse(age_group==1,1,
+                              ifelse(age_group==2,1,0)))
 # =============================
 # Asignacion
 # =============================
@@ -419,21 +419,32 @@ out_no_misfits_summary<-out%>% filter(missfit==0)%>%
 strats<-out%>% filter(missfit==0)%>%
         group_by(strata,treat) %>% 
         summarize(n()) %>% 
-        mutate(p=ifelse(strata==1,`n()`/3640,
-                  ifelse(strata==2,`n()`/1848, 
-                  ifelse(strata==3,`n()`/5544,
-                  ifelse(strata==4,`n()`/2996,
-                  ifelse(strata==5,`n()`/42616,
-                  ifelse(strata==6,`n()`/12320,
-                  ifelse(strata==7,`n()`/26180,
-                  ifelse(strata==8,`n()`/8932,)))))))))
+        mutate(p=ifelse(strata==1,`n()`/2268,
+                  ifelse(strata==2,`n()`/1372, 
+                  ifelse(strata==3,`n()`/1344,
+                  ifelse(strata==4,`n()`/448,
+                  ifelse(strata==5,`n()`/3304,
+                  ifelse(strata==6,`n()`/2100,
+                  ifelse(strata==7,`n()`/2240,
+                  ifelse(strata==8,`n()`/896,
+                  ifelse(strata==9,`n()`/14812,
+                  ifelse(strata==10,`n()`/6552, 
+                  ifelse(strata==11,`n()`/27776,
+                  ifelse(strata==12,`n()`/5768,
+                  ifelse(strata==13,`n()`/12488,
+                  ifelse(strata==14,`n()`/5320,
+                  ifelse(strata==15,`n()`/13692,
+                  ifelse(strata==16,`n()`/3584,0
+                         )))))))))))))))))
 kable(strats,col.names = c("Estrato","Tratamiento","n","Probabilidad"))
 ```
 Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
-Si bien el número de misfits es muy bajo relativo al total de observaciones (115 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
+Si bien el número de misfits es muy bajo relativo al total de observaciones (227 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico. 
+
+El único riesgo sería sería que la asignación fuera desproporcional para los grupos pequeños, (particularmente el 4 y el 8) sin embargo, en promedio se le asignaron 14 personas a cada estrato: 21 para el grupo 4 (4%) y 3 para el 8 (.3%). Sin embargo, como tenemos la claisifiación, podríamos realizar nuestras esitmaciones con y sin misfits.
 
 ```{r}
 
