@@ -846,6 +846,10 @@ grid.arrange(row161,row162, ncol=1,
              bottom = "Se controla por edad, sexo, compras totales y meses desde el registro")
 ```
 
+En general, para los usuarios que verificaron su celular, el impacto de los tratamientos en las transacciones es mayor que para aquellos que no, lo cual resulta lógico en el sentido de que aquellos que verificaron sus teléfonos, probablemente tenían más interés en el uso de la plataforma que los que no lo hicieron. Sólo el tratamiento 5, resultó con mayor mayor impacto para quienes no verificaron su número. 
+
+En cuanto a las compras totales, se observa que el tratamiento 6 fue el que tuvo mucho mayor impacto para aquellos que verificaron su celular.
+
 
 ### 17. Presenta una propuesta de focalización con base en tus resultados generales y heterogeneos.
 
