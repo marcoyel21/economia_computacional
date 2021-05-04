@@ -468,6 +468,8 @@ kable(m_t,col.names=c("Tratamiento","n"))
 
 ### 7. Realiza las pruebas de balance t sobre todas las variables (Tip: transforma las categóricas en dummys). Parece haber balance?  
 
+
+
 ```{r}
 
 # =============================
@@ -486,28 +488,29 @@ balance_table(data_4,'treat')
 #Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares
 ```
 
+Efectivamente, parece haber balance. Esto debido a que los valores p reportados en la matriz de p-values son muy grandes, ninguno nos indica que las medias son diferentes de manera estadísticamente significativa. 
+
 ### 8. Repite el ejercicio pero ahora con pruebas de balance conjuntas. Muestra los resultados (incluyendo el estadístico de prueba, grados de libertad y p values) Interpreta
+
+De manera conjunta, ninga F es mayor a .011, en consecuencia, los valores p son grandes y ninguno es estadíticamente significativo. Esto implica que ninguna combinación de variables vence a la media en cuanto a asignación de las personas en un grupo de tratamiento.
 
 ```{r}
 # =============================
 # Regresión de balance
 # =============================
+options(scipen = 999)
 balance_regression(data_4, 'treat')
 ```
 
 ### 9. Elabora porqué parecen cumplirse los 3 supuestos de la asignación
 
 
-```{r}
-# FVG: Confirmo, sólo podría cambiar el número de bloques. Haces un buen punto y argumento en favor de mejor asignar misfits por estrato y no global como sugerí en la 6.
-# Aquí creo que se refiere a los siguientes 3:
-# 1. SUTVA # En principio cada mensaje y bono va direccionado al celular individual de cada persona, SUTVA solo se violaria si otra persona tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento. En consecuencia, dado que no hay posibilidad de que los usuarios que recibieron tratamiento -que recibieron mensaje o r dinero a través de cupones- afecten al grupo de usuarios que no lo recibió, no hay contaminación entre los  grupos.
-# 2. Overlap # Forzamos a que cada estrato tuviera 8 grupos, la probabilidad de pertenecer a uno es aproximadamente 1/8 siempre, es decir, siempre positiva, dentro del intervalo (0,1) pero diferente de 0 y 1.
-# 3. Unconfoundness # Los grupos estan balanceados (por construccion), las tablas de balance solo comprueban este supuesto.
+* SUTVA: en principio cada mensaje y bono va direccionado al celular de cada persona, SUTVA solo se violaría si otra persona del grupo de control o de otro tratamiento tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento distinto.  Aunque, la posibilidad de que esto ocurra es pequeña, reconocemos que es algo que no se puede controlar al 100% y por lo pronto asumieremos que se cumple SUTVA (o al menos que no hay **defiers**). Si contáramos con más información sobre la fracción de personas cuyo cuenta o celular estan en manos de otra persona o con información de las personas que de plano no checan su celular (*never takers*) podríamos diseñar un mejor experimento.
 
+* Overlap: se cumple debido a que forzamos a que cada estrato tuviera 8 grupos en la asignación con una probabilidad predefinida por nostros. Además, dicha probabilidad de que una persona perteneza a cualquiera nunca es 0 o 1, ni siquiera para los misfits.
 
-#R: duda, nos quedamos con asignación de missfits global o por estrato ?
-```
+* Unconfoundness: se cumple debido a que los grupos estan balanceados (por construccion), las tablas de balance solo comprueban este supuesto. La asignación aleatoria es por definición independiente a las características de los usuarios.
+
 
 ### 10. Elabora un pitch de negocio sobre los beneficios que este experimento podría dejar a Rappi.
 
