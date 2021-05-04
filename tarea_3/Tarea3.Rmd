@@ -102,6 +102,10 @@ if (any(installed_packages == FALSE)) {
 lapply(packages,
        library,
        character.only = TRUE)
+       
+# desactiva notación científica       
+options(scipen = 999)
+
 
 ```
 
@@ -509,7 +513,8 @@ data_4<-dummy_cols(data_3, remove_first_dummy = F,
 # =============================
 # Tablas de balance
 # =============================
-balance_table(data_4,'treat')
+kable((balance_table(data_4,'treat')), align = 'c',booktabs=T,digits = 2)%>%
+  kable_styling(position = "center",latex_options="scale_down")
 #Parece haber balance debido a que ningun pvalue es estadisticamente significativo. Las medias son muy similares
 ```
 
@@ -523,8 +528,11 @@ De manera conjunta, ninga F es mayor a .011, en consecuencia, los valores p son 
 # =============================
 # Regresión de balance
 # =============================
-options(scipen = 999)
-balance_regression(data_4, 'treat')
+br<-balance_regression(data_4, 'treat')
+br$F_test
+kable(br$F_test, 
+      align = 'c',booktabs=T,digits = 2)%>%
+  kable_styling(position = "center")
 ```
 
 ### 9. Elabora porqué parecen cumplirse los 3 supuestos de la asignación
