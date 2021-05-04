@@ -366,40 +366,53 @@ Ahora, se plantean variables por las cuales se estratificará, y se comenta si e
 
 ```{r}
 
-# OJO falta ajustar share_control y creo que n_T
-
-# FVG: Yo quitaría gender. No veo intuitivamente un motivo para esa variable
-#      Igualmente agregaría en su lugar la estratificación por edad que ya cree arriba (age_group)
-
-#CYN: Duda sobre si en la asignación aleatoria no tiene que ser n_t=8 y no 7.
-#Duda sobre si "months since register" no valdría ponerla en la estratificación
+data<-data%>%mutate(age_dummy=ifelse(age_group==1|2,0,1))
 
 random_assignment <- treatment_assign(data=data,
                  share_control = 1/4,
                  n_t=7,
-                 strata_varlist = dplyr::vars(population_type,device_value_type,gender_F,phone_verified),
-                 missfits="strata",
+                 strata_varlist = dplyr::vars(population_type,phone_verified,age_dummy, gender_F),
+                 missfits="global",
                  seed=123,
                  key="user_id")
 
 out <- random_assignment$data
 
-data <- left_join(data,out, by =c("user_id"))
+out_no_misfits_summary<-out%>% filter(missfit==0)%>%
+        group_by(strata) %>% 
+        summarize(n())
+
+strats<-out%>% filter(missfit==0)%>%
+        group_by(strata,treat) %>% 
+        summarize(n()) %>% 
+        mutate(p=ifelse(strata==1,`n()`/3640,
+                  ifelse(strata==2,`n()`/1848, 
+                  ifelse(strata==3,`n()`/5544,
+                  ifelse(strata==4,`n()`/2996,
+                  ifelse(strata==5,`n()`/42616,
+                  ifelse(strata==6,`n()`/12320,
+                  ifelse(strata==7,`n()`/26180,
+                  ifelse(strata==8,`n()`/8932,)))))))))
+kable(strats,col.names = c("Estrato","Tratamiento","n","Probabilidad"))
 ```
-Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness).
+Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). Como podemos ver en la tabla anterior, dentro de cada estrato (sin misfists) la probabilidad de pertenecer a cada grupo es la misma que habiamos definido en el comando (.25 para control y el .107 para los tratamientos)
 
 ### 6. Qué elección tomaron sobre como manejar los misfits? Elaboren sus razones
 
-Si bien el número de misfits es muy bajo relativo al total de observaciones y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
+Si bien el número de misfits es muy bajo relativo al total de observaciones (115 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global, pues es posible que se haya asignado un presupuesto fijo para hacer el experimento, por lo que es importante que las probabilidades agregadas por grupo sean exactas. Asimismo, nótese cómo el posible desbalance causado por este método resulta negligible al considerar que el número de misfits es relativamente chico.
 
 ```{r}
 
-# Missfits = strata para mejor balance
-# FVG: Creo que no es tan importante el balance con tan pocos misfits (relativo al total de observaciones)
+out_misfits_summary<-out%>% filter(missfit==1)%>%
+        group_by(strata) %>% 
+        summarize(n())
 
-#CYN: Duda sobre la asignación de los misfits: en la descripción se señala que se eligió asignar los misfits de manera global, pero en el código de la pregunta 5 se la asignación fue “strata” y no “global”
+m_t<-out%>% filter(missfit==1)%>%
+        group_by(treat) %>% 
+        summarize(n())
 
-#R misma duda
+kable(out_misfits_summary, col.names = c("Estrato","n"))
+kable(m_t,col.names=c("Tratamiento","n"))
 
 
 ```
