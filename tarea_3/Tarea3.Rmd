@@ -92,7 +92,7 @@ packages <- c(
   "gridExtra"
   )
 
-# instala los que no tengas
+# instala los paquetes que no se tengan
 installed_packages <- packages %in% rownames(installed.packages())
 if (any(installed_packages == FALSE)) {
   install.packages(packages[!installed_packages])
@@ -171,8 +171,9 @@ El efecto mínimo detectable (EMD) representa el efecto que queremos detectar en
 En primer lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable.
 
 ```{r}
-# Qué es la tasa de transaccionalidad ?
-# Respuesta: (transaccionar: abrir app o hacer compras)
+# =============================
+# Variable
+# =============================
 
 #Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea population_type==1, y 0 en otro caso.
 data_2<-data%>%filter(population_type==1) %>% mutate(tasa_trans=rnorm(14084, 0.0794,.02))
@@ -330,7 +331,7 @@ ggcorr(data_correctly, method = c("everything", "pearson"), label = TRUE,max_siz
   size = 3,
   hjust = 0.75,
   angle = -45)
-#Evidentemente hay colinealidad perfecta en algunas variables, entonces aguas al interpretar esto.
+#Evidentemente hay colinealidad perfecta en algunas variables, entonces cuidado al interpretar esto.
 
 ```
 
@@ -350,17 +351,39 @@ modelo_a<-lm(tasa_trans~.-population_type-population-user_id-total_purchases-age
 
 modelo_b<-lm(total_purchases~.-population_type-population-user_id-tasa_trans-age-device_value,data)
 
-stargazer(modelo_a,modelo_b, type="text")
+stargazer(modelo_a,modelo_b, type="latex")
 ```
 
+
 Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
+
 * La verificación del teléfono, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
-* La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles).
-* El valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, por lo que cabría pensar que un usuario con mayor ingreso tienda a realizar más compras y estar más activo en las aplicaciones para tal fin. Nuevamente, la variable es significativa y de relativa importancia.
+
+* La edad (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles). En este sentido, proponemos solamente agrupar la edad en dos grupos, la mitad más grande y la mitad más jóven.
+
 * Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, population podría resultar también relevante.
 
+* Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por edad y por sexo.
 
-**Cyn:Duda sobre si months since register no podría ser coherente que esté correlacionada… sale significativa en el análisis de la regresión, lo mismo gender F.
+```{r}
+modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
+
+modelo_b<-lm(total_purchases~age_group+gender_F+I(age_group:gender_F),data)
+
+stargazer(modelo_a,modelo_b, type="latex")
+```
+
+
+* Ahora bien, nos hubiera gustado incluir el valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
+
+```{r}
+modelo_a<-lm(tasa_trans~device_value,data)
+
+modelo_b<-lm(total_purchases~device_value,data)
+
+stargazer(modelo_a,modelo_b, type="latex")
+```
+
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta
 
