@@ -378,7 +378,7 @@ modelo_a<-lm(tasa_trans~.-population_type
 modelo_b<-lm(total_purchases~.-population_type
              -population-user_id-tasa_trans-age-device_value,data)
 
-stargazer(modelo_a,modelo_b, type="latex")
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
 ```
 
 
@@ -400,7 +400,7 @@ modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
 
 modelo_b<-lm(total_purchases~age_group+gender_F+I(age_group:gender_F),data)
 
-stargazer(modelo_a,modelo_b, type="latex")
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
 ```
 
 
@@ -414,7 +414,7 @@ modelo_a<-lm(tasa_trans~device_value,data)
 
 modelo_b<-lm(total_purchases~device_value,data)
 
-stargazer(modelo_a,modelo_b, type="latex")
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
 ```
 
 
