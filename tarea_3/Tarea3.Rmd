@@ -172,7 +172,9 @@ str(data)
 
 El efecto mínimo detectable (EMD) representa el efecto que queremos detectar en el experimento dado un nivel de significancia y un poder estadístico. Si nuestro experimento arroja un efecto que es igual o mayor al EMD, entonces tendremos significancia dado el tamaño de la muestra $N$. Si el experimento arroja un efecto menor al EMD, entonces no tendremos significancia.\\
 
-En primer lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable.
+En primer lugar se define la variable de transaccionalidad, igual a cero para los usuarios que nunca estuvieron activos y una tasa distribuída normal con media de 0.0794 y desviación estándar de 0.02 para los usuarios inactivos. Esto lo hacemos para agregar variación a los datos y que el efecto mínimo detectable no se subestime.
+
+En segundo lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable.
 
 ```{r}
 # =============================
@@ -355,9 +357,7 @@ ggcorr(data_correctly, method = c("everything", "pearson"),
 ```
 
 
-
-
-```{r,results='asis'}
+```{r}
 # =============================
 # Regresiones: Table 1
 # =============================
@@ -369,7 +369,10 @@ data$age_group <- ifelse(data$age <= age_quart[2], 1,
                                 ifelse(data$age <= age_quart[4], 3,
                                        ifelse(data$age <= age_quart[5], 4, 0))))
 data$age_group <- as.factor(data$age_group)
+```
 
+
+```{r,results='asis', message=FALSE, eval=FALSE}
 # REGRESION
 # Quito las variables colineales y las objetivo
 modelo_a<-lm(tasa_trans~.-population_type
@@ -381,6 +384,55 @@ modelo_b<-lm(total_purchases~.-population_type
 stargazer(modelo_a,modelo_b, type="latex")
 ```
 
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & tasa\_trans & total\_purchases \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ phone\_verified1 & 0.004$^{***}$ & 22.084$^{***}$ \\ 
+  & (0.0002) & (3.748) \\ 
+  & & \\ 
+ gender\_F1 & 0.004$^{***}$ & 39.182$^{***}$ \\ 
+  & (0.0002) & (4.193) \\ 
+  & & \\ 
+ months\_since\_register & 0.002$^{***}$ & 3.104$^{***}$ \\ 
+  & (0.00002) & (0.426) \\ 
+  & & \\ 
+ device\_value\_type2 & 0.001 & 43.122 \\ 
+  & (0.003) & (66.302) \\ 
+  & & \\ 
+ device\_value\_type3 & $-$0.008$^{***}$ & $-$24.085$^{***}$ \\ 
+  & (0.0002) & (3.664) \\ 
+  & & \\ 
+ age\_group2 & 0.004$^{***}$ & 17.226$^{***}$ \\ 
+  & (0.0002) & (4.969) \\ 
+  & & \\ 
+ age\_group3 & 0.006$^{***}$ & 30.945$^{***}$ \\ 
+  & (0.0002) & (5.333) \\ 
+  & & \\ 
+ age\_group4 & 0.010$^{***}$ & 93.189$^{***}$ \\ 
+  & (0.0002) & (5.192) \\ 
+  & & \\ 
+ Constant & $-$0.002$^{***}$ & $-$1.421 \\ 
+  & (0.0002) & (4.782) \\ 
+  & & \\ 
+\hline \\[-1.8ex] 
+Observations & 104,191 & 104,191 \\ 
+R$^{2}$ & 0.137 & 0.007 \\ 
+Adjusted R$^{2}$ & 0.137 & 0.007 \\ 
+Residual Std. Error (df = 104182) & 0.026 & 577.544 \\ 
+F Statistic (df = 8; 104182) & 2,070.410$^{***}$ & 92.636$^{***}$ \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
 
 Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
 
@@ -392,7 +444,7 @@ Ahora, se plantean variables por las cuales se estratificará, y se comenta si e
 
 * Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por **edad y por sexo**.
 
-```{r,results='asis'}
+```{r,results='asis', message=FALSE, eval=FALSE}
 # =============================
 # Regresion aux: Table 2
 # =============================
@@ -400,13 +452,59 @@ modelo_a<-lm(tasa_trans~age_group+gender_F+I(age_group:gender_F),data)
 
 modelo_b<-lm(total_purchases~age_group+gender_F+I(age_group:gender_F),data)
 
-stargazer(modelo_a,modelo_b, type="latex")
+stargazer(modelo_a,modelo_b, type="latex", no.space=TRUE)
 ```
 
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & tasa\_trans & total\_purchases \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ age\_group2 & 0.005$^{***}$ & 1.129 \\ 
+  & (0.001) & (11.058) \\ 
+  age\_group3 & 0.007$^{***}$ & 0.087 \\ 
+  & (0.001) & (11.180) \\ 
+  age\_group4 & 0.011$^{***}$ & 89.364$^{***}$ \\ 
+  & (0.0003) & (5.916) \\ 
+  gender\_F1 & 0.005$^{***}$ & 62.452$^{***}$ \\ 
+  & (0.0004) & (7.518) \\ 
+  I(age\_group:gender\_F)1:1 & $-$0.003$^{***}$ & $-$48.808$^{***}$ \\ 
+  & (0.001) & (12.287) \\ 
+  I(age\_group:gender\_F)2:0 & 0.001$^{*}$ & 18.451$^{*}$ \\ 
+  & (0.001) & (11.061) \\ 
+  I(age\_group:gender\_F)2:1 &  &  \\ 
+  &  &  \\ 
+  I(age\_group:gender\_F)3:0 & 0.002$^{***}$ & 41.348$^{***}$ \\ 
+  & (0.001) & (11.427) \\ 
+  I(age\_group:gender\_F)3:1 &  &  \\ 
+  &  &  \\ 
+  I(age\_group:gender\_F)4:0 &  &  \\ 
+  &  &  \\ 
+  I(age\_group:gender\_F)4:1 &  &  \\ 
+  &  &  \\ 
+  Constant & 0.004$^{***}$ & 8.079$^{**}$ \\ 
+  & (0.0002) & (3.844) \\ 
+ \hline \\[-1.8ex] 
+Observations & 104,191 & 104,191 \\ 
+R$^{2}$ & 0.031 & 0.006 \\ 
+Adjusted R$^{2}$ & 0.031 & 0.006 \\ 
+Residual Std. Error (df = 104183) & 0.028 & 577.884 \\ 
+F Statistic (df = 7; 104183) & 477.175$^{***}$ & 88.134$^{***}$ \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
 
-* Ahora bien, nos hubiera gustado incluir el valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
+* Ahora bien, nos hubiera gustado incluir el valor del teléfono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
 
-```{r,results='asis'}
+```{r,results='asis', message=FALSE, eval=FALSE}
 # =============================
 # Regresion aux: Table 3
 # =============================
@@ -416,7 +514,37 @@ modelo_b<-lm(total_purchases~device_value,data)
 
 stargazer(modelo_a,modelo_b, type="latex")
 ```
-
+\begin{table}[!htbp] \centering 
+  \caption{} 
+  \label{} 
+\begin{tabular}{@{\extracolsep{5pt}}lcc} 
+\\[-1.8ex]\hline 
+\hline \\[-1.8ex] 
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\ 
+\cline{2-3} 
+\\[-1.8ex] & tasa\_trans & total\_purchases \\ 
+\\[-1.8ex] & (1) & (2)\\ 
+\hline \\[-1.8ex] 
+ 10,001+] & 0.00004 & 46.025 \\ 
+  & (0.003) & (66.504) \\ 
+  & & \\ 
+ device\_valueNo info & $-$0.009$^{***}$ & $-$34.145$^{***}$ \\ 
+  & (0.0002) & (3.595) \\ 
+  & & \\ 
+ Constant & 0.015$^{***}$ & 72.488$^{***}$ \\ 
+  & (0.0001) & (2.599) \\ 
+  & & \\ 
+\hline \\[-1.8ex] 
+Observations & 104,191 & 104,191 \\ 
+R$^{2}$ & 0.025 & 0.001 \\ 
+Adjusted R$^{2}$ & 0.025 & 0.001 \\ 
+Residual Std. Error (df = 104188) & 0.028 & 579.325 \\ 
+F Statistic (df = 2; 104188) & 1,325.217$^{***}$ & 45.578$^{***}$ \\ 
+\hline 
+\hline \\[-1.8ex] 
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ 
+\end{tabular} 
+\end{table} 
 
 ### 5 (2ptos) Realiza la asignación aleatoria. Muestra la distribución de los grupos por estrato, los misfits. Sin mirar el balance, lograron una asignación aleatoria exitosa? Justifica tu respuesta
 
@@ -759,7 +887,8 @@ ggplot(aes(y=estimate, x=term, fill=term)) +
   ylim(0,0.2)+
   labs(title = "Efecto Promedio de Intención a Tratar, compras totales (log)",
        x ="",
-       caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
+       caption = "Se controla por edad, sexo, compras totales 
+       y meses desde el registro") +
   theme(legend.position="none")
 ```
 
@@ -777,7 +906,7 @@ Variables necesarias para el costo beneficio de los primeros 4 tratamientos:
 + Promedio del margen de ganancia por ticket
 + Porcentaje de usuarios que hacen efectivas las compras
 
-También sería necesario tener mayor información sobre las variables actuales en cuanto la representatividad de esta muestra en relación a la población de usuarios completa y diferencias con los usuarios activos. Además, saber si las compras totales post-tratamiento son netas o incluyen los montos descontados.
+También sería necesario tener mayor información sobre las variables actuales en cuanto la representatividad de esta muestra en relación a la población de usuarios completa y diferencias con los usuarios activos. Además, saber si las compras totales post-tratamiento son netas o incluyen los montos descontados. Para el ejercicio que se presenta adelante suponemos que el monto total es post-descuento.
 
 Por simplicidad, asumiremos que los cupones de \$100 y \$200 sólo aplican para compras mayores a dichos montos, y en promedio, el ticket promedio en esos grupos de tratamiento es de \$150 y \$250.
 
@@ -785,20 +914,16 @@ Variable adicional para el costo beneficio de los últimos 2 tratamientos:
 
 + Probabilidad de que el usuario sea activo (activos/inactivos)
 
-A continuación realizamos los cálculos.
+A continuación realizamos los cálculos, proponiendo los valores necesarios.
 
 ```{r}
 # Definimos algunos valores
 ticket <- 100 # ticket promedio
-
 clv <- 1100 # customer lifetime value
-
-num_compras <- clv/ticket # numero de compras del cliente promedio
-
 margen <- 10 # margen de ganancia por ticket sin promo
 
 
-# Beneficios
+# Cálculos de Beneficios
 
 # margenes de ganancia por tratamiento
 ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5),
@@ -810,9 +935,6 @@ ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5),
 
 # Aumentos en la probabilidad de que se vuelva un usuario activo = ITT transaccionalidad
 pr_activar <- itt10$estimate[2:7]
-
-# Suponemos que las ventas ya descontaron la promoción del monto 
-# total (monto post descuento)
 
 # % de receptividad de la promo. tal vez sea menor para referir gente
 recep <- c(0.5,0.5,0.5,0.5,0.4,0.4)
@@ -1031,8 +1153,6 @@ En cuanto a las compras totales, se observa que el tratamiento 6 fue el que tuvo
 
 Una empresa debe basar su focalización en los productos y clientes estrella, es decir, en aquellos consumidores y productos que realmente sean rentables. Es indispensabe contar con una buena estrategia de focalización previo a vender, con el fin de evitar el desperdicio de medios, recursos y capacidades. En este caso los esfuerzos de la empresa Rappi deberán centrarse en implementar el tratamiento que haya provocado mayor impacto en el aumento de transacciones y compras en usuarios inactivos y que haya impactado más en el inicio de las mismas, en el caso de usuarios que nunca han estado activos; es decir, el tratamiento con el que se haya logrado reactivar o activar a los usuarios y con el que, en consecuencia, se hayan generado mayores transacciones y compras. 
 
-De acuerdo a los resultados anteriores el mayor impacto de tratamiento tanto en transacciones como en compras totales, ocurrió con el tratamiento 6, esto es, al ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran, con aquellos usuarios que verificaron su teléfono, por lo que la estrategia de focalización se basará en este segmento. Asimismo, fue posible observar que este tratamiento también impactó en mayor proporción en las transacciones de los usuarios que nunca estuvieron activos y en las compras de los usuarios que estaban inactivos, por lo que resulta rentable enfocarse en ambas poblaciones con este tratamiento.  
+De acuerdo a los resultados anteriores el mayor impacto de tratamiento tanto en transacciones como en compras totales, ocurrió con el tratamiento 6, esto es, al ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran, con aquellos usuarios que verificaron su teléfono, por lo que la estrategia de focalización se basará en este segmento. Asimismo, fue posible observar que este tratamiento también impactó en mayor proporción en las transacciones de los usuarios que nunca estuvieron activos y en las compras de los usuarios que estaban inactivos, por lo que resulta rentable enfocarse en ambas poblaciones con este tratamiento. Por otro lado, valdría la pena focalizar este tratamiento en usuarios que ya hayan registrado su teléfono.  
 
-```{r}
 
-```
