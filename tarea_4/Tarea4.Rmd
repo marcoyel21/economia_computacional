@@ -1,0 +1,296 @@
+---
+title: "Targeted Marketing"
+subtitle: "Tarea 4"
+author: "Isidoro Garcia"
+date: "2021"
+output: 
+  html_document:
+    graphics: yes
+    urlcolor: blue
+    theme: spacelab
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+                      warning = FALSE,
+                      fig.width = 6, fig.height = 4.5, fig.align = "right")
+```
+
+
+## Overview
+
+Los contratan como data scientists para una empresa que vende electrodomesticos. La empresa lanzó un experimento de control aleatorio via un mail en donde se envió un catalogo de los productos al grupo de tratamiento `mailing_indicator`. 
+
+Tu objetivo es estimar el impacto del envío sobre el gasto incremental: 
+
+$$\tau_{i}=\mathbb{E}[Y_{i}(1)-Y_{i}(0)|\boldsymbol{x}_{i}],$$
+
+En particular, queremos estimar el impacto de enviar el catalogo a nivel de cliente. Para ello, pondremos a competir algunos de los modelo de Causal Machine Learning que hemos aprendido en clase: 
+
+- Double Debiased Machine Learning 
+
+- Causal Forests 
+
+Adicionalmente, desarrollen una estrategia de focalización con base en los resultados de tu modelo. Elabora sobre la lógica económica (i.e. identifica los Beneficios y Costos Marginales de enviar la campaña). Finalmente, corrobora la validez externa de la estrategia usando datos de un año. Esto nos dará un termómetro de la utilidad del modelo para campañas posteriores. 
+
+Tip!: En los chunks donde vaya a haber modelos o cálculos complicados, usen `cache=T`
+
+## Paso 1: Estimación y predicción the Conditional Average Treatment Effects (CATE)
+
+Carguemos los datos de 2015
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(gamlr)
+library(grf)
+library(xgboost)
+library(ranger)
+library(RCT)
+library(lfe)
+library(stargazer)
+library(kableExtra)
+library(knitr)
+
+# desactiva notación científica       
+options(scipen = 999)
+```
+
+```{r, cache=TRUE}
+load("Customer-Development-2015-1.RData")
+```
+
+Dividimos la base en entrenamiento y validacion. Usamos un seed fijo para replicabilidad.
+
+```{r}
+set.seed(1990)
+crm<-
+  crm %>% 
+  mutate(training_sample = rbinom(n = nrow(crm), 1, 0.7))
+  
+```
+
+
+#### Data cleaning
+
+1. Haz una primera revisión de la base. Cuantas variables tienen `NA`
+
+```{r}
+str(crm)
+
+# parece que todas son numéricas
+
+# nos devuelve las columnas que tengan NAs
+(apply(crm, 2, function(x) sum(is.na(x))) > 0) %>% which()
+
+# No hay NAs!!
+
+```
+Ninguna
+
+2. Muestra la matriz de correlación entre variables. Muestra los pares de variables que tienen más de 95% de correlación. Remueve una de cada par multicolineal. 
+
+```{r}
+# mariz de correlacion
+cor_mat <- cor(crm)
+
+# triangulo superior de la matriz de correlacion
+# asi tenemos cada combinacion entre variables 1 sola vez
+# y tampoco tenemos la combinación de cada variable consigo misma (diagonal)
+cor_mat[lower.tri(cor_mat, diag = TRUE)] <- NA
+
+# dummy si la columna x tiene alguna correlación mayor a 0.95
+cor_mat[,68] %>% abs() %>% max(na.rm = TRUE) > 0.95
+
+# aplico la linea a toda la matriz  y extraigo los nombres de las columnas que
+# cumplan con esto
+highcor <- cor_mat[,(apply(cor_mat, 2, 
+                          function(y) (abs(y) %>% 
+                                         max(na.rm = TRUE) > 0.95)))] %>%
+  colnames()
+
+# variables a tirar
+highcor
+
+# filtramos la base
+crm <- crm %>% select(-highcor)
+
+```
+
+3 (2 pts). Corrobora que la asignación tratamiento fue aleatoria mediante revisión del balance. Realiza las pruebas balance T y F. Cuántas variables salen desbalanceadas? Que muestra esto sobre la asignación de tratamiento?
+
+```{r balancet, cache=TRUE}
+# pruebas t
+balance_t<-balance_table(data = crm,
+treatment = "mailing_indicator")
+balance_t$p_value1 <- balance_t$p_value1 %>% round(3)
+```
+
+```{r}
+# medias
+kable(balance_t, digits = 3, align='c',
+      booktabs=T, caption="Tabla de Balance")%>%
+kable_styling(position = "center",latex_options="scale_down")
+
+
+# la tabla es enorme... mostrar sólo las desbalanceadas?
+```
+
+
+
+```{r balancef, cache=TRUE}
+# pruebas F
+balance_f<-balance_regression(data = crm,
+                              treatment = "mailing_indicator")
+
+kable(balance_f$F_test, align = 'c',booktabs=T,digits = 2,
+        caption = "Regresión de balance") %>%
+  kable_styling(position = "center")
+```
+
+4. Realize un ajuste de False Discovery Rate al 10%. Cuántas variables salen desbalanceadas ahora? 
+
+```{r fdr, cache=TRUE}
+library(broom)
+
+# funcion que realiza FDR
+# inputs: un modelo guardado y una q entre (0,1)
+get_fdr <- function(model,q){
+  #Creo un dataframe con los pvalues del modelo
+  pvalues<-as.data.frame(tidy(model))
+  
+  #Quito los pvalues que aparecen como NAs
+  pvalues <- pvalues %>% filter(p.value != "NA") %>% 
+    dplyr::select(term,p.value)
+  
+  
+  # ordeno los regresores de acuerdo al p-value
+  fdr <- pvalues %>% arrange(p.value) %>%
+    mutate(indice = 1:length(p.value)) %>%
+    mutate(`q*k/n` = q*(indice/length(p.value))) %>%
+    mutate(cortes = p.value <= `q*k/n`)
+  
+  # Encontramos la p estrella (p-value de corte)
+  pestrella <- fdr %>% filter(cortes == 'TRUE')
+  pestrella <- max(pestrella$`q*k/n`)
+  
+  fdr <- fdr %>% dplyr::select(-cortes) %>%
+            mutate(significant = p.value<=pestrella)
+  fdr$p.value <- fdr$p.value %>% round(4)
+  
+  return(fdr)
+}
+
+# definir el modelo
+reg <- lm(outcome_spend~.-mailing_indicator, data = crm)
+fdr <- get_fdr(reg, 0.1)
+
+# resultados del FDR
+fdr %>% filter(significant) %>%
+  kable()%>%
+  kable_styling()
+
+# 66 variables pasan el corte
+
+# guardo las variables que pasan el corte menos el intercepto
+goodvars <- fdr$term[fdr$significant==T & fdr$term!="(Intercept)"]
+
+# filtro base
+crm_2 <- crm %>% select(c("outcome_spend","mailing_indicator"),all_of(goodvars))
+```
+
+```{r balance2, cache=TRUE}
+# repetir balance con la prueba t
+balance_t2 <- balance_table(data = crm_2,
+treatment = "mailing_indicator")
+balance_t2$p_value1 <- balance_t2$p_value1 %>% round(3)
+
+# medias
+kable(balance_t, digits = 3, align='c',
+      booktabs=T, caption="Tabla de Balance")%>%
+kable_styling(position = "center",latex_options="scale_down")
+
+```
+
+
+### Estimación de impacto de tratamiento (ATE)
+
+5 (2pts). Estima el impacto promedio de enviar el catalogo vía email. Estima el impacto sin controles y luego agregar dos estimaciones de robustez: 1) Agregando variables que salieron significativas y 2) Agregando variables que salieron significativas con el FDR. Interpreta los resultados 
+
+```{r}
+
+```
+
+#### Estimación de efectos heterogeneos
+
+Usaremos el training sample para estimar el Conditional Average Treatment Effect de enviar el catalogo sobre el gasto en dólares. Estimaremos dos tipos de modelos (si agregan otro es bienvenido): 
+
+(a) Double Debiased LASSO
+(b) Causal Forests 
+
+
+\bigskip
+
+Separa la base de entrenamiento de la de validación
+
+
+
+####Double Debiased LASSO
+
+6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
+
+
+7 (2pts). Cuál es el impacto de tratamiento promedio? Estimalo de dos maneras: 1) `spend_resid~treat_hat + treat` y 2) `spend~treat_resid`. Sale lo mismo? Justifica tu respuesta
+
+
+8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
+
+
+9 (3pts). Ahora corre un DDML LASSO para encontrar los efectos a nivel cliente (Tip: interactúa todas las variables con `treat_resid`. Muestra el código. Qué varaibles salen significativas?
+
+
+10 (2 pts). Predice el CATE en la base de entrenamiento y en la base de validación. Como se ve la distribución del impacto de tratamiento en ambas? 
+
+
+
+
+####Causal Forest
+
+11 (2pts). Ahora vayamos al causal forest. Estima un causal forest en la base de entrenamiento (Estima 750 árboles)
+
+
+12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
+
+13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
+
+
+14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
+
+
+15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente: 
+
+- El costo marginal de mandar el mail es 0.99 USD 
+
+- El Beneficio marginal es el impacto incremental la utilidad generada por esas ventas 
+
+- El margen de ganancia sobre las ventas es de 32.5 fijo 
+
+Con esto, indica: 
+
+- Cuantos usuarios entrarían a la campaña? 
+
+- A partir de cuánto lift (ventas incrementales) entran? 
+
+- Cuál es el impacto promedio esperado de tu población final? 
+
+- Cuánta utilidad haremos con esta estrategia? Cómo se compara con la utilidad de la campaña sin focalizar?
+
+
+
+
+16 (3pts). Haz una gráfica del la utilidad total vs q (personas que entran en la campaña) para DDML y CF
+
