@@ -55,6 +55,13 @@ library(lfe)
 library(stargazer)
 library(kableExtra)
 library(knitr)
+library(devtools)
+
+library(causalTree)
+
+#install_github("susanathey/causalTree")
+
+
 
 # desactiva notación científica       
 options(scipen = 999)
@@ -262,10 +269,95 @@ Separa la base de entrenamiento de la de validación
 
 11 (2pts). Ahora vayamos al causal forest. Estima un causal forest en la base de entrenamiento (Estima 750 árboles)
 
+```{r}
+# CAUSAL FOREST
+
+#cf <- causal_forest()
+
+
+```
+
+```{r, cache=FALSE, include=FALSE}
+
+# !!!! OJO
+#CAUSAL TREE (ES OPCIONAL, para quien le interese)
+####################################################
+
+
+#1.- usamos nuestra base de entrenamiento
+df_training <- crm %>% 
+filter(training_sample==1)
+
+
+#2.- Dividimos entrenamiento entre Splitting y Estimating
+
+# tamaño del split
+split_size <- floor(nrow(df_training)*0.5)
+
+# aleatoriamente generamos el split
+split_id <- sample(nrow(df_training),replace=FALSE, size=split_size)
+
+# hacemos el split
+df_split <- df_training[split_id,] 
+df_est <- df_training[-split_id]
+
+# Ahora sí, el árbol:
+
+tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-c(outcome_spend,mailing_indicator))),collapse = ' + '), sep = " ~ "))
+
+ctree_unpruned <- honest.causalTree(
+  formula=tree_formula,
+  data=df_split,
+  est_data=df_est,
+  treatment=df_split$mailing_indicator,       # variable de tratamiento
+  est_treatment=df_est$mailing_indicator,
+  split.Rule="CT",
+  cv.option = "TOT",
+  cp=0,
+  split.Honest = TRUE,
+  cv.Honest=TRUE,
+  minsize=5,
+  HonestSampleSize = nrow(df_est)
+)
+
+
+# Ahora hacemos crossvalidate
+ctree_cptable <- as.data.frame(ctree_unpruned$cptable)
+
+# Obtenemos parámetro óptimo de complejidad para podar el árbol
+selected_cp <- which.min(ctree_cptable$xerror)
+optim_cp_ct <- ctree_cptable[selected_cp, "CP"]
+
+# podamos el árbol
+ctree_pruned <- prune(tree=ctree_unpruned, cp=optim_cp_ct)
+
+# dibujemos el árbol
+
+
+# predecimos estimaciones puntuales en la estimation sample
+tauhat_causaltree_est <- predict(ctree_pruned, newdata=df_est)
+
+# saquemos errore estándar
+# el paquete no los saca
+
+num_hojas <- length(unique(tauhat_causaltree_est))
+
+```
 
 12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
 
+```{r}
+
+
+```
+
+
 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
+
+```{r}
+
+
+```
 
 
 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
