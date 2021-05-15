@@ -56,8 +56,9 @@ library(stargazer)
 library(kableExtra)
 library(knitr)
 library(devtools)
+library(parallel)
 
-library(causalTree)
+#library(causalTree)
 
 #install_github("susanathey/causalTree")
 
@@ -130,14 +131,14 @@ crm <- crm %>% select(-highcor)
 
 3 (2 pts). Corrobora que la asignación tratamiento fue aleatoria mediante revisión del balance. Realiza las pruebas balance T y F. Cuántas variables salen desbalanceadas? Que muestra esto sobre la asignación de tratamiento?
 
-```{r balancet, cache=TRUE}
+```{r balancet, eval= FALSE, cache=TRUE}
 # pruebas t
 balance_t<-balance_table(data = crm,
 treatment = "mailing_indicator")
 balance_t$p_value1 <- balance_t$p_value1 %>% round(3)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # medias
 kable(balance_t, digits = 3, align='c',
       booktabs=T, caption="Tabla de Balance")%>%
@@ -210,7 +211,7 @@ goodvars <- fdr$term[fdr$significant==T & fdr$term!="(Intercept)"]
 crm_2 <- crm %>% select(c("outcome_spend","mailing_indicator"),all_of(goodvars))
 ```
 
-```{r balance2, cache=TRUE}
+```{r balance2, eval=FALSE, cache=TRUE}
 # repetir balance con la prueba t
 balance_t2 <- balance_table(data = crm_2,
 treatment = "mailing_indicator")
@@ -244,14 +245,223 @@ Usaremos el training sample para estimar el Conditional Average Treatment Effect
 
 Separa la base de entrenamiento de la de validación
 
+```{r}
+set_validation <- crm[crm$training_sample==0,] %>%
+  select(-c(outcome_spend,training_sample))
 
+y_validation <- crm[crm$training_sample==0,] %>%
+  select(outcome_spend)
+
+set_training <- crm[crm$training_sample==1,] %>%
+  select(-c(training_sample))
+
+```
 
 ####Double Debiased LASSO
 
 6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
 
+```{r}
+# deberíamos hacer remuestreo?
+
+# dividir set de entrenamiento en k folds
+set_training$id <- seq(1,nrow(set_training))
+
+k <- treatment_assign(data = set_training, share_control = 0.2,
+                    n_t = 4, strata_varlist = "outcome_spend",
+                    missfits = "global",
+                    seed = 1900, key = "id")$data
+
+k <- k %>% mutate(k = treat + 1) %>%
+  ungroup()
+
+# set_training <- bind_cols(set_training, k %>% select(k))
+
+k <- k$k
+
+
+# Lasso con cross fitting (en set de entrenamiento)
+
+# separo variable de interés y de tratamiento
+y_train <- set_training %>%
+  select(outcome_spend)
+
+trat_train <- set_training %>% select(mailing_indicator)
+
+set_training <- set_training %>% select(-c(outcome_spend,mailing_indicator, id))
+
+
+# para correr modelos en paralelo
+cores <- detectCores()
+cl<-makeCluster(cores)
+inicio<-Sys.time()
+
+modelo <- NULL
+modelo <- map_dfr(1:5, 
+                function(a) {
+                  treat_fit <-gamlr(x = set_training[k!=a, , drop= F],
+                                    y = trat_train[k !=a],
+                                    family="binomial")
+                  
+                  
+                  
+                  treat_hat <- as.numeric(predict(
+                    treat_fit,
+                    newdata = set_training[k==a, , drop= F],
+                    type = "response"))
+                  
+                  spend_fit <- gamlr(x = set_training[k!=a, , drop= F],
+                                    y = y_train[k !=a])
+                  
+                  spend_hat<-as.numeric(predict(
+                    spend_fit,
+                    newdata = set_training[k==a, , drop= F],
+                    type = "response"))
+                  
+                  treat_resid <- trat_train[k==a] - treat_hat
+                  spend_resid <- y_train[k==a]- spend_hat
+                  
+
+                  fits <- bind_cols("treat_hat" = treat_hat,
+                                    "spend_hat"= spend_hat,
+                                    "treat_resid" = treat_resid,
+                                    "spend_resid" = spend_resid) %>%
+                    as.data.frame()
+                  
+
+                  return(fits)
+                  }
+                )
+
+
+
+# predicciones en set de validación
+
+# separo variable de tratamiento
+trat_validation <- set_validation %>% select(mailing_indicator)
+
+set_validation <- set_validation %>% select(-c(mailing_indicator))
+
+
+# funcion para hacer la estimacion de T y spend en validacion
+predics <- NULL
+predics <- map_dfc(1:5, 
+                function(a) {
+                  
+                  # LASSO tratamiento
+                  treat_fit <-gamlr(x = set_training[k!=a, , drop= F],
+                                    y = trat_train[k !=a],
+                                    family="binomial")
+                  
+                  # estimacion de tratamiento
+                  treat_hat <- as.numeric(predict(
+                    treat_fit,
+                    newdata = set_validation,
+                    type = "response"))
+                  
+                  # LASSO spend
+                  spend_fit <- gamlr(x = set_training[k!=a, , drop= F],
+                                     y = y_train[k !=a])
+                  
+                  # estimación spend
+                  spend_hat <- as.numeric(predict(
+                    spend_fit,
+                    newdata = set_validation,
+                    type = "response"))
+                  
+                  # guardo los scores
+                  fits <- bind_cols(treat_hat,
+                                    spend_hat) %>%
+                    as.data.frame()
+                  
+                  }
+                )
+
+(tiempo<-Sys.time() - inicio)
+stopCluster(cl)
+
+# nombro columnas de predics
+
+# ALGUIEN SABE CÓMO METER ESTA LÍNEA A LA FUNCIÓN?
+
+names(predics) <- c("treat_hat_1","spend_hat_1",
+                    "treat_hat_2","spend_hat_2",
+                    "treat_hat_3","spend_hat_3",
+                    "treat_hat_4","spend_hat_4",
+                    "treat_hat_5","spend_hat_5")
+
+# promedio de los scores
+predics$spend_hat <- (predics$spend_hat_1+
+                      predics$spend_hat_2+
+                      predics$spend_hat_3+
+                      predics$spend_hat_4+
+                      predics$spend_hat_5)/5
+
+predics$treat_hat <- (predics$treat_hat_1+
+                      predics$treat_hat_2+
+                      predics$treat_hat_3+
+                      predics$treat_hat_4+
+                      predics$treat_hat_5)/5
+
+
+```
+
 
 7 (2pts). Cuál es el impacto de tratamiento promedio? Estimalo de dos maneras: 1) `spend_resid~treat_hat + treat` y 2) `spend~treat_resid`. Sale lo mismo? Justifica tu respuesta
+
+```{r}
+# ATE en el set de entrenamiento
+
+# primero agrego las variables spend y treat a la base con los residuales
+modelo$spend <- y_train[[1]]
+modelo$treat <- trat_train[[1]]
+colnames(modelo)[3:4] <- c("treat_resid","spend_resid")
+
+# regresion 1
+spend_ate<-lm(spend_resid ~ treat_hat + treat,
+data = modelo) %>%
+tidy()
+
+# ate 1
+spend_ate$estimate[3]
+
+# regresion 2
+spend_ate2 <-lm(spend ~ treat_resid,
+data = modelo) %>%
+tidy()
+
+# ate 2
+spend_ate2$estimate[2]
+
+
+# ATE en el set de validacion
+predics$spend <- y_validation[[1]]
+predics$treat <- trat_validation[[1]] 
+
+# residuales
+predics$treat_resid <- predics$spend - predics$spend_hat
+predics$spend_resid <- predics$treat - predics$treat_hat
+
+
+# regresion 1
+spend_atev <- lm(spend_resid ~ treat_hat + treat,
+data = predics) %>%
+tidy()
+
+# ate 1
+spend_atev$estimate[3]
+
+# regresion 2
+spend_ate2v <-lm(spend ~ treat_resid,
+data = predics) %>%
+tidy()
+
+# ate 2
+spend_ate2v$estimate[2]
+
+```
+Los estimadores entre test y validación son diferentes...
+
 
 
 8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
