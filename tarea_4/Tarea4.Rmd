@@ -564,7 +564,7 @@ df_est <- df_training[-split_id]
 
 # Ahora sí, el árbol:
 
-tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-c(outcome_spend,mailing_indicator))),collapse = ' + '), sep = " ~ "))
+tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-no_covariates)),collapse = ' + '), sep = " ~ "))
 
 ctree_unpruned <- honest.causalTree(
   formula=tree_formula,
@@ -606,17 +606,26 @@ num_hojas <- length(unique(tauhat_causaltree_est))
 ```
 
 
-
-
 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
 
 ```{r}
+# agregar las de lasso
 
+data <- as.data.frame(tau_hat_cf)
+
+ggplot(data, aes(x=tau_hat_cf, y=0)) +
+  geom_point(size=2, shape=23)
 
 ```
 
 
 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
+
+```{r}
+
+# falta
+
+```
 
 
 15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente: 
