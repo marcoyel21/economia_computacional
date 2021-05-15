@@ -269,10 +269,61 @@ Separa la base de entrenamiento de la de validación
 
 11 (2pts). Ahora vayamos al causal forest. Estima un causal forest en la base de entrenamiento (Estima 750 árboles)
 
-```{r}
+```{r, cache = FALSE}
 # CAUSAL FOREST
 
-#cf <- causal_forest()
+tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-c(outcome_spend,mailing_indicator))),collapse = ' + '), sep = " ~ "))
+
+no_covariates <- c("outcome_spend", 
+                     "mailing_indicator",
+                     "customer_id",
+                     "training_sample")
+
+matrix <- as.matrix(df_training %>% select(-no_covariates))
+
+cf <- causal_forest(
+  X = matrix,
+  Y = df_training$outcome_spend,
+  W = df_training$mailing_indicator,
+  num.trees = 750
+)
+
+# Comprobemos que el modelo está bien calibrado, es decir que este acotado lejos del 0 y del 1. Además se cumple el Overlap como podemos ver
+
+ggplot(data.frame(W.hat = cf$W.hat, W=factor(cf$W.orig)))+
+  geom_histogram(aes(x = W.hat, y = stat(density), fill= W ), alpha = 0.3, position = "identity")+
+  geom_density(aes(x=W.hat,color=W))+
+  labs(title="Causal Forest Propensity Scores",
+       caption="Propensity scores entrenados via un GRF")+
+  theme_bw()
+
+
+
+```
+
+12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
+
+```{r}
+
+# Veamos las predicciones y cómo se distribuyen
+
+# sacamos las predicciones 
+predicciones <- predict(cf, estimate.variance = TRUE)
+
+tau_hat_cf <- predicciones$predictions
+
+ggplot(data=predicciones)+
+  geom_histogram(aes(x = tau_hat_cf, y = stat(density)), position = "identity")+
+  geom_density(aes(x=tau_hat_cf, y=stat(density)))+
+  xlim(-20,20)+
+  theme_bw()+
+  labs(title="Causal Forest: out-of-bag CATE",
+       caption="En la gráfica se omiten predicciones mayores a 20 y menores a -20")
+
+
+# Obtenemos un CATE de
+mean(tau_hat_cf)
+
 
 
 ```
@@ -344,12 +395,7 @@ num_hojas <- length(unique(tauhat_causaltree_est))
 
 ```
 
-12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
 
-```{r}
-
-
-```
 
 
 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
