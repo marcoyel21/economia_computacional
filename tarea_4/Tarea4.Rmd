@@ -262,13 +262,40 @@ set_training <- crm[crm$training_sample==1,] %>%
 6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
 
 ```{r}
-# deberíamos hacer remuestreo?
 
+# la muestra está balanceada? --> NO
+set_training %>% group_by(mailing_indicator) %>%
+  dplyr::summarise(frecuencia_absoluta=n()) %>% 
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)) %>%
+  kable(col.names = c("Mailing_indicator",
+                      "Frecuencia absoluta",
+                      "Frecuencia relativa")) %>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+
+# hacemos remuestreo para aumentar la eficiencia de nuestros modelos
+
+# Undersampling. reducir tamaño de mailing_indicator==1
+set_train_a <- sample_n((set_training %>% filter(mailing_indicator==1)),
+                             size=(set_training %>% 
+                                     filter(mailing_indicator==0) %>% 
+                                     nrow()), 
+         # tamaño de mailing_indicator==0
+                             replace = FALSE) %>% 
+  rbind((set_training %>% filter(mailing_indicator==0)),.)
+
+```
+
+
+
+```{r}
 # dividir set de entrenamiento en k folds
 set_training$id <- seq(1,nrow(set_training))
 
+# estratificamos por mailing_indicator para asegurar balance similar entre
+# cada uno de los k folds y el set de entretamiento en promedio
 k <- treatment_assign(data = set_training, share_control = 0.2,
-                    n_t = 4, strata_varlist = "outcome_spend",
+                    n_t = 4, strata_varlist = "mailing_indicator",
                     missfits = "global",
                     seed = 1900, key = "id")$data
 
@@ -460,6 +487,11 @@ tidy()
 spend_ate2v$estimate[2]
 
 ```
+[1] 2.187591
+[1] 2.022087
+[1] 1
+[1] 0.9938551
+
 Los estimadores entre test y validación son diferentes...
 
 
