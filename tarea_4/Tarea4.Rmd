@@ -534,6 +534,17 @@ ggplot(data=predicciones)+
 # Obtenemos un CATE de
 mean(tau_hat_cf)
 
+# Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real"
+
+#  podemos sacar el conditional average treatment efecto "real"
+average_treatment_effect(
+  cf,
+  target.sample=c("all"),
+  method=c("AIPW"),
+  subset=NULL
+)
+
+
 
 
 ```
