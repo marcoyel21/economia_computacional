@@ -290,14 +290,14 @@ set_train_a <- sample_n((set_training %>% filter(mailing_indicator==1)),
 
 ```{r}
 # dividir set de entrenamiento en k folds
-set_training$id <- seq(1,nrow(set_training))
+
 
 # estratificamos por mailing_indicator para asegurar balance similar entre
 # cada uno de los k folds y el set de entretamiento en promedio
 k <- treatment_assign(data = set_training, share_control = 0.2,
                     n_t = 4, strata_varlist = "mailing_indicator",
                     missfits = "global",
-                    seed = 1900, key = "id")$data
+                    seed = 1900, key = "customer_id")$data
 
 k <- k %>% mutate(k = treat + 1) %>%
   ungroup()
@@ -315,7 +315,7 @@ y_train <- set_training %>%
 
 trat_train <- set_training %>% select(mailing_indicator)
 
-set_training <- set_training %>% select(-c(outcome_spend,mailing_indicator, id))
+set_training <- set_training %>% select(-c(outcome_spend,mailing_indicator, customer_id))
 
 
 # para correr modelos en paralelo
@@ -367,7 +367,7 @@ modelo <- map_dfr(1:5,
 # separo variable de tratamiento
 trat_validation <- set_validation %>% select(mailing_indicator)
 
-set_validation <- set_validation %>% select(-c(mailing_indicator))
+set_validation <- set_validation %>% select(-c(mailing_indicator, customer_id))
 
 
 # funcion para hacer la estimacion de T y spend en validacion
@@ -486,6 +486,11 @@ tidy()
 # ate 2
 spend_ate2v$estimate[2]
 
+# prueba de igualdad
+((spend_ate$estimate[3] - spend_ate2$estimate[2]) / sqrt(spend_ate$std.error[3]^2 + spend_ate2$std.error[2]^2) ) %>% pnorm()
+
+((spend_atev$estimate[3] - spend_ate2v$estimate[2]) / sqrt(spend_atev$std.error[3]^2 + spend_ate2v$std.error[2]^2) ) %>% pnorm()
+
 ```
 [1] 2.187591
 [1] 2.022087
@@ -494,17 +499,149 @@ spend_ate2v$estimate[2]
 
 Los estimadores entre test y validación son diferentes...
 
+Los valores estimados del ATE muestran diferencias menores a una décima, es decir, el impacto de enviar el catálogo a los clientes medido por una y otra forma varía por centavos. De hecho, no se puede rechazar la hipótesis de que estos coeficientes son iguales. Esto era de esperarse pues la relación entre variables dependientes y dependiente es la misma, sólo que invertida: la varianza explicada por todos los factores externos al tratamiento contra la variación en el tratamiento y el gasto, respectivamente. 
 
 
 8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
 
+```{r}
+
+coefs_treat <- map_dfr(1:5, 
+                function(a) {
+                  treat_fit <-gamlr(x = set_training[k!=a, , drop= F],
+                                    y = trat_train[k !=a],
+                                    family="binomial")
+                  
+                  coefs <- summary(coef(treat_fit)) %>% as.data.frame()
+                  return(coefs)
+                  }
+                )
+
+# la variable i considera al intercepto como 1 y a las demas variables en el orden
+# del set_training
+
+# corregimos esto para que coincidan
+coefs_treat$i <- coefs_treat$i -1
+
+# asignamos el nombre de la variable a cada coeficiente
+coefs_treat$var <- ""
+coefs_treat$var[coefs_treat$i==0] <- "Intercept"
+coefs_treat$var[coefs_treat$i>0] <- colnames(set_training)[coefs_treat$i]
+
+# promediamos los coeficientes
+aggregate(coefs_treat$x, by=list(coefs_treat$var), mean) %>%
+  kable(., col.names = c("Variable", "Coeficiente promedio"))
+```
+
+
+```{r}
+# Se repite el procedimiento para el modelo de Y
+
+coefs_spend <- map_dfr(1:5, 
+                function(a) {
+                  spend_fit <- gamlr(x = set_training[k!=a, , drop= F],
+                                    y = y_train[k !=a])
+                  
+                  coefs <- summary(coef(spend_fit)) %>% as.data.frame()
+                  return(coefs)
+                  }
+                )
+
+
+# hacer coincidir i con los nombres de variables de la base
+coefs_spend$i <- coefs_spend$i -1
+
+# asignamos el nombre de la variable a cada coeficiente
+coefs_spend$var <- ""
+coefs_spend$var[coefs_spend$i==0] <- "Intercept"
+coefs_spend$var[coefs_spend$i>0] <- colnames(set_training)[coefs_spend$i]
+
+# promediamos los coeficientes
+aggregate(coefs_spend$x, by=list(coefs_spend$var), mean) %>%
+  kable(., col.names = c("Variable", "Coeficiente promedio"))
+
+```
+
+Cuando el tratamiento se asigna de forma aleatoria exitosamente, es de esperarse que pocas variables salgan significativas en la función $g(X_I)$, y que su poder predictivo sea muy pequeño.
+
 
 9 (3pts). Ahora corre un DDML LASSO para encontrar los efectos a nivel cliente (Tip: interactúa todas las variables con `treat_resid`. Muestra el código. Qué varaibles salen significativas?
 
+```{r}
+# creo bases de interacciones
+W_train <- modelo$treat_resid*set_training
+
+
+# le cambio el nombre a estas variables para distinguirlas de las no interactuadas
+colnames(W_train) <- paste0("treat:",colnames(W_train))
+
+
+# Corro LAsso en la base de entrenamiento
+ddhte_train <- gamlr(x= cbind(set_training,modelo$treat_resid,W_train),
+               y = modelo$spend_resid)
+  
+signifs_train <- summary(coef(ddhte_train)) %>% as.data.frame()
+
+
+colnames(cbind(set_training,modelo$treat_resid,W_train))
+# hacer coincidir i con los nombres de variables de la base
+signifs_train$i <- signifs_train$i - 1
+
+# asignamos el nombre de la variable a cada coeficiente
+signifs_train$var <- ""
+signifs_train$var[signifs_train$i==0] <- "Intercept"
+signifs_train$var[signifs_train$i>0] <- 
+  colnames(cbind(set_training,modelo$treat_resid,W_train))[signifs_train$i]
+
+signifs_train %>% select(c(var,x)) %>%
+  kable(., col.names = c("Variable", "Coeficiente"))
+
+# aquí sería bueno ordenar las filas por relevancia del coeficiente y 
+# cambiarle el nombre a trear_resid que sale como V2.
+
+# igual en la tabal de abajo
+```
+
+```{r}
+
+W_test <- predics$treat_resid*set_validation
+colnames(W_test) <- paste0("treat:",colnames(W_test))
+
+# Corro lasso en la base de validación
+ddhte_test <- gamlr(x= cbind(set_validation,predics$treat_resid,W_test),
+               y = predics$spend_resid)
+
+signifs_test <- summary(coef(ddhte_test)) %>% as.data.frame()
+
+
+# hacer coincidir i con los nombres de variables de la base
+signifs_test$i <- signifs_test$i - 1
+
+# asignamos el nombre de la variable a cada coeficiente
+signifs_test$var <- ""
+signifs_test$var[signifs_test$i==0] <- "Intercept"
+signifs_test$var[signifs_test$i>0] <- 
+  colnames(cbind(set_validation,predics$treat_resid,W_test))[signifs_test$i]
+
+signifs_test %>% select(c(var,x)) %>%
+  kable(., col.names = c("Variable", "Coeficiente"))
+```
 
 10 (2 pts). Predice el CATE en la base de entrenamiento y en la base de validación. Como se ve la distribución del impacto de tratamiento en ambas? 
 
+Supongo que el CATE es el efecto a nivel cliente que se pide en la pregunta anterior.
 
+# Efecto a nivel cliente
+
+Supongo que, como se interactuó el efecto de tratamiento con todas las X, el impacto de tratamiento depende de los niveles de x de cada cliente. Por lo tanto, $\tau_i$ es igual al ATE más todas las interacciones significativas del ATE con las X a los niveles de cada individuo.
+
+Una forma de medirlo es hacer un predict con el modelo completo, que es $E(spend_i | \tau_i=1, X_i)$ y restarle $E(spend_i | \tau_i=0,X_i)$. 
+
+```{r}
+
+
+
+```
 
 
 ####Causal Forest
