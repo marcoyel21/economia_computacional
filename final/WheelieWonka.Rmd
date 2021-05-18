@@ -1,0 +1,345 @@
+---
+output:
+  pdf_document: null
+  geometry: margin=1in
+  html_document:
+    df_print: paged
+fontsize: 11pt
+header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
+  \hbadness=10000 \linespread{1.2} \usepackage[justification=centering, font=bf, labelsep=period,
+  skip=5pt]{caption}
+  \usepackage{babel} \usepackage{fancyhdr}
+  \pagestyle{fancy} \fancyhead[L]{Maestría en Economía Aplicada} \fancyhead[R]{ITAM}
+---
+\begin{titlepage}
+\begin{center}
+
+\textsc{\Large Instituto Tecnológico Autónomo de México}\\[2em]
+
+\textbf{\LARGE Economía Computacional}\\[2em]
+
+
+\textsc{\LARGE }\\[1em]
+
+
+\textsc{\LARGE Trabajo Final }\\[1em]
+\textsc{\large }\\[1em]
+\textsc{\LARGE Equipo 7 }\\[1em]
+
+\textsc{\large }\\[1em]
+
+\textsc{\LARGE Prof. Isidoro García Urquieta}\\[1em]
+
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Alfredo Lefranc Flores}\\[1em]
+
+\textsc{\large 144346}\\[1em]
+
+\textsc{\LARGE Cynthia Raquel Valdivia Tirado }\\[1em]
+
+\textsc{\large 81358}\\[1em]
+
+\textsc{\LARGE Rafael Sandoval Fernández}\\[1em]
+
+\textsc{\large 143689}\\[1em]
+
+\textsc{\LARGE Marco Antonio Ramos Juárez}\\[1em]
+
+\textsc{\large 142244}\\[1em]
+
+\textsc{\LARGE Francisco Velazquez Guadarrama}\\[1em]
+
+\textsc{\large 175606}\\[1em]
+
+\end{center}
+
+\vspace*{\fill}
+\textsc{Ciudad de México \hspace*{\fill} 2021}
+
+\end{titlepage}
+
+
+\newpage
+
+
+\tableofcontents
+
+\newpage
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
+                      fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r, include=FALSE}
+
+packages <- c(
+  "tidyverse",
+  "data.table",
+  "broom",
+  "knitr",
+  "naniar",
+  "lubridate",
+  "RCT",
+  "splitstackshape",
+  "magrittr",
+  "kableExtra",
+  "GGally",
+  "stargazer",
+  "gridExtra"
+  )
+
+# instala los paquetes que no se tengan
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# cargar paquetes
+lapply(packages,
+       library,
+       character.only = TRUE)
+
+# desactiva notación científica       
+options(scipen = 999)
+
+
+```
+
+## Datos
+
+Cargamos los datos
+```{r, include=FALSE}
+trips <- read.csv("hubway_trips.csv", header = TRUE)
+stations <- read.csv("hubway_stations.csv", header = TRUE)
+weather <- read.csv("weather.csv", header = TRUE)
+```
+
+Buscamos NAs en las variables para poder tomar decisiones al respecto.
+
+````{r}
+
+# función para NAs
+check_nas <- function(df){
+  df %>% 
+    select_if(~sum(is.na(.)) > 0) %>%
+    miss_var_summary()
+}
+
+# tabla resumen de missing values: trips
+kable(check_nas(trips), booktabs=T, align = 'c',
+      col.names = c("Variable", "Cantidad","%"), digits = 4, caption = "trips") %>%
+  kable_styling(position = "center", latex_options="HOLD_position")
+
+# tabla resumen de missing values: weather
+kable(check_nas(weather), booktabs=T, align = 'c',
+      col.names = c("Variable", "Cantidad","%"), digits = 4, caption = "weather") %>%
+  kable_styling(position = "center", latex_options="HOLD_position")
+
+````
+
+```{r}
+# Análisis para imputación de estaciones
+prcnt_sameStation <- trunc(sum(trips$strt_statn == trips$end_statn, 
+                               na.rm = T) / nrow(trips) * 100 * 100)/100
+NA_either <- sum(is.na(trips$strt_statn) | is.na(trips$end_statn))
+```
+
+Se decide eliminar la variable "Quality_Flag", pues esta únicamente contiene NAs.
+
+FVG: Además, analizando las observaciones con NA en "strt_statn" o "end_statn", notamos que estas sí tienen valores para variables importantes como "duration", y que no necesariamente coinciden en tener NA para ambas variables, por lo que sí podrían ser útiles si se les imputara algún valor. Lo más directo sería imputarle a la variable con NA el valor de la variable que sí tiene información. Sin embargo, notamos que tan solo el `prcnt_sameStation`% de las observaciones siguen este comportamiento. Dado que para poder predecir la disponibilidad de bicicletas por estación las variables de "strt_statn" o "end_statn" serán muy importantes, se decide simplemente eliminar las observaciones con NA en cualquiera de estas dos variables. Dado que son únicamente `NA_either` las observaciones que cumplen con esta última característica, el efecto eliminarlas es prácticamente nulo.
+
+```{r}
+weather$Quality_Flag <- NULL
+trips <- trips[!is.na(trips$strt_statn) & !is.na(trips$end_statn), ]
+```
+
+Nótese que la información contenida en "birth_date" no es directamente útil, pues se tienen observaciones de distintos años. La información que seguramente será muy relevante es la edad del usuario cuando hizo uso del servicio, no su edad actual. Por ello, para poder analizar la variable "birth_date" y tomar una decisión respecto a sus NA, primero se procesa las variables "start_date", "end_date", y finalmente se genera una variable con la edad a partir de "birth_date".
+
+```{r}
+# Se divide start_date en fecha y hora para extraer la información
+colnames(trips)[colnames(trips) == 'start_date'] <- 'start_DateTime'
+startDateTime <- strsplit(trips$start_DateTime, ' ')
+
+startDate <- sapply(startDateTime, "[", 1)
+trips$start_date <- as.Date(startDate, '%m/%d/%Y')
+trips$start_year <- format(trips$start_date, '%Y')
+trips$start_month <- format(trips$start_date, '%m')
+trips$start_weekday <- weekdays(trips$start_date)
+
+startTime <- sapply(startDateTime, "[", 2)
+trips$start_hour <- format(as.POSIXct(startTime,format="%H:%M:%S"),"%H")
+trips$start_minute <- format(as.POSIXct(startTime,format="%H:%M:%S"),"%M")
+
+# Se divide end_date en fecha y hora para extraer la información (poder utilizarla posteriormente)
+colnames(trips)[colnames(trips) == 'end_date'] <- 'end_DateTime'
+endDateTime <- strsplit(trips$end_DateTime, ' ')
+
+endDate <- sapply(endDateTime, "[", 1)
+trips$end_date <- as.Date(endDate, '%m/%d/%Y')
+trips$end_year <- format(trips$end_date, '%Y')
+trips$end_month <- format(trips$end_date, '%m')
+trips$end_weekday <- weekdays(trips$end_date)
+
+endTime <- sapply(endDateTime, "[", 2)
+trips$end_hour <- format(as.POSIXct(endTime,format="%H:%M:%S"),"%H")
+trips$end_minute <- format(as.POSIXct(endTime,format="%H:%M:%S"),"%M")
+
+# Se genera la edad del usuario al empezar con el servicio
+trips$age <- as.integer(trips$start_year) - trips$birth_date
+
+```
+
+```{r}
+# Se muestra la relación entre edad y duración (acotada superiormente por su percentil 99%)
+ggplot(trips, aes(age, duration)) +
+  geom_point() +
+  geom_smooth() +
+  ylim(0, quantile(trips$duration, probs=0.99))
+
+corr_age_duration <- cor(trips$age, trips$duration, use = "complete.obs")
+
+```
+
+```{r}
+# Histograma de la edad para todas las observaciones
+ggplot(data=subset(trips, !is.na(age)), aes(x=age)) + 
+  geom_histogram() +
+  geom_vline(aes(xintercept=mean(age, na.rm=T)), color="black", size=1) +
+  geom_vline(aes(xintercept=median(age, na.rm=T)), color="black", linetype="dashed", size=1) 
+```
+
+```{r}
+# Histograma de la edad por género
+ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) + 
+  geom_histogram(alpha=0.2, position="identity") +
+  geom_vline(aes(xintercept=mean(age, na.rm=T)), color="orange", size=1) +
+  geom_vline(aes(xintercept=median(age, na.rm=T)), color="black", linetype="dashed", size=1) +
+  annotate("text",                        # Add text for mean
+           x = 25,
+           y = 30000,
+           label = paste("Median =", median(trips$age, na.rm=T)),
+           col = "black",
+           size = 4) + 
+  annotate("text",                        # Add text for mean
+           x = 42,
+           y = 30000,
+           label = paste("Mean =", trunc(mean(trips$age, na.rm=T)*100)/100),
+           col = "orange",
+           size = 4)
+```
+
+
+FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor.
+
+FVG_comentario: también tendremos que decidir cómo tratar valores vacíos de "gender" y de "zip_code" (como el 29.93%). De la tabla de abajo noten cómo los valore vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". De momento les imputo unknown, y muestro una tabla con porcentajes de valores vacíos en ambas.
+
+```{r}
+empty_gender <- sum(trips$gender=='')
+empty_zipcode <- sum(trips$zip_code=='')
+unregistered <- sum(trips$subsc_type!='Registered')
+aux <- t(cbind(unregistered, empty_gender, empty_zipcode))
+aux <- cbind(c('subsc_type','gender','zip_code'), aux, aux)
+aux[,3] <- trunc(as.numeric(aux[,2])/nrow(trips)*1000000)/1000000*100
+rownames(aux) <- NULL
+kable(aux, col.names = c("Variable","Número de valores vacíos", "%"), align = "lrr", booktabs=T) %>%
+  kable_styling(position = "center", latex_options="HOLD_position")
+
+# Asigna un valor a los valores vacíos del género y zip_code. 
+trips$gender[trips$gender==''] <- 'Unknown' 
+trips$zip_code[trips$zip_code==''] <- 'Unknown' 
+
+```
+
+FVG: Eliminamos también `sum(trips$duration < 0)` (49) observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen `sum(trips$duration == 0)` (4389) observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante. 
+
+```{r}
+
+trips <- trips[trips$duration>0, ]
+
+```
+
+Ahora buscamos columnas con el mismo valor para todas las observaciones, pues de ser el caso no serían útiles para el modelo.
+  
+```{r}
+
+# trips
+uselessCols_trips <- c()
+for (i in colnames(trips)) {
+  if ( length(unique(trips[[i]]))==1 ) {
+    uselessCols_trips <- c(uselessCols_trips, i)
+  }
+}
+
+# stations
+uselessCols_stations <- c()
+for (i in colnames(stations)) {
+  if ( length(unique(stations[[i]]))==1 ) {
+    uselessCols_stations <- c(uselessCols_stations, i)
+  }
+}
+
+# weather
+uselessCols_weather <- c()
+for (i in colnames(weather)) {
+  if ( length(unique(weather[[i]]))==1 ) {
+    uselessCols_weather <- c(uselessCols_weather, i)
+  }
+}
+
+```
+Notamos que la variables "status" en la base con información de los viajes contiene un único valor presente en todas las observaciones. Lo mismo sucede con "STATION", "STATION_NAME", "ELEVATION", "LATITUDE" y "LONGITUDE" en la base con datos del clima. Se presentan los valores de las variables mencionadas para evaluar su utilidad.
+
+```{r}
+
+uselessCols <- c(uselessCols_trips, uselessCols_weather)
+uValues <- c(unique(trips[,uselessCols_trips]), unique(weather[,uselessCols_weather]))
+names(uValues) <- NULL
+kable(cbind(uselessCols, uValues), 
+      col.names = c("Nombre de la variable","Valor único"), align = "lr", booktabs=T) %>%
+  kable_styling(position = "center", latex_options="HOLD_position")
+
+```
+
+FVG_comentario: Compañeros, noten cómo las lecturas del clima de weather pertenecen a una sola estación de medición ubicada en Boston, MA., mientras que las estaciones de bicicletas están no sólo en Boston, sino en Cambridge, Brookline, y Somerville como se observa en la tabla de abajo. Si queremos usar estos datos habrá que argumentar el porqué de su validez (por ejemplo, suficiente cercanía -medible a través de latitud y longitud- implica mismo clima). 
+
+```{r}
+
+n_obs <- c()
+for (i in unique(stations$municipal)) {
+  n_obs <- c(n_obs, nrow(stations[stations$municipal==i,]))
+}
+
+kable(cbind(unique(stations$municipal), n_obs), 
+      col.names = c("Municipalidad","Número de estaciones"), align = "lr", booktabs=T) %>%
+  kable_styling(position = "center", latex_options="HOLD_position")
+
+```
+Se presentan finalmente  algunos estadísticos relevantes sobre las variables numéricas de los viajes.
+
+```{r}
+
+# No muestro las variables de id de la estación y viaje, ni el año de nacimiento (debatible)
+trips$start_hour <- as.numeric(trips$start_hour)
+tdf <- select_if(trips, is.numeric)
+tdf <- subset(tdf, select = -c(seq_id,hubway_id))
+#tdf <- tdf[ ,-c(seq_id,hubway_id)]
+aux <- matrix(NA, ncol = 8, nrow = 6) 
+k <- 1
+for (i in colnames(tdf)) {
+  qu <- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE) 
+  n <- length(which(!is.na(trips[[i]])))
+  NAs <- nrow(trips)-n
+  mean <- format(round(mean(trips[[i]], na.rm = TRUE), digits = 4), scientific = FALSE) 
+  min <- min(trips[[i]],na.rm = TRUE)
+  max <- max(trips[[i]], na.rm = TRUE) 
+  aux[k,] <- c(mean, min, qu, max) 
+  k <- k + 1
+}
+colnames(aux) <- c("Media", "Mín.", "p05", "p25", "p50", "p75", "p95", "Máx.") 
+rownames(aux) <- colnames(tdf)
+kable(aux, booktabs=T) %>% kable_styling(position = "center", latex_options="HOLD_position")
+
+```
