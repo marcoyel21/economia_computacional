@@ -20,7 +20,6 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
                       fig.width = 6, fig.height = 4.5, fig.align = "right")
 ```
 
-
 ## Overview
 
 Los contratan como data scientists para una empresa que vende electrodomesticos. La empresa lanzó un experimento de control aleatorio via un mail en donde se envió un catalogo de los productos al grupo de tratamiento `mailing_indicator`. 
@@ -57,6 +56,7 @@ library(kableExtra)
 library(knitr)
 library(devtools)
 library(parallel)
+library(broom)
 
 #library(causalTree)
 
@@ -131,6 +131,14 @@ crm <- crm %>% select(-highcor)
 
 3 (2 pts). Corrobora que la asignación tratamiento fue aleatoria mediante revisión del balance. Realiza las pruebas balance T y F. Cuántas variables salen desbalanceadas? Que muestra esto sobre la asignación de tratamiento?
 
+```{r , eval= FALSE, cache=TRUE}
+summary(factor(crm$mailing_indicator))
+
+#82784
+#167216
+```
+
+
 ```{r balancet, eval= FALSE, cache=TRUE}
 # pruebas t
 balance_t<-balance_table(data = crm,
@@ -138,14 +146,18 @@ treatment = "mailing_indicator")
 balance_t$p_value1 <- balance_t$p_value1 %>% round(3)
 ```
 
+
 ```{r, eval=FALSE}
-# medias
-kable(balance_t, digits = 3, align='c',
+#filtro
+
+balance_t_filter<- balance_t %>% filter(p_value1 < .1)
+
+#medias  
+kable(balance_t_filter, digits = 3, align='c',
       booktabs=T, caption="Tabla de Balance")%>%
 kable_styling(position = "center",latex_options="scale_down")
 
-
-# la tabla es enorme... mostrar sólo las desbalanceadas?
+#34 desbalanceadas
 ```
 
 
@@ -217,11 +229,16 @@ balance_t2 <- balance_table(data = crm_2,
 treatment = "mailing_indicator")
 balance_t2$p_value1 <- balance_t2$p_value1 %>% round(3)
 
+#filtro
+balance_t2_filter<- balance_t2 %>% filter(p_value1 < .1)
+
 # medias
-kable(balance_t, digits = 3, align='c',
+kable(balance_t2_filter, digits = 3, align='c',
       booktabs=T, caption="Tabla de Balance")%>%
 kable_styling(position = "center",latex_options="scale_down")
 
+# 18 observaciones
+# xq nos salieron menos? explicar
 ```
 
 
@@ -231,6 +248,30 @@ kable_styling(position = "center",latex_options="scale_down")
 
 ```{r}
 
+naive_with_covariates<-paste("outcome_spend~mailing_indicator+", paste(balance_t2_filter$variables1, collapse=" +"))
+noquote(naive_with_covariates)
+naive<-lm(noquote(naive_with_covariates),crm)
+```
+
+```{r}
+#modelo naive
+naive<-lm(outcome_spend~mailing_indicator,crm)
+
+#naive_controles
+# solamente accedi a los covarites de manera automatica, no se preocupen, se actualiza solo ;)
+text_naive_with_covariates<-paste("outcome_spend~mailing_indicator+", paste(balance_t_filter$variables1, collapse=" +"))
+naive_covariates<-lm(noquote(text_naive_with_covariates),crm)
+
+# naivee_controles_fdr
+
+text_naive_with_covariates_fdr<-paste("outcome_spend~mailing_indicator+", paste(balance_t2_filter$variables1, collapse=" +"))
+naive_covariates_fdr<-lm(noquote(text_naive_with_covariates_fdr),crm)
+
+naive$coefficients[[2]]
+naive_covariates$coefficients[[2]]
+naive_covariates_fdr$coefficients[[2]]
+
+#conclusion, agregar covariates solo hace nuestro estimador mas eficiente (en esepcial el de fdr)
 ```
 
 #### Estimación de efectos heterogeneos
