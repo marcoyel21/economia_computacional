@@ -57,10 +57,8 @@ library(knitr)
 library(devtools)
 library(parallel)
 library(broom)
+library(causalTree)
 
-#library(causalTree)
-
-#install_github("susanathey/causalTree")
 
 
 
@@ -600,7 +598,6 @@ coefs_spend$var[coefs_spend$i>0] <- colnames(set_training)[coefs_spend$i]
 # promediamos los coeficientes
 aggregate(coefs_spend$x, by=list(coefs_spend$var), mean) %>%
   kable(., col.names = c("Variable", "Coeficiente promedio"))
-
 ```
 
 Cuando el tratamiento se asigna de forma aleatoria exitosamente, es de esperarse que pocas variables salgan significativas en la función $g(X_I)$, y que su poder predictivo sea muy pequeño.
@@ -727,15 +724,16 @@ ggplot(data.frame(W.hat = cf$W.hat, W=factor(cf$W.orig)))+
 ```{r}
 
 # Veamos las predicciones y cómo se distribuyen
+# sacamos las predicciones IN SAMPLE
 
-# sacamos las predicciones 
-predicciones <- predict(cf, estimate.variance = TRUE)
 
-tau_hat_cf <- predicciones$predictions
+predicciones_is <- predict(cf ,estimate.variance = TRUE)
 
-ggplot(data=predicciones)+
-  geom_histogram(aes(x = tau_hat_cf, y = stat(density)), position = "identity")+
-  geom_density(aes(x=tau_hat_cf, y=stat(density)))+
+tau_hat_cf_is <- predicciones_is$predictions
+
+ggplot(data=predicciones_is)+
+  geom_histogram(aes(x = tau_hat_cf_is, y = stat(density)), position = "identity")+
+  geom_density(aes(x=tau_hat_cf_is, y=stat(density)))+
   xlim(-20,20)+
   theme_bw()+
   labs(title="Causal Forest: out-of-bag CATE",
@@ -743,7 +741,7 @@ ggplot(data=predicciones)+
 
 
 # Obtenemos un CATE de
-mean(tau_hat_cf)
+mean(tau_hat_cf_is)
 
 # Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real"
 
@@ -755,7 +753,37 @@ average_treatment_effect(
   subset=NULL
 )
 
+```
 
+```{r}
+# sacamos las predicciones OUT OF SAMPLE
+
+
+predicciones_out <- predict(cf ,  newdata = set_validation,estimate.variance = TRUE)
+
+tau_hat_cf_out <- predicciones_out$predictions
+
+ggplot(data=predicciones_out)+
+  geom_histogram(aes(x = tau_hat_cf_out, y = stat(density)), position = "identity")+
+  geom_density(aes(x=tau_hat_cf_out, y=stat(density)))+
+  xlim(-20,20)+
+  theme_bw()+
+  labs(title="Causal Forest: out-of-bag CATE",
+       caption="En la gráfica se omiten predicciones mayores a 20 y menores a -20")
+
+
+# Obtenemos un CATE de
+mean(tau_hat_cf_out)
+
+# Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real"
+
+#  podemos sacar el conditional average treatment efecto "real"
+average_treatment_effect(
+  cf,
+  target.sample=c("all"),
+  method=c("AIPW"),
+  subset=NULL
+)
 
 
 ```
@@ -831,45 +859,99 @@ num_hojas <- length(unique(tauhat_causaltree_est))
 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
 
 ```{r}
-# agregar las de lasso
+# IN SAMPLE
+tau_hat_ddbl_is<-(modelo$spend_hat)
+data_is <- as.data.frame(tau_hat_cf_is,tau_hat_ddbl_is)
 
-data <- as.data.frame(tau_hat_cf)
+ggplot(data_is, aes(x=tau_hat_cf_is, y=tau_hat_ddbl_is)) +
+  geom_point()+xlim(-5,100)+ylim(-5,100)
 
-ggplot(data, aes(x=tau_hat_cf, y=0)) +
-  geom_point(size=2, shape=23)
+```
 
+
+
+```{r}
+# OUT OF SAMPLE
+tau_hat_ddbl_out<-(predics$spend_hat)
+data_out <- as.data.frame(tau_hat_cf_out,tau_hat_ddbl_out)
+
+ggplot(data_out, aes(x=tau_hat_cf_out, y=tau_hat_ddbl_out)) +
+  geom_point()+xlim(-5,100)+ylim(-5,100)
 ```
 
 
 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
 
 ```{r}
+#primero dividir set validacion #ALFREDO, EL TREAT_HAT ES EL SCORE VERDÁ?
 
-# falta
+library(gtools)
+g <- quantcut(predics$treat_hat, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
+datas<-split(predics, g)
+
+#estima impacto de tratamiento con una regresion y saca el promedio del score NOSABEMOS :(
+#duda, 
+
+fitLM <- function(x){
+lm1 <- lm(x$spend~x$treat,data = x)
+return(summary(lm1))
+}
+regresiones <- lapply(datas,FUN=fitLM)
+
+tidy(regresiones[[10]])
+
+# validar si grupos con score el impacto es mas grande
+#masomenos
 
 ```
 
 
 15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente: 
 
-- El costo marginal de mandar el mail es 0.99 USD 
+- El costo marginal de mandar el mail es 0.99 USD
 
-- El Beneficio marginal es el impacto incremental la utilidad generada por esas ventas 
+fijo y no hay pex es .99 por cada mail....
+ 
+ 
+- El Beneficio marginal es el impacto incremental la utilidad generada por esas ventas
+
+beneficio marginal  = spend- costo del mail
 
 - El margen de ganancia sobre las ventas es de 32.5 fijo 
+
+¿cual es la diferencia entre margen de ganancia beneficio marginal? margen de 
+
+ganacial=¿precio-costo?=32.5
+
+
+
+
 
 Con esto, indica: 
 
 - Cuantos usuarios entrarían a la campaña? 
 
+caluclau en cuantos el beneficio > 0
+
 - A partir de cuánto lift (ventas incrementales) entran? 
+
+de la poblacion anterior calcular su lift (el treshold del modelo)
+
+
 
 - Cuál es el impacto promedio esperado de tu población final? 
 
+suma de beneficios totales/personas participantes
+
 - Cuánta utilidad haremos con esta estrategia? Cómo se compara con la utilidad de la campaña sin focalizar?
 
+suma de beneficios totales
+
+resta de beneficios totales con campaña menos beneficios totales sin campaña
 
 
 
 16 (3pts). Haz una gráfica del la utilidad total vs q (personas que entran en la campaña) para DDML y CF
+
+
 
