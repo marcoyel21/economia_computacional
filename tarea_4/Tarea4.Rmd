@@ -294,7 +294,7 @@ y_validation <- crm[crm$training_sample==0,] %>%
   select(outcome_spend)
 
 set_training <- crm[crm$training_sample==1,] %>%
-  select(-c(training_sample))
+  dplyr::select(-c(training_sample))
 
 ```
 
@@ -692,19 +692,20 @@ Una forma de medirlo es hacer un predict con el modelo completo, que es $E(spend
 ```{r, cache = FALSE}
 # CAUSAL FOREST
 
-tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-c(outcome_spend,mailing_indicator))),collapse = ' + '), sep = " ~ "))
+tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% dplyr::select(-c(outcome_spend,mailing_indicator))),collapse = ' + '), sep = " ~ "))
 
 no_covariates <- c("outcome_spend", 
                      "mailing_indicator",
-                     "customer_id",
-                     "training_sample")
+                     "customer_id")
 
-matrix <- as.matrix(df_training %>% select(-no_covariates))
+                     #"training_sample")
+
+matrix <- as.matrix(set_training %>% dplyr::select(-no_covariates))
 
 cf <- causal_forest(
   X = matrix,
-  Y = df_training$outcome_spend,
-  W = df_training$mailing_indicator,
+  Y = set_training$outcome_spend,
+  W = set_training$mailing_indicator,
   num.trees = 750
 )
 
