@@ -957,11 +957,12 @@ return(summary(lm1))
 regresiones <- lapply(datas,FUN=fitLM)
 
 
-chart_ddbl <- as.data.frame(matrix(0, 1, 10))
+chart_ddbl <- as.data.frame(matrix(0, 10, 1))
 
 for (i in 1:10) {
-chart_ddbl[,i]<-tidy(regresiones[[i]])[2,2]}
+chart_ddbl[i,]<-tidy(regresiones[[i]])[2,2]}
 
+barplot(chart_ddbl$V1)
 # validar si grupos con score el impacto es mas grande
 #masomenos
 
@@ -984,13 +985,15 @@ datas<-split(predicciones, g)
 
 regresiones <- lapply(datas,FUN=fitLM)
 
-chart_rf <- as.data.frame(matrix(0, 1, 10))
+chart_rf <- as.data.frame(matrix(0, 10, 1))
 
 for (i in 1:10) {
-chart_rf[,i]<-tidy(regresiones[[i]])[2,2]}
+chart_rf[i,]<-tidy(regresiones[[i]])[2,2]}
 
 # validar si grupos con score el impacto es mas grande
 #masomenos
+
+barplot(chart_rf$V1)
 
 ```
 
