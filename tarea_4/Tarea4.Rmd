@@ -284,23 +284,22 @@ Usaremos el training sample para estimar el Conditional Average Treatment Effect
 
 Separa la base de entrenamiento de la de validación
 
-```{r}
-set_validation <- crm[crm$training_sample==0,] %>%
+
+
+```{r validation}
+set_validation_original <- crm[crm$training_sample==0,] %>%
   select(-c(outcome_spend,training_sample))
 
 y_validation <- crm[crm$training_sample==0,] %>%
   select(outcome_spend)
 
-set_training <- crm[crm$training_sample==1,] %>%
+set_training_original <- crm[crm$training_sample==1,] %>%
   dplyr::select(-c(training_sample))
 
 ```
 
-####Double Debiased LASSO
 
-6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
-
-```{r}
+```{r under}
 
 # la muestra está balanceada? --> NO
 set_training %>% group_by(mailing_indicator) %>%
@@ -322,8 +321,12 @@ set_train_a <- sample_n((set_training %>% filter(mailing_indicator==1)),
          # tamaño de mailing_indicator==0
                              replace = FALSE) %>% 
   rbind((set_training %>% filter(mailing_indicator==0)),.)
-
 ```
+
+
+####Double Debiased LASSO
+
+6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
 
 
 
@@ -333,7 +336,7 @@ set_train_a <- sample_n((set_training %>% filter(mailing_indicator==1)),
 
 # estratificamos por mailing_indicator para asegurar balance similar entre
 # cada uno de los k folds y el set de entretamiento en promedio
-k <- treatment_assign(data = set_training, share_control = 0.2,
+k <- treatment_assign(data = set_training_original, share_control = 0.2,
                     n_t = 4, strata_varlist = "mailing_indicator",
                     missfits = "global",
                     seed = 1900, key = "customer_id")$data
@@ -349,12 +352,12 @@ k <- k$k
 # Lasso con cross fitting (en set de entrenamiento)
 
 # separo variable de interés y de tratamiento
-y_train <- set_training %>%
+y_train <- set_training_original %>%
   select(outcome_spend)
 
-trat_train <- set_training %>% select(mailing_indicator)
+trat_train <- set_training_original %>% select(mailing_indicator)
 
-set_training <- set_training %>% select(-c(outcome_spend,mailing_indicator, customer_id))
+set_training <- set_training_original %>% select(-c(outcome_spend,mailing_indicator, customer_id))
 
 
 # para correr modelos en paralelo
@@ -404,12 +407,14 @@ modelo <- map_dfr(1:5,
 # predicciones en set de validación
 
 # separo variable de tratamiento
-trat_validation <- set_validation %>% select(mailing_indicator)
+trat_validation <- set_validation_original %>% select(mailing_indicator)
 
-set_validation <- set_validation %>% select(-c(mailing_indicator, customer_id))
+set_validation <- set_validation_original %>% select(-c(mailing_indicator, customer_id))
 
 
 # funcion para hacer la estimacion de T y spend en validacion
+
+
 predics <- NULL
 predics <- map_dfc(1:5, 
                 function(a) {
@@ -473,10 +478,15 @@ predics$treat_hat <- (predics$treat_hat_1+
 ```
 
 
+
+
 7 (2pts). Cuál es el impacto de tratamiento promedio? Estimalo de dos maneras: 1) `spend_resid~treat_hat + treat` y 2) `spend~treat_resid`. Sale lo mismo? Justifica tu respuesta
 
 ```{r}
+
+#_________________________
 # ATE en el set de entrenamiento
+#________________________
 
 # primero agrego las variables spend y treat a la base con los residuales
 modelo$spend <- y_train[[1]]
@@ -499,20 +509,28 @@ tidy()
 # ate 2
 spend_ate2$estimate[2]
 
-
+#_________________________
 # ATE en el set de validacion
+#________________________
+
 predics$spend <- y_validation[[1]]
 predics$treat <- trat_validation[[1]] 
 
 # residuales
-predics$treat_resid <- predics$spend - predics$spend_hat
-predics$spend_resid <- predics$treat - predics$treat_hat
+predics$spend_resid <- predics$spend - predics$spend_hat
+predics$treat_resid <- predics$treat - predics$treat_hat
 
 
 # regresion 1
 spend_atev <- lm(spend_resid ~ treat_hat + treat,
 data = predics) %>%
 tidy()
+
+
+#_________________________
+# IMPRIMO ATES
+#________________________
+
 
 # ate 1
 spend_atev$estimate[3]
@@ -642,8 +660,10 @@ signifs_train %>% select(c(var,x)) %>%
 
 ```{r}
 
+#duda aqui no hay que estimar otra vez sino correr creo que este chunk es inecesario
 W_test <- predics$treat_resid*set_validation
 colnames(W_test) <- paste0("treat:",colnames(W_test))
+
 
 # Corro lasso en la base de validación
 ddhte_test <- gamlr(x= cbind(set_validation,predics$treat_resid,W_test),
@@ -667,6 +687,7 @@ signifs_test %>% select(c(var,x)) %>%
 
 10 (2 pts). Predice el CATE en la base de entrenamiento y en la base de validación. Como se ve la distribución del impacto de tratamiento en ambas? 
 
+
 Supongo que el CATE es el efecto a nivel cliente que se pide en la pregunta anterior.
 
 # Efecto a nivel cliente
@@ -676,8 +697,45 @@ Supongo que, como se interactuó el efecto de tratamiento con todas las X, el im
 Una forma de medirlo es hacer un predict con el modelo completo, que es $E(spend_i | \tau_i=1, X_i)$ y restarle $E(spend_i | \tau_i=0,X_i)$. 
 
 ```{r}
+#OSEA CALCULAR EL CONTRAFACTUAL y luego comparar para cada i real vs contrafactual
+#SE ME OCURRE PREDECIR EL EFECTO PARA LA BASE DE DATOS CON LA T INVERTIDA (SI ES 1 LA CAMBIO A 0 Y VICEVERSA)
 
 
+#predicciones normales
+W_test <- predics$treat_resid*set_validation
+colnames(W_test) <- paste0("treat:",colnames(W_test))
+
+test<-cbind(set_validation,predics$treat_resid,W_test)
+pred_normales<-predict(ddhte_train,newdata = test) #predicciones
+obs <-as.data.frame(as.matrix(pred_normales))
+
+
+#contrafactual
+
+#primero creo una variable alrevezx
+trat_validation_counterfactual<-trat_validation%>%mutate(mailing_indicator=ifelse(mailing_indicator==1,0,1))
+predics$treat_counter <- trat_validation_counterfactual[[1]] 
+# residuales alrevez (con ts volteados)
+predics$treat_counter_resid <- predics$treat_counter - predics$treat_hat
+#repito lo mismo
+W_test_counter <- predics$treat_counter_resid*set_validation
+colnames(W_test_counter) <- paste0("treat:",colnames(W_test_counter))
+test_counter<-cbind(set_validation,predics$treat_counter_resid,W_test_counter)
+pred_contraf<-predict(ddhte_train,newdata = test_counter) #predicciones
+contraf <- as.data.frame(as.matrix(pred_contraf))
+
+
+#ahora puro callo para hacer la resta de neyman pero ahora tratamiento - control 
+#para cada i 
+cates<-cbind(obs,contraf,predics$treat,predics$treat_counter)
+colnames(cates) <- c("obs","contraf","treat","treat_contraf")
+cates<-cates %>% mutate(a=obs*treat+contraf*treat_contraf,
+                       b=obs*treat_contraf+contraf*treat,
+                       cate=a-b )
+
+#plot
+ggplot(cates, aes(x=cate)) + geom_histogram(binwidth=1)+geom_vline(aes(xintercept=0),
+            color="red", linetype="dashed", size=.5)+xlim(-10,30)
 
 ```
 
@@ -697,12 +755,12 @@ no_covariates <- c("outcome_spend",
 
                      #"training_sample")
 
-matrix <- as.matrix(set_training %>% dplyr::select(-no_covariates))
+matrix <- as.matrix(set_training_original %>% dplyr::select(-no_covariates))
 
 cf <- causal_forest(
   X = matrix,
-  Y = set_training$outcome_spend,
-  W = set_training$mailing_indicator,
+  Y = set_training_original$outcome_spend,
+  W = set_training_original$mailing_indicator,
   num.trees = 750
 )
 
@@ -736,7 +794,7 @@ ggplot(data=predicciones_is)+
   geom_density(aes(x=tau_hat_cf_is, y=stat(density)))+
   xlim(-20,20)+
   theme_bw()+
-  labs(title="Causal Forest: out-of-bag CATE",
+  labs(title="Causal Forest: insample CATE",
        caption="En la gráfica se omiten predicciones mayores a 20 y menores a -20")
 
 
@@ -883,10 +941,10 @@ ggplot(data_out, aes(x=tau_hat_cf_out, y=tau_hat_ddbl_out)) +
 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
 
 ```{r}
-#primero dividir set validacion #ALFREDO, EL TREAT_HAT ES EL SCORE VERDÁ?
+#primero dividir set validacion 
 
 library(gtools)
-g <- quantcut(predics$treat_hat, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
+g <- quantcut(predics$spend_hat, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
 datas<-split(predics, g)
 
 #estima impacto de tratamiento con una regresion y saca el promedio del score NOSABEMOS :(
@@ -898,7 +956,38 @@ return(summary(lm1))
 }
 regresiones <- lapply(datas,FUN=fitLM)
 
-tidy(regresiones[[10]])
+
+chart_ddbl <- as.data.frame(matrix(0, 1, 10))
+
+for (i in 1:10) {
+chart_ddbl[,i]<-tidy(regresiones[[i]])[2,2]}
+
+# validar si grupos con score el impacto es mas grande
+#masomenos
+
+```
+
+```{r}
+#para rf
+#primero dividir set validacion 
+
+predicciones<-cbind(predicciones_out,predics$treat,predics$spend)
+colnames(predicciones) <- c("score","var","treat","spend")
+predicciones<-as.data.frame(predicciones)
+
+
+g <- quantcut(predicciones$score, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
+datas<-split(predicciones, g)
+
+#estima impacto de tratamiento con una regresion y saca el promedio del score NOSABEMOS :(
+#duda, 
+
+regresiones <- lapply(datas,FUN=fitLM)
+
+chart_rf <- as.data.frame(matrix(0, 1, 10))
+
+for (i in 1:10) {
+chart_rf[,i]<-tidy(regresiones[[i]])[2,2]}
 
 # validar si grupos con score el impacto es mas grande
 #masomenos
