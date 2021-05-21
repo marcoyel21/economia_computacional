@@ -65,14 +65,9 @@ library(broom)
 library(gridExtra)
 library(causalTree)
 library(gtools)
-
 library(reshape2)
-
-
 library(DT)
-
 library(sjPlot)
-
 library(smotefamily)
 
 
@@ -108,24 +103,27 @@ En una revisión inicial de la base, notamos que ninguna variable tiene `NA`s y 
 ## 2. Muestra la matriz de correlación entre variables. Muestra los pares de variables que tienen más de 95% de correlación. Remueve una de cada par multicolineal. 
 
 ```{r}
+#_____________________
+#PREPROCESAMIENTO
+#____________________
+# para esta parte primero voy estandarizar los datos para reducir el tiempo de computo:
 
 #identico dummies
 dummies_id<-inspection %>% filter(min ==0 & max ==1  & range ==1 )
 
 #creo una base de datos sin dummies para estandarizar
-
 z_numerics<- crm %>% select(-dummies_id$column,-customer_id)
-  
 dummies<- crm %>% select(dummies_id$column)
 
 #transformo la base de datos a estandarizada para reducir el tiempo de calculo
-
 z_numerics<-scale(z_numerics)
-
 cor_data<-cbind(z_numerics,dummies)
 ```
 
 ```{r}
+#_____________________
+#CORRELOGRAMA
+#____________________
 # mariz de correlacion
 cor_mat <- cor(cor_data)
 
@@ -162,6 +160,9 @@ cor_mat %>% melt(na.rm = TRUE) %>%
 
 
 ```{r}
+#_____________________
+#IDENTIFICACIÓN DE MAYORES CORRELACIONES
+#____________________
 # dummy si la columna x tiene alguna correlación mayor a 0.95 en valor absoluto
 cor_mat[,68] %>% abs() %>% max(na.rm = TRUE) > 0.95
 
@@ -192,6 +193,9 @@ summary(factor(crm$mailing_indicator))
 Ahora realizamos el balance mediante pruebas t.
 
 ```{r balancet, eval= TRUE, cache=TRUE}
+#_____________________
+#PRUEBAS DE BALANCE T
+#____________________
 # pruebas t
 balance_t<-balance_table(data = crm,
 treatment = "mailing_indicator")
@@ -210,6 +214,10 @@ Con una significancia del 10%, nos salen 32 variables desbalanceadas. En general
 
 
 ```{r balancef, cache=TRUE}
+#_____________________
+#PRUEBAS DE BALANCE F
+#____________________
+
 # pruebas F
 balance_f<-balance_regression(data = crm,
                               treatment = "mailing_indicator")
@@ -225,6 +233,9 @@ En cuanto al balance conjunto, la prueba F muestra que no son grupos balanceados
 ## 4. Realize un ajuste de False Discovery Rate al 10%. Cuántas variables salen desbalanceadas ahora? 
 
 ```{r fdr, cache=TRUE}
+#_____________________
+#FDR
+#____________________
 
 # funcion que realiza FDR
 # inputs: un modelo guardado y una q entre (0,1)
@@ -276,6 +287,9 @@ crm_2 <- crm %>% select(c("outcome_spend","mailing_indicator"),all_of(goodvars))
 66 (+ el intercepto) variables tienen poder predictivo sobre la variable de interés. Al realizar el balance sobre estas variables, 16(+ variable objetivo) muestran un desbalance con la prueba T. Concluimos que el tratamiento fue focalizado, y por lo tanto, las estimaciones del efecto de tratamiento podrían tener un sesgo positivo.
 
 ```{r balance2, eval=TRUE, cache=TRUE}
+#_____________________
+#PRUEBAS DE BALANCE
+#____________________
 # repetir balance con la prueba t
 balance_t2 <- balance_table(data = crm_2,
 treatment = "mailing_indicator")
@@ -305,7 +319,6 @@ text_naive_with_covariates<-paste("outcome_spend~mailing_indicator+", paste(bala
 naive_covariates<-lm(noquote(text_naive_with_covariates),crm)
 
 # naivee_controles_fdr
-
 text_naive_with_covariates_fdr<-paste("outcome_spend~mailing_indicator+", paste(balance_t2_filter$variables1, collapse=" +"))
 naive_covariates_fdr<-lm(noquote(text_naive_with_covariates_fdr),crm)
 
@@ -318,6 +331,7 @@ stargazer(naive, naive_covariates,naive_covariates_fdr,
 ```
 
 Confirmamos que el ATE está sobreestimado debido a un sesgo de selección; los clientes del grupo de tratamiento tienden a gastar más y por ende no son perfectamente comparables a los del grupo de control. No obstante, al incluir controles el estimador disminuye ligeramente y aumenta su eficiencia, aunque sigue siendo positivo y estadísticamente significativo.
+
 
 # Estimación de efectos heterogeneos
 
@@ -333,6 +347,9 @@ Usaremos el training sample para estimar el Conditional Average Treatment Effect
 Separa la base de entrenamiento de la de validación:
 
 ```{r}
+#_______________________
+# DIVISION INICIAL
+#______________________
 set.seed(1990)
 crm<-
   crm %>% 
@@ -350,6 +367,9 @@ set_training_original <- crm[crm$training_sample==1,] %>%
 ```
 
 ```{r under}
+#_______________________
+# EVALUACIÓN DE BALANCE INICIAL
+#______________________
 # evalumos balance de tratamiento
 # la muestra está balanceada? --> NO
 set_training_original %>% group_by(mailing_indicator) %>%
@@ -366,7 +386,11 @@ set_training_original %>% group_by(mailing_indicator) %>%
 
 Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos. Los cálculos con la muestra de submuestreo se hicieron en un script aparte.
 
-```{r }
+```{r,eval = FALSE }
+#_______________________
+# ESTRATEGIAS DE BALANCE
+#______________________
+
 #UNDERSAMPLING
 # hacemos remuestreo para aumentar la eficiencia de nuestros modelos
 # Undersampling. reducir tamaño de mailing_indicator==1
@@ -390,7 +414,7 @@ undersampling_training %>% group_by(mailing_indicator) %>%
                 latex_options="HOLD_position")
 ```
 
-```{r }
+```{r,eval = FALSE }
 #OVERSAMPLING
 # Segundo intento, sugiere hacer
 
@@ -436,6 +460,11 @@ set_training_original<-set_training_original
 
 
 ```{r, echo=FALSE, cache=TRUE}
+#_________________
+#ESTIMACIÓN
+#_________________
+
+
 # dividir set de entrenamiento en k folds
 
 
@@ -454,7 +483,9 @@ k <- k %>% mutate(k = treat + 1) %>%
 k <- k$k
 
 
-# Lasso con cross fitting (en set de entrenamiento)
+#_________________
+#LASSO CROSSFITING EN ENTRENAMIENTO
+#_________________
 
 # separo variable de interés y de tratamiento
 y_train <- set_training_original %>%
@@ -508,7 +539,10 @@ modelo <- map_dfr(1:5,
 
 
 
-# predicciones en set de validación
+#_________________
+#PREDUCCIONES EN VALIDATION
+#_________________
+
 
 # separo variable de tratamiento
 trat_validation <- set_validation_original %>% select(mailing_indicator)
@@ -516,8 +550,9 @@ trat_validation <- set_validation_original %>% select(mailing_indicator)
 set_validation <- set_validation_original %>% select(-c(mailing_indicator, customer_id))
 
 
-# funcion para hacer la estimacion de T y spend en validacion
-
+#_________________
+#ESTIMACIÓN DE T Y SPEND EN VALIDATION
+#_________________
 
 predics <- NULL
 predics <- map_dfc(1:5, 
@@ -623,14 +658,22 @@ data = predics)
 spend_ate2v <-lm(spend ~ treat_resid,
 data = predics)
 
-# tabla de resultados
+#_________________________
+# #RESULTADOS
+#________________________
+
 stargazer(spend_ate,spend_ate2,spend_atev,spend_ate2v,
           type="html")
 ```
 
 
-Realizo pruebas de hipótesis para evaluar si el efecto es el mismo 
+Realizo pruebas de hipótesis para evaluar si el efecto es el mismo
+
 ```{r, echo=FALSE}
+#_________________________
+# #PRUEBAS DE IGUALDAD
+#________________________
+
 # prueba de igualdad en training
 ((spend_ate$coefficients[[3]] - spend_ate2$coefficients[[2]]) / sqrt(summary(spend_ate)$coefficients[3,2]^2 + summary(spend_ate2)$coefficients[2,2]^2) ) %>% pnorm()
 
@@ -647,7 +690,9 @@ Los valores estimados del ATE muestran diferencias menores a una décima, es dec
 ## 8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
 
 ```{r}
-
+#_________________________
+# MODELO PARA T
+#________________________
 coefs_treat <- map_dfr(1:5, 
                 function(a) {
                   treat_fit <-gamlr(x = set_training[k!=a, , drop= F],
@@ -679,7 +724,9 @@ aggregate(coefs_treat$x, by=list(coefs_treat$var), mean) %>%
 
 
 ```{r}
-# Se repite el procedimiento para el modelo de Y
+#_________________________
+# MODELO PARA Y
+#________________________
 
 coefs_spend <- map_dfr(1:5, 
                 function(a) {
@@ -701,10 +748,10 @@ coefs_spend$var[coefs_spend$i==0] <- "Intercept"
 coefs_spend$var[coefs_spend$i>0] <- colnames(set_training)[coefs_spend$i]
 
 # promediamos los coeficientes
-aggregate(coefs_spend$x, by=list(coefs_spend$var), mean) %>%
-  kable(., col.names = c("Variable", "Coeficiente promedio"))
+#aggregate(coefs_spend$x, by=list(coefs_spend$var), mean) %>%
+ # kable(., col.names = c("Variable", "Coeficiente promedio"))
 
-#datatable(data , options = list(pageLength = 5))
+datatable((aggregate(coefs_spend$x, by=list(coefs_spend$var), mean)) , options = list(pageLength = 5))
 
 ```
 
@@ -741,9 +788,10 @@ signifs_train$var[signifs_train$i==0] <- "Intercept"
 signifs_train$var[signifs_train$i>0] <- 
   colnames(cbind(set_training,modelo$treat_resid,W_train))[signifs_train$i]
 
-signifs_train %>% select(c(var,x)) %>%
-  kable(., col.names = c("Variable", "Coeficiente"))
+#signifs_train %>% select(c(var,x)) %>%
+ # kable(., col.names = c("Variable", "Coeficiente"))
 
+datatable((signifs_train %>% select(c(var,x))) , options = list(pageLength = 5))
 # aquí sería bueno ordenar las filas por relevancia del coeficiente y 
 # cambiarle el nombre a trear_resid que sale como V2.
 ```
@@ -756,8 +804,7 @@ Como se interactuó el efecto de tratamiento con todas las X, el impacto de trat
 Computacionalmente, una manera directa de hacer esto es invertir la variable de tratamiento, volver a calcular los residuales $V_i^{T_{inv}}$ y estimar el modelo de nuevo. Con esto obtenemos $\tau_i$ en ambas bases.
 
 ```{r}
-#OSEA CALCULAR EL CONTRAFACTUAL y luego comparar para cada i real vs contrafactual
-#SE ME OCURRE PREDECIR LA Vy PARA LA BASE DE DATOS CON LA T INVERTIDA (SI ES 1 LA CAMBIO A 0 Y VICEVERSA)
+#para estimar el cate simplemente calculamos con el modelo para cada observación su control y tratamiento, es decir la predicción de su valor observado y su contrafactual.
 
 #____________________
 # EN ENTRENAMIENTO
@@ -906,7 +953,6 @@ ggplot(data.frame(W.hat = cf$W.hat, W=factor(cf$W.orig)))+
 ## 12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
 
 ```{r}
-
 #________________-
 #PREDICCIONES IN SAMPLE
 #________________
@@ -957,12 +1003,10 @@ tau_hat_cf_out <- predicciones_out$predictions
 
 ggplot(data=predicciones_out)+
   geom_histogram(aes(x = tau_hat_cf_out, y = stat(density)), position = "identity",binwidth=1)+
-  geom_vline(aes(xintercept=0),
-            color="red", linetype="dashed", size=.5)+
+  geom_vline(aes(xintercept=0), color="red", linetype="dashed", size=.5)+
   xlim(-10,30)+
   theme_bw()+
-  labs(title="Causal Forest: out-of-bag CATE",
-       caption="En la gráfica se omiten predicciones mayores a 20 y menores a -20")
+  labs(title="Causal Forest: out-of-bag CATE")
 
 
 # Obtenemos un CATE de
@@ -983,6 +1027,7 @@ average_treatment_effect(
 # Comparación
 
 ## 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
+
 
 ```{r}
 #________________-
@@ -1023,16 +1068,20 @@ xlim(-5,100)+ylim(-5,100)+
   scale_fill_gradient(low = "lightblue", high = "red")
 
 ```
-
+De las graficas notamos que el modelo DDBL está siendo más generoso con las predicciones que el CF. Asimismo notamos que apesar de que parece que los datos están muy esparcidos, en realidad es solo un sesgo visual y la gran mayoría de los datos están concentrados en el cuadrado delimitado por $x\epsilon[0,12]$ y  $y\epsilon[0,12]$.
 
 ## 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
 
 ```{r}
+#________________-
+#PRUEBA MONOTONIA DDBL
+#________________
+
 #primero dividir set validacion 
 
 g <- quantcut(predics$spend_hat, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
 datas<-split(predics, g)
-
+means<-split(predics, g)
 #estima impacto de tratamiento con una regresion y saca el promedio del score NOSABEMOS :(
 #duda, 
 
@@ -1040,22 +1089,37 @@ fitLM <- function(x){
 lm1 <- lm(x$spend~x$treat,data = x)
 return(summary(lm1))
 }
-regresiones <- lapply(datas,FUN=fitLM)
 
+mymean <- function(x){
+m <- mean(x$spend_hat,data = x)
+return(m)
+}
+regresiones <- lapply(datas,FUN=fitLM)
+medias <- lapply(datas,FUN=mymean)
 
 chart_ddbl <- as.data.frame(matrix(0, 10, 1))
-
+chart_means<- as.data.frame(matrix(0, 10, 1))
 for (i in 1:10) {
-chart_ddbl[i,]<-tidy(regresiones[[i]])[2,2]}
+chart_ddbl[i,]<-tidy(regresiones[[i]])[2,2]
+chart_means[i,]<-medias[[i]]}
 
-barplot(chart_ddbl$V1)
-# validar si grupos con score el impacto es mas grande
-#masomenos
+chart_data<-cbind(chart_ddbl,chart_means)
+colnames(chart_data) <- c("tau","score_mean")
+
+barplot(chart_data$tau,main="Impacto de tratamiento",
+        xlab="Décil del score",
+        ylab="Impacto")
+barplot(chart_data$score_mean, main="Score del modelo (Y)",
+        xlab="Décil del score",
+        ylab="Promedio del score")
 
 ```
 
 ```{r}
-#para rf
+#________________-
+#PRUEBA MONOTONIA CF
+#________________
+
 #primero dividir set validacion 
 
 predicciones<-cbind(predicciones_out,predics$treat,predics$spend)
@@ -1065,25 +1129,40 @@ predicciones<-as.data.frame(predicciones)
 
 g <- quantcut(predicciones$score, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
 datas<-split(predicciones, g)
+means<-split(predicciones, g)
 
 #estima impacto de tratamiento con una regresion y saca el promedio del score NOSABEMOS :(
 #duda, 
 
 regresiones <- lapply(datas,FUN=fitLM)
+medias <- lapply(datas,FUN=mymean)
 
 chart_rf <- as.data.frame(matrix(0, 10, 1))
+chart_means<- as.data.frame(matrix(0, 10, 1))
 
 for (i in 1:10) {
-chart_rf[i,]<-tidy(regresiones[[i]])[2,2]}
+chart_rf[i,]<-tidy(regresiones[[i]])[2,2]
+chart_means[i,]<-medias[[i]]}
 
 # validar si grupos con score el impacto es mas grande
-#masomenos
 
-barplot(chart_rf$V1)
+chart_data<-cbind(chart_ddbl,chart_means)
+colnames(chart_data) <- c("tau","score_mean")
+
+barplot(chart_data$tau, main="Impacto de tratamiento",
+        xlab="Décil del score",
+        ylab="Impacto")
+barplot(chart_data$score_mean, main="Score del modelo (Y)",
+        xlab="Décil del score",
+        ylab="Promedio del score")
+
 
 ```
 
-```{r ERRORES}
+Lo que podemos notar esque ambos modelos tienen una tendencia monotónica más no es estricta. Es decir, en promedio, el efecto de tratamiento si va en línea con el score, pero no de manera estricta.  Asimismo notamos que el primer modelo (el DDBL) tiene una tendencia más marcada y con menos saltos que el CF (además de que tiene errores más pequeños). Por estas razones creemos que el DDBL ML es mejor modelo que el CF.
+
+
+```{r ERRORES, eval=F}
 
 error_data<-cbind(predicciones_out$predictions, predics$spend, predics$spend_hat)
 colnames(error_data) <- c("cf","real","ddl")
