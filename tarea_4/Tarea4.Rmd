@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
                       fig.width = 6, fig.height = 4.5, fig.align = "right")
 ```
 
-## Overview
+# Overview
 
 Los contratan como data scientists para una empresa que vende electrodomesticos. La empresa lanzó un experimento de control aleatorio via un mail en donde se envió un catalogo de los productos al grupo de tratamiento `mailing_indicator`. 
 
@@ -43,6 +43,11 @@ Tip!: En los chunks donde vaya a haber modelos o cálculos complicados, usen `ca
 Carguemos los datos de 2015
 
 ```{r}
+#_________________
+#Ambiente
+#__________________
+
+# librerias
 library(tidyverse)
 library(data.table)
 library(gamlr)
@@ -59,47 +64,70 @@ library(parallel)
 library(broom)
 library(gridExtra)
 library(causalTree)
+library(gtools)
+
+library(reshape2)
+
+
+library(DT)
+
+library(sjPlot)
+
+library(smotefamily)
 
 
 
 
 # desactiva notación científica       
 options(scipen = 999)
-```
 
-```{r, cache=TRUE}
+# datos
 load("Customer-Development-2015-1.RData")
-```
 
-Dividimos la base en entrenamiento y validacion. Usamos un seed fijo para replicabilidad.
-
-```{r}
-set.seed(1990)
-crm<-
-  crm %>% 
-  mutate(training_sample = rbinom(n = nrow(crm), 1, 0.7))
-  
 ```
 
 
-#### Data cleaning
+Dividimos la base en entrenamiento y validacion. Usamos un seed fijo para replicabilidad:
 
-1. Haz una primera revisión de la base. Cuantas variables tienen `NA`
+
+# Data cleaning
+
+## 1. Haz una primera revisión de la base. Cuantas variables tienen `NA`
 
 ```{r, echo=FALSE}
-str(crm)
-
 # nos devuelve las columnas que tengan NAs
 (apply(crm, 2, function(x) sum(is.na(x))) > 0) %>% which()
+
+#creo base de exploración
+inspection<-tidy(crm)
+datatable(inspection, options = list(pageLength = 5))
 
 ```
 En una revisión inicial de la base, notamos que ninguna variable tiene `NA`s y todas las variables son numéricas.
 
-2. Muestra la matriz de correlación entre variables. Muestra los pares de variables que tienen más de 95% de correlación. Remueve una de cada par multicolineal. 
+## 2. Muestra la matriz de correlación entre variables. Muestra los pares de variables que tienen más de 95% de correlación. Remueve una de cada par multicolineal. 
+
+```{r}
+
+#identico dummies
+dummies_id<-inspection %>% filter(min ==0 & max ==1  & range ==1 )
+
+#creo una base de datos sin dummies para estandarizar
+
+z_numerics<- crm %>% select(-dummies_id$column,-customer_id)
+  
+dummies<- crm %>% select(dummies_id$column)
+
+#transformo la base de datos a estandarizada para reducir el tiempo de calculo
+
+z_numerics<-scale(z_numerics)
+
+cor_data<-cbind(z_numerics,dummies)
+```
 
 ```{r}
 # mariz de correlacion
-cor_mat <- cor(crm)
+cor_mat <- cor(cor_data)
 
 reorder_cormat <- function(cormat){
   # Use correlation between variables as distance
@@ -117,8 +145,6 @@ cor_mat[lower.tri(cor_mat, diag = TRUE)] <- NA
 # transformamos matriz para hacer un ggheatmap
 # Para esta gráfica nos basamos en la página de
 # Statistical tools for high-throughput data analysis (STHDA)
-library(reshape2)
-
 
 cor_mat %>% melt(na.rm = TRUE) %>%
   ggplot(aes(Var2, Var1, fill = value))+
@@ -136,7 +162,7 @@ cor_mat %>% melt(na.rm = TRUE) %>%
 
 
 ```{r}
-# dummy si la columna x tiene alguna correlación mayor a 0.95
+# dummy si la columna x tiene alguna correlación mayor a 0.95 en valor absoluto
 cor_mat[,68] %>% abs() %>% max(na.rm = TRUE) > 0.95
 
 # aplico la linea a toda la matriz  y extraigo los nombres de las columnas que
@@ -151,20 +177,18 @@ Las variables con correlación mayor a 0.95 con algún par son `r highcor`. Las 
 
 ```{r}
 crm <- crm %>% select(-highcor)
-
 ```
 
 
-
-3 (2 pts). Corrobora que la asignación tratamiento fue aleatoria mediante revisión del balance. Realiza las pruebas balance T y F. Cuántas variables salen desbalanceadas? Que muestra esto sobre la asignación de tratamiento?
+## 3 (2 pts). Corrobora que la asignación tratamiento fue aleatoria mediante revisión del balance. Realiza las pruebas balance T y F. Cuántas variables salen desbalanceadas? Que muestra esto sobre la asignación de tratamiento?
 
 Primero revisamos las proporciones de la variable de tratamiento y notamos que hay el doble de observaciones en el tratamiento que en el grupo control.
+
 ```{r , eval= TRUE, cache=TRUE}
 summary(factor(crm$mailing_indicator))
 
-#82784
-#167216
 ```
+
 Ahora realizamos el balance mediante pruebas t.
 
 ```{r balancet, eval= TRUE, cache=TRUE}
@@ -173,16 +197,12 @@ balance_t<-balance_table(data = crm,
 treatment = "mailing_indicator")
 balance_t$p_value1 <- balance_t$p_value1 %>% round(3)
 
-#filtramos las variables donde se rechaza la hipótesis de igualdad
+#filtramos las variables donde se rechaza la hipótesis de igualdad al 10%
 balance_t_filter<- balance_t %>% filter(p_value1 < .1) %>%
   filter(variables1 != "customer_id")
+datatable(balance_t_filter, options = list(pageLength = 5))
 
-# Tabla de balance
-kable(balance_t_filter, digits = 3, align='c',
-      booktabs=T, caption="Tabla de Balance",
-      col.names = c("Variable","Media Control", 
-                    "Media Tratamiento", "P value"))%>%
-kable_styling(position = "center",latex_options="scale_down")
+
 
 ```
 
@@ -202,10 +222,9 @@ kable(balance_f$F_test, align = 'c',booktabs=T,digits = 2,
 
 En cuanto al balance conjunto, la prueba F muestra que no son grupos balanceados.
 
-4. Realize un ajuste de False Discovery Rate al 10%. Cuántas variables salen desbalanceadas ahora? 
+## 4. Realize un ajuste de False Discovery Rate al 10%. Cuántas variables salen desbalanceadas ahora? 
 
 ```{r fdr, cache=TRUE}
-library(broom)
 
 # funcion que realiza FDR
 # inputs: un modelo guardado y una q entre (0,1)
@@ -240,11 +259,11 @@ reg <- lm(outcome_spend~.-mailing_indicator, data = crm)
 fdr <- get_fdr(reg, 0.1)
 
 # resultados del FDR
-fdr %>% filter(significant) %>%
-  kable()%>%
-  kable_styling()
 
-# 66 variables pasan el corte
+datatable(fdr %>% filter(significant) , options = list(pageLength = 5))
+
+
+# 66 variables pasan el corte (+ el intercepto)
 
 # guardo las variables que pasan el corte menos el intercepto
 goodvars <- fdr$term[fdr$significant==T & fdr$term!="(Intercept)"]
@@ -252,7 +271,9 @@ goodvars <- fdr$term[fdr$significant==T & fdr$term!="(Intercept)"]
 # filtro base
 crm_2 <- crm %>% select(c("outcome_spend","mailing_indicator"),all_of(goodvars))
 ```
-66 variables tienen poder predictivo sobre la variable de interés. Al realizar el balance sobre estas variables, 16 muestran un desbalance con la prueba T. Concluimos que el tratamiento fue focalizado, y por lo tanto, las estimaciones del efecto de tratamiento podrían tener un sesgo positivo.
+
+
+66 (+ el intercepto) variables tienen poder predictivo sobre la variable de interés. Al realizar el balance sobre estas variables, 16(+ variable objetivo) muestran un desbalance con la prueba T. Concluimos que el tratamiento fue focalizado, y por lo tanto, las estimaciones del efecto de tratamiento podrían tener un sesgo positivo.
 
 ```{r balance2, eval=TRUE, cache=TRUE}
 # repetir balance con la prueba t
@@ -264,29 +285,17 @@ balance_t2$p_value1 <- balance_t2$p_value1 %>% round(3)
 balance_t2_filter<- balance_t2 %>% filter(p_value1 < .1) %>%
   filter(variables1!="customer_id")
 
-# Tabla de balance
-kable(balance_t2_filter, digits = 3, align='c',
-      booktabs=T, caption="Tabla de Balance",
-      col.names = c("Variable","Media Control",
-                    "Media Tratamiento", "P value"))%>%
-kable_styling(position = "center",latex_options="scale_down")
-
+datatable(balance_t2_filter , options = list(pageLength = 5))
 
 ```
 
+# Estimación de impacto de tratamiento (ATE)
+
+## 5 (2pts). Estima el impacto promedio de enviar el catalogo vía email. Estima el impacto sin controles y luego agregar dos estimaciones de robustez: 1) Agregando variables que salieron significativas y 2) Agregando variables que salieron significativas con el FDR. Interpreta los resultados 
 
 
-### Estimación de impacto de tratamiento (ATE)
 
-5 (2pts). Estima el impacto promedio de enviar el catalogo vía email. Estima el impacto sin controles y luego agregar dos estimaciones de robustez: 1) Agregando variables que salieron significativas y 2) Agregando variables que salieron significativas con el FDR. Interpreta los resultados 
-
-```{r}
-naive_with_covariates<-paste("outcome_spend~mailing_indicator+", paste(balance_t2_filter$variables1, collapse=" +"))
-noquote(naive_with_covariates)
-naive<-lm(noquote(naive_with_covariates),crm)
-```
-
-```{r}
+```{r, results='asis'}
 #modelo naive
 naive<-lm(outcome_spend~mailing_indicator,crm)
 
@@ -300,10 +309,6 @@ naive_covariates<-lm(noquote(text_naive_with_covariates),crm)
 text_naive_with_covariates_fdr<-paste("outcome_spend~mailing_indicator+", paste(balance_t2_filter$variables1, collapse=" +"))
 naive_covariates_fdr<-lm(noquote(text_naive_with_covariates_fdr),crm)
 
-naive$coefficients[[2]]
-naive_covariates$coefficients[[2]]
-naive_covariates_fdr$coefficients[[2]]
-
 stargazer(naive, naive_covariates,naive_covariates_fdr,
           keep="mailing_indicator",
           column.labels =c("Sin controles","Desbalanceadas", 
@@ -314,21 +319,25 @@ stargazer(naive, naive_covariates,naive_covariates_fdr,
 
 Confirmamos que el ATE está sobreestimado debido a un sesgo de selección; los clientes del grupo de tratamiento tienden a gastar más y por ende no son perfectamente comparables a los del grupo de control. No obstante, al incluir controles el estimador disminuye ligeramente y aumenta su eficiencia, aunque sigue siendo positivo y estadísticamente significativo.
 
-#### Estimación de efectos heterogeneos
+# Estimación de efectos heterogeneos
 
 Usaremos el training sample para estimar el Conditional Average Treatment Effect de enviar el catalogo sobre el gasto en dólares. Estimaremos dos tipos de modelos (si agregan otro es bienvenido): 
 
 (a) Double Debiased LASSO
 (b) Causal Forests 
 
-
 \bigskip
 
-Separa la base de entrenamiento de la de validación
+## Dividir base
 
+Separa la base de entrenamiento de la de validación:
 
-
-```{r validation}
+```{r}
+set.seed(1990)
+crm<-
+  crm %>% 
+  mutate(training_sample = rbinom(n = nrow(crm), 1, 0.7))
+  
 set_validation_original <- crm[crm$training_sample==0,] %>%
   select(-c(outcome_spend,training_sample))
 
@@ -340,10 +349,8 @@ set_training_original <- crm[crm$training_sample==1,] %>%
 
 ```
 
-Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos. Los cálculos con la muestra de submuestreo se hicieron en un script aparte.
-
 ```{r under}
-
+# evalumos balance de tratamiento
 # la muestra está balanceada? --> NO
 set_training_original %>% group_by(mailing_indicator) %>%
   dplyr::summarise(frecuencia_absoluta=n()) %>% 
@@ -355,22 +362,77 @@ set_training_original %>% group_by(mailing_indicator) %>%
                 latex_options="HOLD_position")
 
 # hacemos remuestreo para aumentar la eficiencia de nuestros modelos
+```
 
+Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos. Los cálculos con la muestra de submuestreo se hicieron en un script aparte.
+
+```{r }
+#UNDERSAMPLING
+# hacemos remuestreo para aumentar la eficiencia de nuestros modelos
 # Undersampling. reducir tamaño de mailing_indicator==1
-set_train_a <- sample_n((set_training %>% filter(mailing_indicator==1)),
-                             size=(set_training %>% 
+undersampling_training <- sample_n((set_training_original %>% filter(mailing_indicator==1)),
+                             size=(set_training_original %>% 
                                      filter(mailing_indicator==0) %>% 
                                      nrow()), 
          # tamaño de mailing_indicator==0
                              replace = FALSE) %>% 
-  rbind((set_training %>% filter(mailing_indicator==0)),.)
+  rbind((set_training_original %>% filter(mailing_indicator==0)),.)
+
+
+# la muestra está balanceada? --> NO
+undersampling_training %>% group_by(mailing_indicator) %>%
+  dplyr::summarise(frecuencia_absoluta=n()) %>% 
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)) %>%
+  kable(col.names = c("Mailing_indicator",
+                      "Frecuencia absoluta",
+                      "Frecuencia relativa")) %>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+```
+
+```{r }
+#OVERSAMPLING
+# Segundo intento, sugiere hacer
+
+# Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily # fuente: https://rikunert.com/SMOTE_explained
+smote <- smotefamily::SMOTE(set_training_original, # data
+set_training_original$mailing_indicator, # class attribute
+K=10) # number of nearest neighbors dup_size=2 # minority instances
+# over original number of majority instances )
+
+class(set_training_original %>% na.exclude)
+oversampled_training <- as.data.frame(smote$data)
+
+# smote guarda la variable de clase como class.
+# se renombra y convierte a numerica colnames(oversampled)[68] <- "churn" oversampled$churn <- oversampled$churn %>% as.numeric
+# ahora está mmejor balanceado pero como el SMOTE da vueltas completas, # en este caso de tamaño 2, el balance no es perfecto
+tabulado <- oversampled_training %>% group_by(mailing_indicator) %>%
+    dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+kable(tabulado,
+      col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+#preprocesamiento para que bases queden trabajables
+oversampled_training$class<-NULL
+oversampled_training$customer_id <- seq.int(nrow(oversampled_training))
+oversampled_training$X1<-NULL
+oversampled_training<-as.matrix(oversampled_training)
+oversampled_training<-as.data.frame(oversampled_training)
+oversampled_training<-as.data.table(oversampled_training)
+```
+
+```{r, echo=FALSE, cache=TRUE}
+#aqui bautizo como set_training_original al set que vaya a usar
+set_training_original<-set_training_original
+#set_training_original<-undersampling_training
+#set_training_original<-oversampled_training
 ```
 
 
-####Double Debiased LASSO
+# Double Debiased LASSO
 
-6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
-
+## 6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
 
 
 ```{r, echo=FALSE, cache=TRUE}
@@ -399,7 +461,6 @@ y_train <- set_training_original %>%
   select(outcome_spend)
 
 trat_train <- set_training_original %>% select(mailing_indicator)
-
 set_training <- set_training_original %>% select(-c(outcome_spend,mailing_indicator, customer_id))
 
 
@@ -519,8 +580,7 @@ predics$treat_hat <- (predics$treat_hat_1+
 
 
 
-
-7 (2pts). Cuál es el impacto de tratamiento promedio? Estimalo de dos maneras: 1) `spend_resid~treat_hat + treat` y 2) `spend~treat_resid`. Sale lo mismo? Justifica tu respuesta
+## 7 (2pts). Cuál es el impacto de tratamiento promedio? Estimalo de dos maneras: 1) `spend_resid~treat_hat + treat` y 2) `spend~treat_resid`. Sale lo mismo? Justifica tu respuesta
 
 ```{r}
 
@@ -569,10 +629,12 @@ stargazer(spend_ate,spend_ate2,spend_atev,spend_ate2v,
 ```
 
 
+Realizo pruebas de hipótesis para evaluar si el efecto es el mismo 
 ```{r, echo=FALSE}
-# prueba de igualdad
+# prueba de igualdad en training
 ((spend_ate$coefficients[[3]] - spend_ate2$coefficients[[2]]) / sqrt(summary(spend_ate)$coefficients[3,2]^2 + summary(spend_ate2)$coefficients[2,2]^2) ) %>% pnorm()
 
+# prueba de igualdad en validación
 ((spend_atev$coefficients[[3]] - spend_ate2v$coefficients[[2]]) / sqrt(summary(spend_atev)$coefficients[3,2]^2 + summary(spend_ate2v)$coefficients[2,2]^2) ) %>% pnorm()
 
 ```
@@ -582,7 +644,7 @@ El impacto de tratamiento promedio es un aumento en el gasto de 2-3 unidades, de
 Los valores estimados del ATE muestran diferencias menores a una décima, es decir, el impacto de enviar el catálogo a los clientes medido por una y otra forma varía por centavos. De hecho, no se puede rechazar la hipótesis de que estos coeficientes son iguales. Esto era de esperarse pues la relación entre variables dependientes y dependiente es la misma, sólo que invertida: la varianza explicada por todos los factores externos al tratamiento contra la variación en el tratamiento y el gasto, respectivamente. 
 
 
-8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
+## 8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
 
 ```{r}
 
@@ -611,6 +673,8 @@ coefs_treat$var[coefs_treat$i>0] <- colnames(set_training)[coefs_treat$i]
 # promediamos los coeficientes
 aggregate(coefs_treat$x, by=list(coefs_treat$var), mean) %>%
   kable(., col.names = c("Variable", "Coeficiente promedio"))
+
+#datatable(data , options = list(pageLength = 5))
 ```
 
 
@@ -639,12 +703,15 @@ coefs_spend$var[coefs_spend$i>0] <- colnames(set_training)[coefs_spend$i]
 # promediamos los coeficientes
 aggregate(coefs_spend$x, by=list(coefs_spend$var), mean) %>%
   kable(., col.names = c("Variable", "Coeficiente promedio"))
+
+#datatable(data , options = list(pageLength = 5))
+
 ```
 
 Cuando el tratamiento se asigna de forma aleatoria exitosamente, es de esperarse que pocas variables salgan significativas en la función $g(X_I)$, y que su poder predictivo sea muy pequeño.
 
 
-9 (3pts). Ahora corre un DDML LASSO para encontrar los efectos a nivel cliente (Tip: interactúa todas las variables con `treat_resid`. Muestra el código. Qué varaibles salen significativas?
+## 9 (3pts). Ahora corre un DDML LASSO para encontrar los efectos a nivel cliente (Tip: interactúa todas las variables con `treat_resid`. Muestra el código. Qué varaibles salen significativas?
 
 ```{r}
 # creo bases de interacciones
@@ -682,7 +749,7 @@ signifs_train %>% select(c(var,x)) %>%
 ```
 
 
-10 (2 pts). Predice el CATE en la base de entrenamiento y en la base de validación. Como se ve la distribución del impacto de tratamiento en ambas? 
+## 10 (2 pts). Predice el CATE en la base de entrenamiento y en la base de validación. Como se ve la distribución del impacto de tratamiento en ambas? 
 
 Como se interactuó el efecto de tratamiento con todas las X, el impacto de tratamiento depende de los niveles de x de cada cliente. Por lo tanto, $\tau_i$ es igual al coeficiente del residual de tratamiento más todas las interacciones significativas de éste con las X evaluado a los niveles de cada individuo. Por lo tanto, $\tau_i = E(V_i^Y | \tau_i=1, X_i) -E(V_i^Y | \tau_i=0,X_i)$.
 
@@ -692,16 +759,15 @@ Computacionalmente, una manera directa de hacer esto es invertir la variable de 
 #OSEA CALCULAR EL CONTRAFACTUAL y luego comparar para cada i real vs contrafactual
 #SE ME OCURRE PREDECIR LA Vy PARA LA BASE DE DATOS CON LA T INVERTIDA (SI ES 1 LA CAMBIO A 0 Y VICEVERSA)
 
-
+#____________________
 # EN ENTRENAMIENTO
-
-# predicciones con Ti observado
+#____________________
+# PREDICCIONES CON TREATMENT REAL
 pred_train <- predict(ddhte_train,newdata =
                          cbind(set_training,modelo$treat_resid,W_train)
                        ) %>% as.matrix %>% as.data.frame()
 
-# contrafactual
-
+# CONTRAFACUTAL
 #primero creo una variable alrevez
 trat_train_cf <- trat_train %>%
   mutate(mailing_indicator = ifelse(mailing_indicator==1,0,1))
@@ -730,9 +796,11 @@ cates_train <- cates_train %>% mutate(a=obs*treat+contraf*treat_contraf,
                        cate=a-b)
 
 
-# EN VALIDACIÓN
+#____________________
+# EN VALIDACION
+#____________________
 
-#predicciones normales
+# PREDICCIONES CON TREATMENT REAL
 W_test <- predics$treat_resid*set_validation
 colnames(W_test) <- paste0("treat:",colnames(W_test))
 
@@ -740,8 +808,7 @@ test<-cbind(set_validation,predics$treat_resid,W_test)
 pred_normales<-predict(ddhte_train,newdata = test) #predicciones
 obs <-as.data.frame(as.matrix(pred_normales))
 
-
-#contrafactual
+# CONTRAFACUTAL
 
 #primero creo una variable alrevez
 trat_validation_counterfactual<-trat_validation%>%mutate(mailing_indicator=ifelse(mailing_indicator==1,0,1))
@@ -765,9 +832,9 @@ colnames(cates) <- c("obs","contraf","treat","treat_contraf")
 cates<-cates %>% mutate(a=obs*treat+contraf*treat_contraf,
                        b=obs*treat_contraf+contraf*treat,
                        cate=a-b )
-
-#plots
-
+#___________________________
+#PLOTA CATE
+#___________________________
 # entrenamiento
 plot1 <- ggplot(cates_train, aes(x=cate)) +
   geom_histogram(binwidth=1)+geom_vline(aes(xintercept=0),
@@ -788,7 +855,6 @@ plot2 <- ggplot(cates, aes(x=cate)) +
        subtitle = "Validación")+
   theme_bw()
 
-
 grid.arrange(plot1, plot2, ncol=2)
 
 
@@ -797,12 +863,15 @@ grid.arrange(plot1, plot2, ncol=2)
 El CATE en el set de entrenamiento muestra menor dispersión, con una concentración muy alta después del 0. No obstante esta diferencia, los CATE en una y otra base se ven muy similares. Esto da robustez a las estimaciones y apunta a la existencia de efectos heterogéneos, donde algunos clientes muestran respuestas al tratamiento mayores a 20 unidades, mientras que otros clientes muestran respuestas no favorables.
 
 
-####Causal Forest
+# Causal Forest
 
-11 (2pts). Ahora vayamos al causal forest. Estima un causal forest en la base de entrenamiento (Estima 750 árboles)
+## 11 (2pts). Ahora vayamos al causal forest. Estima un causal forest en la base de entrenamiento (Estima 750 árboles)
 
 ```{r, cache = FALSE}
+#__________________
+#ESTIMACION
 # CAUSAL FOREST
+#__________________
 
 tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% dplyr::select(-c(outcome_spend,mailing_indicator))),collapse = ' + '), sep = " ~ "))
 
@@ -834,22 +903,26 @@ ggplot(data.frame(W.hat = cf$W.hat, W=factor(cf$W.orig)))+
 
 ```
 
-12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
+## 12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
 
 ```{r}
 
+#________________-
+#PREDICCIONES IN SAMPLE
+#________________
+
 # Veamos las predicciones y cómo se distribuyen
 # sacamos las predicciones IN SAMPLE
-
 
 predicciones_is <- predict(cf ,estimate.variance = TRUE)
 
 tau_hat_cf_is <- predicciones_is$predictions
 
 ggplot(data=predicciones_is)+
-  geom_histogram(aes(x = tau_hat_cf_is, y = stat(density)), position = "identity")+
-  geom_density(aes(x=tau_hat_cf_is, y=stat(density)))+
-  xlim(-20,20)+
+  geom_histogram(aes(x = tau_hat_cf_is, y = stat(density)), position = "identity",binwidth=1)+
+  geom_vline(aes(xintercept=0),
+            color="red", linetype="dashed", size=.5)+
+  xlim(-10,30)+
   theme_bw()+
   labs(title="Causal Forest: insample CATE",
        caption="En la gráfica se omiten predicciones mayores a 20 y menores a -20")
@@ -871,6 +944,10 @@ average_treatment_effect(
 ```
 
 ```{r}
+#________________-
+#PREDICCIONES OUT OF SAMPLE
+#________________
+
 # sacamos las predicciones OUT OF SAMPLE
 
 
@@ -879,9 +956,10 @@ predicciones_out <- predict(cf ,  newdata = set_validation,estimate.variance = T
 tau_hat_cf_out <- predicciones_out$predictions
 
 ggplot(data=predicciones_out)+
-  geom_histogram(aes(x = tau_hat_cf_out, y = stat(density)), position = "identity")+
-  geom_density(aes(x=tau_hat_cf_out, y=stat(density)))+
-  xlim(-20,20)+
+  geom_histogram(aes(x = tau_hat_cf_out, y = stat(density)), position = "identity",binwidth=1)+
+  geom_vline(aes(xintercept=0),
+            color="red", linetype="dashed", size=.5)+
+  xlim(-10,30)+
   theme_bw()+
   labs(title="Causal Forest: out-of-bag CATE",
        caption="En la gráfica se omiten predicciones mayores a 20 y menores a -20")
@@ -902,105 +980,56 @@ average_treatment_effect(
 
 
 ```
+# Comparación
 
-```{r, cache=FALSE, include=FALSE}
-
-# !!!! OJO
-#CAUSAL TREE (ES OPCIONAL, para quien le interese)
-####################################################
-
-
-#1.- usamos nuestra base de entrenamiento
-df_training <- crm %>% 
-filter(training_sample==1)
-
-
-#2.- Dividimos entrenamiento entre Splitting y Estimating
-
-# tamaño del split
-split_size <- floor(nrow(df_training)*0.5)
-
-# aleatoriamente generamos el split
-split_id <- sample(nrow(df_training),replace=FALSE, size=split_size)
-
-# hacemos el split
-df_split <- df_training[split_id,] 
-df_est <- df_training[-split_id]
-
-# Ahora sí, el árbol:
-
-tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-no_covariates)),collapse = ' + '), sep = " ~ "))
-
-ctree_unpruned <- honest.causalTree(
-  formula=tree_formula,
-  data=df_split,
-  est_data=df_est,
-  treatment=df_split$mailing_indicator,       # variable de tratamiento
-  est_treatment=df_est$mailing_indicator,
-  split.Rule="CT",
-  cv.option = "TOT",
-  cp=0,
-  split.Honest = TRUE,
-  cv.Honest=TRUE,
-  minsize=5,
-  HonestSampleSize = nrow(df_est)
-)
-
-
-# Ahora hacemos crossvalidate
-ctree_cptable <- as.data.frame(ctree_unpruned$cptable)
-
-# Obtenemos parámetro óptimo de complejidad para podar el árbol
-selected_cp <- which.min(ctree_cptable$xerror)
-optim_cp_ct <- ctree_cptable[selected_cp, "CP"]
-
-# podamos el árbol
-ctree_pruned <- prune(tree=ctree_unpruned, cp=optim_cp_ct)
-
-# dibujemos el árbol
-
-
-# predecimos estimaciones puntuales en la estimation sample
-tauhat_causaltree_est <- predict(ctree_pruned, newdata=df_est)
-
-# saquemos errore estándar
-# el paquete no los saca
-
-num_hojas <- length(unique(tauhat_causaltree_est))
-
-```
-
-
-13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
+## 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
 
 ```{r}
-# IN SAMPLE
+#________________-
+#SCATTER IN SAMPLE
+#________________
+
 tau_hat_ddbl_is<-(modelo$spend_hat)
-data_is <- as.data.frame(tau_hat_cf_is,tau_hat_ddbl_is)
+treat_in<-modelo$treat
+data_is <- as.data.frame(tau_hat_cf_is,tau_hat_ddbl_is,treat_in)
+
+ggplot(data_is, aes(x=tau_hat_cf_is, y=tau_hat_ddbl_is,color=treat_in)) +
+  geom_point(alpha=0.5)+xlim(-5,100)+ylim(-5,100)
 
 ggplot(data_is, aes(x=tau_hat_cf_is, y=tau_hat_ddbl_is)) +
-  geom_point()+xlim(-5,100)+ylim(-5,100)
+xlim(-5,100)+ylim(-5,100)+
+  stat_bin2d(bins = 100) +
+  scale_fill_gradient(low = "lightblue", high = "red")
 
 ```
 
 
 
 ```{r}
-# OUT OF SAMPLE
+#________________-
+#SCATTER OUT SAMPLE
+#________________
+
 tau_hat_ddbl_out<-(predics$spend_hat)
-data_out <- as.data.frame(tau_hat_cf_out,tau_hat_ddbl_out)
+treat_out<-predics$treat
+data_out <- as.data.frame(tau_hat_cf_out,tau_hat_ddbl_out,treat_out)
+
+ggplot(data_out, aes(x=tau_hat_cf_out, y=tau_hat_ddbl_out, color=treat_out)) +
+  geom_point(alpha=0.5)+xlim(-5,100)+ylim(-5,100)
 
 ggplot(data_out, aes(x=tau_hat_cf_out, y=tau_hat_ddbl_out)) +
-  geom_point()+xlim(-5,100)+ylim(-5,100)
+xlim(-5,100)+ylim(-5,100)+
+  stat_bin2d(bins = 100) +
+  scale_fill_gradient(low = "lightblue", high = "red")
+
 ```
 
 
-14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
+## 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
 
 ```{r}
 #primero dividir set validacion 
 
-library(gtools)
 g <- quantcut(predics$spend_hat, c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9, 1))
 datas<-split(predics, g)
 
@@ -1054,8 +1083,35 @@ barplot(chart_rf$V1)
 
 ```
 
+```{r ERRORES}
 
-15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente: 
+error_data<-cbind(predicciones_out$predictions, predics$spend, predics$spend_hat)
+colnames(error_data) <- c("cf","real","ddl")
+error_data<-as.data.frame(error_data)
+
+error_data<-error_data %>% mutate(error_cf=real-cf, 
+                                  error_ddl=real-ddl)
+
+1-sum((error_data$error_ddl)^2)/sum((error_data$real)^2)
+1-sum((error_data$error_cf)^2)/sum((error_data$real)^2)
+
+#ddl 
+#cf 
+#ddl 0.114936
+#cf  0.02970433
+
+#undersample
+#ddl 0.1133851
+#cf 0.0311426
+
+#ddl 0.1151426
+#cf  0.0318769
+
+```
+
+# Estrategia de focalización
+
+## 15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente: 
 
 - El costo marginal de mandar el mail es 0.99 USD
 
@@ -1100,7 +1156,7 @@ resta de beneficios totales con campaña menos beneficios totales sin campaña
 
 
 
-16 (3pts). Haz una gráfica del la utilidad total vs q (personas que entran en la campaña) para DDML y CF
+## 16 (3pts). Haz una gráfica del la utilidad total vs q (personas que entran en la campaña) para DDML y CF
 
 
 
