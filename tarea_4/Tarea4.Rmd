@@ -14,6 +14,13 @@ output:
     toc_float: true
 ---
 
+#### Alfredo Lefranc Flores
+#### Cynthia Raquel Valdivia Tirado
+#### Rafael Sandoval Fernández
+#### Marco Antonio Ramos Juárez
+#### Francisco Velazquez Guadarrama
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
                       warning = FALSE,
@@ -102,28 +109,25 @@ En una revisión inicial de la base, notamos que ninguna variable tiene `NA`s y 
 
 ### 2. Muestra la matriz de correlación entre variables. Muestra los pares de variables que tienen más de 95% de correlación. Remueve una de cada par multicolineal. 
 
-```{r}
-#_____________________
-#PREPROCESAMIENTO
-#____________________
-# para esta parte primero voy estandarizar los datos para reducir el tiempo de computo:
 
-#identico dummies
+#### Preprocesamiento
+
+Primero voy estandarizar los datos para reducir el tiempo de computo:
+```{r}
+#identifico dummies
 dummies_id<-inspection %>% filter(min ==0 & max ==1  & range ==1 )
 
 #creo una base de datos sin dummies para estandarizar
 z_numerics<- crm %>% select(-dummies_id$column,-customer_id)
 dummies<- crm %>% select(dummies_id$column)
 
-#transformo la base de datos a estandarizada para reducir el tiempo de calculo
+#transformo la base de datos estandarizada para reducir el tiempo de calculo
 z_numerics<-scale(z_numerics)
 cor_data<-cbind(z_numerics,dummies)
 ```
 
+#### Correlograma
 ```{r}
-#_____________________
-#CORRELOGRAMA
-#____________________
 # mariz de correlacion
 cor_mat <- cor(cor_data)
 
@@ -134,15 +138,14 @@ reorder_cormat <- function(cormat){
   cormat <-cormat[hc$order, hc$order]
 }
 cor_mat <- reorder_cormat(cor_mat)
+```
 
-# triangulo superior de la matriz de correlacion
-# asi tenemos cada combinacion entre variables 1 sola vez
-# y tampoco tenemos la combinación de cada variable consigo misma (diagonal)
+Nos quedamos con el triángulo superior de la matriz de correlación. Así tenemos cada combinación entre variables una sola vez y tampoco tenemos la combinación de cada variable consigo misma (diagonal).
+
+Luego transformamos la matriz para hacer un `ggheatmap`. Para esta gráfica nos basamos en la página de Statistical tools for high-throughput data analysis (STHDA).
+
+```{r}
 cor_mat[lower.tri(cor_mat, diag = TRUE)] <- NA
-
-# transformamos matriz para hacer un ggheatmap
-# Para esta gráfica nos basamos en la página de
-# Statistical tools for high-throughput data analysis (STHDA)
 
 cor_mat %>% melt(na.rm = TRUE) %>%
   ggplot(aes(Var2, Var1, fill = value))+
@@ -159,15 +162,14 @@ cor_mat %>% melt(na.rm = TRUE) %>%
 ```
 
 
-```{r}
-#_____________________
-#IDENTIFICACIÓN DE MAYORES CORRELACIONES
-#____________________
-# dummy si la columna x tiene alguna correlación mayor a 0.95 en valor absoluto
+#### Identificación de las correlaciones más grandes
+
+Definimos una dummy que indica si la columna x tiene alguna correlación mayor a 0.95 en valor absoluto con alguno de los renglones. Aplico la dummy a toda la matriz y extraigo los nombres de las columnas que cumplan con esto.
+
+```{r, echo=FALSE}
+# dummy 
 cor_mat[,68] %>% abs() %>% max(na.rm = TRUE) > 0.95
 
-# aplico la linea a toda la matriz  y extraigo los nombres de las columnas que
-# cumplan con esto
 highcor <- cor_mat[,(apply(cor_mat, 2, 
                           function(y) (abs(y) %>% 
                                          max(na.rm = TRUE) > 0.95)))] %>%
@@ -183,7 +185,7 @@ crm <- crm %>% select(-highcor)
 
 ### 3 (2 pts). Corrobora que la asignación tratamiento fue aleatoria mediante revisión del balance. Realiza las pruebas balance T y F. Cuántas variables salen desbalanceadas? Que muestra esto sobre la asignación de tratamiento?
 
-Primero revisamos las proporciones de la variable de tratamiento y notamos que hay el doble de observaciones en el tratamiento que en el grupo control.
+Primero revisamos las proporciones de la variable de tratamiento y notamos que hay el doble de observaciones en el tratamiento que en el grupo control. Este es el desbalance más importante que notamos, y profundizamos al respecto al dividir la muestra en la pregunta 6.
 
 ```{r , eval= TRUE}
 summary(factor(crm$mailing_indicator))
@@ -192,10 +194,9 @@ summary(factor(crm$mailing_indicator))
 
 Ahora realizamos el balance mediante pruebas t.
 
+#### Pruebas T
 ```{r balancet, eval= TRUE}
-#_____________________
-#PRUEBAS DE BALANCE T
-#____________________
+
 # pruebas t
 balance_t<-balance_table(data = crm,
 treatment = "mailing_indicator")
@@ -206,17 +207,13 @@ balance_t_filter<- balance_t %>% filter(p_value1 < .1) %>%
   filter(variables1 != "customer_id")
 datatable(balance_t_filter, options = list(pageLength = 5))
 
-
-
 ```
 
 Con una significancia del 10%, nos salen 32 variables desbalanceadas. En general, parece que el tratamiento fue focalizado a clientes que, en promedio, compran en línea más frecuentemente y muestran mayores gastos.
 
+#### Pruebas F
 
 ```{r balancef}
-#_____________________
-#PRUEBAS DE BALANCE F
-#____________________
 
 # pruebas F
 balance_f<-balance_regression(data = crm,
@@ -232,10 +229,8 @@ En cuanto al balance conjunto, la prueba F muestra que no son grupos balanceados
 
 ### 4. Realize un ajuste de False Discovery Rate al 10%. Cuántas variables salen desbalanceadas ahora? 
 
+Primero definimos una función que realiza FDR a la base.
 ```{r fdr}
-#_____________________
-#FDR
-#____________________
 
 # funcion que realiza FDR
 # inputs: un modelo guardado y una q entre (0,1)
@@ -264,15 +259,20 @@ get_fdr <- function(model,q){
   
   return(fdr)
 }
+```
 
-# definir el modelo
+La función necesita como input que definamos el modelo.
+
+```{r}
 reg <- lm(outcome_spend~.-mailing_indicator, data = crm)
+```
+
+Ahora aplicamos la función a la base y filtramos las variables que salen significativas.
+
+```{r}
 fdr <- get_fdr(reg, 0.1)
 
-# resultados del FDR
-
 datatable(fdr %>% filter(significant) , options = list(pageLength = 5))
-
 
 # 66 variables pasan el corte (+ el intercepto)
 
@@ -288,7 +288,7 @@ crm_2 <- crm %>% select(c("outcome_spend","mailing_indicator"),all_of(goodvars))
 
 ```{r balance2, eval=TRUE}
 #_____________________
-#PRUEBAS DE BALANCE
+#PRUEBAS DE BALANCE SOBRE FDR
 #____________________
 # repetir balance con la prueba t
 balance_t2 <- balance_table(data = crm_2,
@@ -308,13 +308,11 @@ datatable(balance_t2_filter , options = list(pageLength = 5))
 ### 5 (2pts). Estima el impacto promedio de enviar el catalogo vía email. Estima el impacto sin controles y luego agregar dos estimaciones de robustez: 1) Agregando variables que salieron significativas y 2) Agregando variables que salieron significativas con el FDR. Interpreta los resultados 
 
 
-
 ```{r, results='asis'}
 #modelo naive
 naive<-lm(outcome_spend~mailing_indicator,crm)
 
 #naive_controles
-# solamente accedi a los covarites de manera automatica, no se preocupen, se actualiza solo ;)
 text_naive_with_covariates<-paste("outcome_spend~mailing_indicator+", paste(balance_t_filter$variables1, collapse=" +"))
 naive_covariates<-lm(noquote(text_naive_with_covariates),crm)
 
@@ -322,6 +320,7 @@ naive_covariates<-lm(noquote(text_naive_with_covariates),crm)
 text_naive_with_covariates_fdr<-paste("outcome_spend~mailing_indicator+", paste(balance_t2_filter$variables1, collapse=" +"))
 naive_covariates_fdr<-lm(noquote(text_naive_with_covariates_fdr),crm)
 
+# tabla de resultados
 stargazer(naive, naive_covariates,naive_covariates_fdr,
           keep="mailing_indicator",
           column.labels =c("Sin controles","Desbalanceadas", 
@@ -366,12 +365,13 @@ set_training_original <- crm[crm$training_sample==1,] %>%
 
 ```
 
-```{r }
+Como mencionamos antes, hay un desbalance en la variable de tratamiento. Examinamos este desbalance con más detenimiento.
+
+```{r}
 #_______________________
 # EVALUACIÓN DE BALANCE INICIAL
 #______________________
-# evalumos balance de tratamiento
-# la muestra está balanceada? --> NO
+
 set_training_original %>% group_by(mailing_indicator) %>%
   dplyr::summarise(frecuencia_absoluta=n()) %>% 
   mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)) %>%
@@ -381,19 +381,12 @@ set_training_original %>% group_by(mailing_indicator) %>%
   kable_styling(position = "center",
                 latex_options="HOLD_position")
 
-# hacemos remuestreo para aumentar la eficiencia de nuestros modelos
 ```
 
-Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos. Los cálculos con la muestra de submuestreo se hicieron en un script aparte.
+Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos, tanto _undersampling_ como _oversampling_. A continuación se muestra el código que genera estas bases de entrenamiento.
 
 ```{r,eval = FALSE }
-#_______________________
-# ESTRATEGIAS DE BALANCE
-#______________________
-
 #UNDERSAMPLING
-# hacemos remuestreo para aumentar la eficiencia de nuestros modelos
-# Undersampling. reducir tamaño de mailing_indicator==1
 undersampling_training <- sample_n((set_training_original %>% filter(mailing_indicator==1)),
                              size=(set_training_original %>% 
                                      filter(mailing_indicator==0) %>% 
@@ -401,22 +394,10 @@ undersampling_training <- sample_n((set_training_original %>% filter(mailing_ind
          # tamaño de mailing_indicator==0
                              replace = FALSE) %>% 
   rbind((set_training_original %>% filter(mailing_indicator==0)),.)
-
-
-# la muestra está balanceada? --> NO
-undersampling_training %>% group_by(mailing_indicator) %>%
-  dplyr::summarise(frecuencia_absoluta=n()) %>% 
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)) %>%
-  kable(col.names = c("Mailing_indicator",
-                      "Frecuencia absoluta",
-                      "Frecuencia relativa")) %>%
-  kable_styling(position = "center",
-                latex_options="HOLD_position")
 ```
 
 ```{r,eval = FALSE}
 #OVERSAMPLING
-# Segundo intento, sugiere hacer
 
 # Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily # fuente: https://rikunert.com/SMOTE_explained
 smote <- smotefamily::SMOTE(set_training_original, # data
@@ -458,18 +439,8 @@ set_training_original<-set_training_original
 
 ### 6 (3pts). Estima un Double Debiased LASSO. Asegurate de mostrar el código. (Tip: recuerda que necesitas guardar el LASSO de cada K para poder usarlo en la base de validación)
 
-
+Primero dividimos el entrenamiento en 5 folds de manera aleatoria. Para ello, estratificamos por `mailing_indicator` para asegurar balance similar entre cada uno de los folds y el set de entretamiento en promedio.
 ```{r}
-#_________________
-#ESTIMACIÓN
-#_________________
-
-
-# dividir set de entrenamiento en k folds
-
-
-# estratificamos por mailing_indicator para asegurar balance similar entre
-# cada uno de los k folds y el set de entretamiento en promedio
 k <- treatment_assign(data = set_training_original, share_control = 0.2,
                     n_t = 4, strata_varlist = "mailing_indicator",
                     missfits = "global",
@@ -478,42 +449,50 @@ k <- treatment_assign(data = set_training_original, share_control = 0.2,
 k <- k %>% mutate(k = treat + 1) %>%
   ungroup()
 
-# set_training <- bind_cols(set_training, k %>% select(k))
-
 k <- k$k
+```
 
+Después separo la variable de interés y de tratamiento del set de entrenamiento.
 
-#_________________
-#LASSO CROSSFITING EN ENTRENAMIENTO
-#_________________
-
-# separo variable de interés y de tratamiento
+```{r}
 y_train <- set_training_original %>%
   select(outcome_spend)
 
 trat_train <- set_training_original %>% select(mailing_indicator)
 set_training <- set_training_original %>% select(-c(outcome_spend,mailing_indicator, customer_id))
+```
 
+Y ahora corremos el modelo en la base de validación y entrenamiento.
 
+```{r}
 # para correr modelos en paralelo
 cores <- detectCores()
 cl<-makeCluster(cores)
 inicio<-Sys.time()
 
+
+#_____________
+# ENTRENAMIENTO
+#______________
+
 modelo <- NULL
-modelo <- map_dfr(1:5, 
+
+modelo <- map_dfr(1:5, # loop sobre los 5 folds
                 function(a) {
+                  
+                  # predicción del entrenamiento con base en las X
                   treat_fit <-gamlr(x = set_training[k!=a, , drop= F],
                                     y = trat_train[k !=a],
                                     family="binomial")
                   
                   
-                  
+                  # estimación del tratamiento en el fold excluido
                   treat_hat <- as.numeric(predict(
                     treat_fit,
                     newdata = set_training[k==a, , drop= F],
                     type = "response"))
                   
+                  # Repetimos pero con outcome_spend
                   spend_fit <- gamlr(x = set_training[k!=a, , drop= F],
                                     y = y_train[k !=a])
                   
@@ -522,10 +501,11 @@ modelo <- map_dfr(1:5,
                     newdata = set_training[k==a, , drop= F],
                     type = "response"))
                   
+                  # Calculamos los residuales
                   treat_resid <- trat_train[k==a] - treat_hat
                   spend_resid <- y_train[k==a]- spend_hat
                   
-
+                  # Guardamos las estimaciones y los residuales
                   fits <- bind_cols("treat_hat" = treat_hat,
                                     "spend_hat"= spend_hat,
                                     "treat_resid" = treat_resid,
@@ -540,30 +520,29 @@ modelo <- map_dfr(1:5,
 
 
 #_________________
-#PREDUCCIONES EN VALIDATION
+#PREDICCIONES EN VALIDATION
 #_________________
 
 
-# separo variable de tratamiento
-trat_validation <- set_validation_original %>% select(mailing_indicator)
+# separo variable de tratamiento y el id de la base de validación
+trat_validation <- set_validation_original %>% 
+  select(mailing_indicator)
 
-set_validation <- set_validation_original %>% select(-c(mailing_indicator, customer_id))
+set_validation <- set_validation_original %>%
+  select(-c(mailing_indicator, customer_id))
 
 
-#_________________
-#ESTIMACIÓN DE T Y SPEND EN VALIDATION
-#_________________
 
 predics <- NULL
 predics <- map_dfc(1:5, 
                 function(a) {
                   
-                  # LASSO tratamiento
+                  # LASSO tratamiento. exactamente los mismos modelos que arriba
                   treat_fit <-gamlr(x = set_training[k!=a, , drop= F],
                                     y = trat_train[k !=a],
                                     family="binomial")
                   
-                  # estimacion de tratamiento
+                  # estimacion de tratamiento en set de validación
                   treat_hat <- as.numeric(predict(
                     treat_fit,
                     newdata = set_validation,
@@ -573,7 +552,7 @@ predics <- map_dfc(1:5,
                   spend_fit <- gamlr(x = set_training[k!=a, , drop= F],
                                      y = y_train[k !=a])
                   
-                  # estimación spend
+                  # estimación spend en set de validación
                   spend_hat <- as.numeric(predict(
                     spend_fit,
                     newdata = set_validation,
@@ -614,16 +593,11 @@ predics$treat_hat <- (predics$treat_hat_1+
 ```
 
 
-
 ### 7 (2pts). Cuál es el impacto de tratamiento promedio? Estimalo de dos maneras: 1) `spend_resid~treat_hat + treat` y 2) `spend~treat_resid`. Sale lo mismo? Justifica tu respuesta
 
+Primero estimamos el ATE en el set de entrenamiento. Para ello, agregamos las variables `spend` y `treat` a la base con los residuales y luego corremos ambos modelos.
+
 ```{r, results='asis'}
-
-#_________________________
-# ATE en el set de entrenamiento
-#________________________
-
-# primero agrego las variables spend y treat a la base con los residuales
 modelo$spend <- y_train[[1]]
 modelo$treat <- trat_train[[1]]
 colnames(modelo)[3:4] <- c("treat_resid","spend_resid")
@@ -636,12 +610,12 @@ data = modelo)
 spend_ate2 <-lm(spend ~ treat_resid,
 data = modelo)
 
+```
 
 
-#_________________________
-# ATE en el set de validacion
-#________________________
+Repetimos este procedimiento para estimar el ATE en el set de validación.
 
+```{r}
 predics$spend <- y_validation[[1]]
 predics$treat <- trat_validation[[1]] 
 
@@ -667,7 +641,9 @@ stargazer(spend_ate,spend_ate2,spend_atev,spend_ate2v,
 ```
 
 
-Realizo pruebas de hipótesis para evaluar si el efecto es el mismo
+En estas tablas los estimadores de interés son los que corresponden a `treat` y `treat_resid`. `treat_hat` es la parte del tratamiento que puede ser explicada por las covariables, y a nosotros nos interesa el residual de esto. Entonces, los estimadores del ATE se ubican consistentemente entre 2 y 3 unidades de `outcome_spend`, dependiendo de si es medido con la base de entrenamiento o de validación.
+
+Por último, realizamos pruebas de hipótesis para evaluar si el efecto es el mismo. Los valores estimados del ATE muestran diferencias menores a una décima, es decir, el impacto de enviar el catálogo a los clientes medido por una y otra forma varía por centavos. De hecho, no se puede rechazar la hipótesis de que estos coeficientes son iguales. Esto era de esperarse pues la relación entre variables dependientes y dependiente es la misma, sólo que invertida: la varianza explicada por todos los factores externos al tratamiento contra la variación en el tratamiento y el gasto, respectivamente. 
 
 ```{r}
 #_________________________
@@ -682,13 +658,10 @@ Realizo pruebas de hipótesis para evaluar si el efecto es el mismo
 
 ```
 
-El impacto de tratamiento promedio es un aumento en el gasto de 2-3 unidades, dependiendo de si es medido con la base de entrenamiento o de validación.
-
-Los valores estimados del ATE muestran diferencias menores a una décima, es decir, el impacto de enviar el catálogo a los clientes medido por una y otra forma varía por centavos. De hecho, no se puede rechazar la hipótesis de que estos coeficientes son iguales. Esto era de esperarse pues la relación entre variables dependientes y dependiente es la misma, sólo que invertida: la varianza explicada por todos los factores externos al tratamiento contra la variación en el tratamiento y el gasto, respectivamente. 
-
 
 ### 8 (3pts). Cuáles son las variables más importantes para las nuisance functions $T_i = g(X_i)+v_i$ y $y_i=m(X_i)+\epsilon_i$? (Tip: toma las variables que tengan $\beta \neq 0$ en cada $k$ y haz un `inner_join`. De ahí muestra el promedio de los coeficientes) Interpreta la función $g(X_i)$, porque sale así?
 
+Para ver esto, corremos los modelos una vez más, pero ahora vemos los coeficientes en lugar de predecir. Esto lo hacemos en cada uno de los folds.
 ```{r}
 #_________________________
 # MODELO PARA T
@@ -704,8 +677,8 @@ coefs_treat <- map_dfr(1:5,
                   }
                 )
 
-# la variable i considera al intercepto como 1 y a las demas variables en el orden
-# del set_training
+# la variable i considera al intercepto como la primera variable y 
+# a las demas variables en el orden del set_training
 
 # corregimos esto para que coincidan
 coefs_treat$i <- coefs_treat$i -1
@@ -716,13 +689,10 @@ coefs_treat$var[coefs_treat$i==0] <- "Intercept"
 coefs_treat$var[coefs_treat$i>0] <- colnames(set_training)[coefs_treat$i]
 
 # promediamos los coeficientes
-#aggregate(coefs_treat$x, by=list(coefs_treat$var), mean) %>%
-#  kable(., col.names = c("Variable", "Coeficiente promedio"))
-
 datatable(aggregate(coefs_treat$x, by=list(coefs_treat$var), mean)  , options = list(pageLength = 5))
 ```
 
-
+Y repetimos el procedimiento para el LASSO de `outcome_spend`.
 ```{r}
 #_________________________
 # MODELO PARA Y
@@ -748,9 +718,6 @@ coefs_spend$var[coefs_spend$i==0] <- "Intercept"
 coefs_spend$var[coefs_spend$i>0] <- colnames(set_training)[coefs_spend$i]
 
 # promediamos los coeficientes
-#aggregate(coefs_spend$x, by=list(coefs_spend$var), mean) %>%
- # kable(., col.names = c("Variable", "Coeficiente promedio"))
-
 datatable((aggregate(coefs_spend$x, by=list(coefs_spend$var), mean)) , options = list(pageLength = 5))
 
 ```
@@ -760,19 +727,18 @@ Cuando el tratamiento se asigna de forma aleatoria exitosamente, es de esperarse
 
 ### 9 (3pts). Ahora corre un DDML LASSO para encontrar los efectos a nivel cliente (Tip: interactúa todas las variables con `treat_resid`. Muestra el código. Qué varaibles salen significativas?
 
+Para el DDML LASSO aprovechamos los residuales calculados en las preguntas anteriores. Complementamos con el vector de W, las interacciones entre el residual de tratamiento y las X. Cabe mencionar que este modelo únicamente se corre en el set de entrenamiento.
+
 ```{r}
 # creo bases de interacciones
 W_train <- modelo$treat_resid*set_training
 
-
 # le cambio el nombre a estas variables para distinguirlas de las no interactuadas
 colnames(W_train) <- paste0("treat:",colnames(W_train))
-
 
 # Corro LAsso en la base de entrenamiento
 ddhte_train <- gamlr(x= cbind(set_training,modelo$treat_resid,W_train),
                y = modelo$spend_resid)
-
 
 
 # Ahora veamos qué variables salen significativas  
@@ -788,12 +754,8 @@ signifs_train$var[signifs_train$i==0] <- "Intercept"
 signifs_train$var[signifs_train$i>0] <- 
   colnames(cbind(set_training,modelo$treat_resid,W_train))[signifs_train$i]
 
-#signifs_train %>% select(c(var,x)) %>%
- # kable(., col.names = c("Variable", "Coeficiente"))
 
 datatable((signifs_train %>% select(c(var,x))) , options = list(pageLength = 5))
-# aquí sería bueno ordenar las filas por relevancia del coeficiente y 
-# cambiarle el nombre a trear_resid que sale como V2.
 ```
 
 
@@ -801,26 +763,27 @@ datatable((signifs_train %>% select(c(var,x))) , options = list(pageLength = 5))
 
 Como se interactuó el efecto de tratamiento con todas las X, el impacto de tratamiento depende de los niveles de x de cada cliente. Por lo tanto, $\tau_i$ es igual al coeficiente del residual de tratamiento más todas las interacciones significativas de éste con las X evaluado a los niveles de cada individuo. Por lo tanto, $\tau_i = E(V_i^Y | \tau_i=1, X_i) -E(V_i^Y | \tau_i=0,X_i)$.
 
-Computacionalmente, una manera directa de hacer esto es invertir la variable de tratamiento, volver a calcular los residuales $V_i^{T_{inv}}$ y estimar el modelo de nuevo. Con esto obtenemos $\tau_i$ en ambas bases.
+Computacionalmente, una manera directa de hacer esto es invertir la variable de tratamiento, volver a calcular los residuales $V_i^{T_{inv}}$ y estimar el modelo de nuevo. Con esto obtenemos $\tau_i$ en ambas bases. En otras palabras, para estimar el CATE simplemente calculamos con el modelo para cada observación su control y tratamiento, es decir la predicción de su valor observado y su contrafactual.
+
+Primero estimamos en la base de entrenamiento.
 
 ```{r}
-#para estimar el cate simplemente calculamos con el modelo para cada observación su control y tratamiento, es decir la predicción de su valor observado y su contrafactual.
-
-#____________________
-# EN ENTRENAMIENTO
-#____________________
-# PREDICCIONES CON TREATMENT REAL
+# PREDICCIONES CON TREATMENT OBSERVADO
 pred_train <- predict(ddhte_train,newdata =
                          cbind(set_training,modelo$treat_resid,W_train)
                        ) %>% as.matrix %>% as.data.frame()
+```
 
+El contrafactual consiste en una asignación de tratamiento a la inversa: ¿qué hubiera pasado en un mundo donde quienes recibieron el tratamiento no lo recibieron y viceversa?
+
+```{r}
 # CONTRAFACUTAL
-#primero creo una variable alrevez
+#primero creo una variable al revés
 trat_train_cf <- trat_train %>%
   mutate(mailing_indicator = ifelse(mailing_indicator==1,0,1))
 modelo$treat_cf <- trat_train_cf[[1]] 
 
-# residuales alrevez (con ts volteados)
+# residuales al revés (con Ti's volteados)
 modelo$treat_cf_resid <- modelo$treat_cf - modelo$treat_hat
 
 # W (X interactuada con los residuales counter)
@@ -841,12 +804,10 @@ colnames(cates_train) <- c("obs","contraf","treat","treat_contraf")
 cates_train <- cates_train %>% mutate(a=obs*treat+contraf*treat_contraf,
                        b=obs*treat_contraf+contraf*treat,
                        cate=a-b)
+```
 
-
-#____________________
-# EN VALIDACION
-#____________________
-
+Ahora estimamos el CATE en el set de validación, con el mismo procedimiento. Para esto, partimos de los residuales estimados en la pregunta 7.
+```{r}
 # PREDICCIONES CON TREATMENT REAL
 W_test <- predics$treat_resid*set_validation
 colnames(W_test) <- paste0("treat:",colnames(W_test))
@@ -857,11 +818,11 @@ obs <-as.data.frame(as.matrix(pred_normales))
 
 # CONTRAFACUTAL
 
-#primero creo una variable alrevez
+#primero creo una variable al revés
 trat_validation_counterfactual<-trat_validation%>%mutate(mailing_indicator=ifelse(mailing_indicator==1,0,1))
 predics$treat_counter <- trat_validation_counterfactual[[1]] 
 
-# residuales alrevez (con ts volteados)
+# residuales al revés (con ts volteados)
 predics$treat_counter_resid <- predics$treat_counter - predics$treat_hat
 
 # W (X interactuada con los residuales counter)
@@ -872,16 +833,16 @@ pred_contraf<-predict(ddhte_train,newdata = test_counter) #predicciones
 contraf <- as.data.frame(as.matrix(pred_contraf))
 
 
-#ahora puro callo para hacer la resta de neyman pero ahora tratamiento - control 
-#para cada i 
+# Estimador de neyman pero ahora (tratamiento - control) para cada i 
 cates<-cbind(obs,contraf,predics$treat,predics$treat_counter)
 colnames(cates) <- c("obs","contraf","treat","treat_contraf")
 cates<-cates %>% mutate(a=obs*treat+contraf*treat_contraf,
                        b=obs*treat_contraf+contraf*treat,
                        cate=a-b )
-#___________________________
-#PLOT CATE
-#___________________________
+```
+
+Graficamos la distribución del CATE en entrenamiento y validación.
+```{r}
 # entrenamiento
 plot1 <- ggplot(cates_train, aes(x=cate)) +
   geom_histogram(binwidth=1)+geom_vline(aes(xintercept=0),
@@ -903,8 +864,6 @@ plot2 <- ggplot(cates, aes(x=cate)) +
   theme_bw()
 
 grid.arrange(plot1, plot2, ncol=2)
-
-
 ```
 
 El CATE en el set de entrenamiento muestra menor dispersión, con una concentración muy alta después del 0. No obstante esta diferencia, los CATE en una y otra base se ven muy similares. Esto da robustez a las estimaciones y apunta a la existencia de efectos heterogéneos, donde algunos clientes muestran respuestas al tratamiento mayores a 20 unidades, mientras que otros clientes muestran respuestas no favorables.
