@@ -120,7 +120,7 @@ z_numerics<-scale(z_numerics)
 cor_data<-cbind(z_numerics,dummies)
 ```
 
-```{r}
+```{r,cache=T}
 #_____________________
 #CORRELOGRAMA
 #____________________
@@ -414,7 +414,7 @@ undersampling_training %>% group_by(mailing_indicator) %>%
                 latex_options="HOLD_position")
 ```
 
-```{r,eval = FALSE }
+```{r,eval = FALSE ,cache=T}
 #OVERSAMPLING
 # Segundo intento, sugiere hacer
 
@@ -446,8 +446,8 @@ oversampled_training<-as.data.frame(oversampled_training)
 oversampled_training<-as.data.table(oversampled_training)
 ```
 
-```{r, echo=FALSE, cache=TRUE}
-#aqui bautizo como set_training_original al set que vaya a usar
+```{r, echo=FALSE}
+#aqui bautizo como set_training_original al set que vaya a usar de mis 3 alternativas
 set_training_original<-set_training_original
 #set_training_original<-undersampling_training
 #set_training_original<-oversampled_training
@@ -914,7 +914,7 @@ El CATE en el set de entrenamiento muestra menor dispersión, con una concentrac
 
 ## 11 (2pts). Ahora vayamos al causal forest. Estima un causal forest en la base de entrenamiento (Estima 750 árboles)
 
-```{r, cache = FALSE}
+```{r, cache=T}
 #__________________
 #ESTIMACION
 # CAUSAL FOREST
