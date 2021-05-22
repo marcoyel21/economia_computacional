@@ -936,9 +936,11 @@ cf <- causal_forest(
   W = set_training_original$mailing_indicator,
   num.trees = 750
 )
+```
 
-# Comprobemos que el modelo está bien calibrado, es decir que este acotado lejos del 0 y del 1. Además se cumple el Overlap como podemos ver
+Comprobemos que el modelo está bien calibrado, es decir que este acotado lejos del 0 y del 1. Además, se cumple el Overlap como podemos ver en la siguiente gráfica
 
+```{r}
 ggplot(data.frame(W.hat = cf$W.hat, W=factor(cf$W.orig)))+
   geom_histogram(aes(x = W.hat, y = stat(density), fill= W ), alpha = 0.3, position = "identity")+
   geom_density(aes(x=W.hat,color=W))+
@@ -951,6 +953,9 @@ ggplot(data.frame(W.hat = cf$W.hat, W=factor(cf$W.orig)))+
 ```
 
 ### 12 (3pts). Cómo se distribuye el impacto de tratamiento? Cuál es el impacto de tratamiento (ATE)? Qué tanto se acerca al impacto de tratamiento "real"? Cómo se compara con el impacto estimado con el ddml simple?
+
+Veamos las predicciones y cómo se distribuyen.
+En primer lugar, sacamos las predicciones in sample
 
 ```{r}
 #________________-
@@ -969,14 +974,16 @@ ggplot(predicciones_is, aes(x=predictions)) + geom_histogram(binwidth=1)+
   xlim(-10,20)+
   theme_bw()+
   labs(title="Causal Forest: insample CATE")
+```
 
-
-# Obtenemos un CATE de
+Obtenemos un CATE de
+```{r}
 mean(tau_hat_cf_is)
+```
 
-# Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real"
-
-#  podemos sacar el conditional average treatment efecto "real"
+Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real"
+Podemos sacar el conditional average treatment efecto "real" de la siguiente forma:
+```{r}
 average_treatment_effect(
   cf,
   target.sample=c("all"),
@@ -985,6 +992,8 @@ average_treatment_effect(
 )
 
 ```
+
+En segundo lugar, sacamos las predicciones out of sample
 
 ```{r}
 #________________-
@@ -1005,14 +1014,17 @@ ggplot(predicciones_out, aes(x=predictions)) + geom_histogram(binwidth=1)+
   theme_bw()+
   labs(title="Causal Forest: out-of-bag CATE")
 
+```
 
-
-# Obtenemos un CATE de
+Obtenemos un CATE de
+```{r}
 mean(tau_hat_cf_out)
+```
 
-# Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real"
+Como veremos a continuación, el ATE se acerca mucho al impacto de tratamiento "real".
+Podemos sacar el conditional average treatment efecto "real" de la siguiente manera:
 
-#  podemos sacar el conditional average treatment efecto "real"
+```{r}
 average_treatment_effect(
   cf,
   target.sample=c("all"),
