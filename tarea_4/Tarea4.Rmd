@@ -1343,7 +1343,7 @@ set_training_original %>% group_by(mailing_indicator) %>%
 
 Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos, tanto _undersampling_ como _oversampling_. A continuación se muestra el código que genera estas bases de entrenamiento.
 
-```{r,eval = FALSE }
+```{r}
 #UNDERSAMPLING
 undersampling_training <- sample_n((set_training_original %>% filter(mailing_indicator==1)),
                              size=(set_training_original %>% 
@@ -1352,9 +1352,17 @@ undersampling_training <- sample_n((set_training_original %>% filter(mailing_ind
          # tamaño de mailing_indicator==0
                              replace = FALSE) %>% 
   rbind((set_training_original %>% filter(mailing_indicator==0)),.)
+
+tabulado <- undersampling_training %>% group_by(mailing_indicator) %>%
+    dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+kable(tabulado,
+      col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
 ```
 
-```{r,eval = FALSE}
+```{r}
 #OVERSAMPLING
 
 # Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily # fuente: https://rikunert.com/SMOTE_explained
