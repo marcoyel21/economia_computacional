@@ -365,67 +365,7 @@ set_training_original <- crm[crm$training_sample==1,] %>%
 
 ```
 
-Como mencionamos antes, hay un desbalance en la variable de tratamiento. Examinamos este desbalance con más detenimiento.
-
-```{r}
-#_______________________
-# EVALUACIÓN DE BALANCE INICIAL
-#______________________
-
-set_training_original %>% group_by(mailing_indicator) %>%
-  dplyr::summarise(frecuencia_absoluta=n()) %>% 
-  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)) %>%
-  kable(col.names = c("Mailing_indicator",
-                      "Frecuencia absoluta",
-                      "Frecuencia relativa")) %>%
-  kable_styling(position = "center",
-                latex_options="HOLD_position")
-
-```
-
-Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos, tanto _undersampling_ como _oversampling_. A continuación se muestra el código que genera estas bases de entrenamiento.
-
-```{r,eval = FALSE }
-#UNDERSAMPLING
-undersampling_training <- sample_n((set_training_original %>% filter(mailing_indicator==1)),
-                             size=(set_training_original %>% 
-                                     filter(mailing_indicator==0) %>% 
-                                     nrow()), 
-         # tamaño de mailing_indicator==0
-                             replace = FALSE) %>% 
-  rbind((set_training_original %>% filter(mailing_indicator==0)),.)
-```
-
-```{r,eval = FALSE}
-#OVERSAMPLING
-
-# Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily # fuente: https://rikunert.com/SMOTE_explained
-smote <- smotefamily::SMOTE(set_training_original, # data
-set_training_original$mailing_indicator, # class attribute
-K=10) # number of nearest neighbors dup_size=2 # minority instances
-# over original number of majority instances )
-
-class(set_training_original %>% na.exclude)
-oversampled_training <- as.data.frame(smote$data)
-
-# smote guarda la variable de clase como class.
-# se renombra y convierte a numerica colnames(oversampled)[68] <- "churn" oversampled$churn <- oversampled$churn %>% as.numeric
-# ahora está mmejor balanceado pero como el SMOTE da vueltas completas, # en este caso de tamaño 2, el balance no es perfecto
-tabulado <- oversampled_training %>% group_by(mailing_indicator) %>%
-    dplyr::summarise(frecuencia_absoluta=n()) %>%
-    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
-kable(tabulado,
-      col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
-  kable_styling(position = "center",
-                latex_options="HOLD_position")
-#preprocesamiento para que bases queden trabajables
-oversampled_training$class<-NULL
-oversampled_training$customer_id <- seq.int(nrow(oversampled_training))
-oversampled_training$X1<-NULL
-oversampled_training<-as.matrix(oversampled_training)
-oversampled_training<-as.data.frame(oversampled_training)
-oversampled_training<-as.data.table(oversampled_training)
-```
+Debido al desbalance en la asignación, experimentamos con remuestreos, al final decicimos quedarnos con la base sin cambios, sin embargo en el anexo explicamos un poco más de las estrategias de remuestreo: oversampling y undersampling.
 
 ```{r}
 #aqui bautizo como set_training_original al set que vaya a usar de mis 3 alternativas
@@ -927,7 +867,7 @@ En primer lugar, sacamos las predicciones in sample
 predicciones_is <- predict(cf ,estimate.variance = TRUE)
 tau_hat_cf_is <- predicciones_is$predictions
 predicciones_is$predictions<-as.numeric(predicciones_is$predictions)
-ggplot(predicciones_is, aes(x=predictions)) + geom_histogram(binwidth=1)+
+p1<-ggplot(predicciones_is, aes(x=predictions)) + geom_histogram(binwidth=1)+
   geom_vline(aes(xintercept=0),
             color="red", linetype="dashed", size=.5)+
   xlim(-10,20)+
@@ -966,7 +906,7 @@ predicciones_out <- predict(cf ,  newdata = set_validation,estimate.variance = T
 tau_hat_cf_out <- predicciones_out$predictions
 
 predicciones_out$predictions<-as.numeric(predicciones_out$predictions)
-ggplot(predicciones_out, aes(x=predictions)) + geom_histogram(binwidth=1)+
+p2<-ggplot(predicciones_out, aes(x=predictions)) + geom_histogram(binwidth=1)+
   geom_vline(aes(xintercept=0),
             color="red", linetype="dashed", size=.5)+
   xlim(-10,20)+
@@ -993,7 +933,11 @@ average_treatment_effect(
 
 
 ```
-# Comparación
+
+Comparamos gráficamente
+```{r}
+grid.arrange(p1, p2, ncol=2)
+```
 
 ### 13. Haz un scatter plot de las predicciones de ambos modelos? Hay alguna relación?
 
@@ -1041,7 +985,7 @@ xlim(-5,100)+ylim(-5,100)+
   labs(title="Mapa de calor de las predicciones OOS")
 
 ```
-De las graficas notamos que el modelo DDBL está siendo más generoso con las predicciones que el CF. Asimismo notamos que apesar de que parece que los datos están muy esparcidos, en realidad es solo un sesgo visual y la gran mayoría de los datos están concentrados en el cuadrado delimitado por $x\epsilon[0,12]$ y  $y\epsilon[0,12]$.
+De las graficas notamos que el modelo DDBL está siendo más generoso con las predicciones que el CF. Asimismo notamos que apesar de que parece que los datos están muy esparcidos, en realidad es solo un sesgo visual y la gran mayoría de los datos están concentrados en el cuadrado delimitado por $x\epsilon[0,10]$ y  $y\epsilon[0,10]$.
 
 ### 14 (4pts). Evalúa el poder predictivo de cada modelo (OOS). Esto se hace por modelo: Divide la muestra en 10 partes con base en el score de ddml. Para cada parte, estima el impacto de tratamiento vía una regresión y saca el promedio del score. Valida si para los grupos que dice el score el impacto será más grande, el coeficiente de la regresión es. Cómo se ven los modelos? Cuál parece ser mejor?
 
@@ -1144,90 +1088,406 @@ ggplot(data=chart_data, aes(x=factor(score_mean), y=tau)) +
 Lo que podemos notar esque ambos modelos tienen una tendencia monotónica más no es estricta. Es decir, en promedio, el efecto de tratamiento si va en línea con el score, pero no de manera estricta.  Asimismo notamos que el primer modelo (el DDBL) tiene una tendencia más marcada y con menos saltos que el CF (además de que tiene errores más pequeños). Por estas razones creemos que el DDBL ML es mejor modelo que el CF.
 
 
-```{r ERRORES, eval=F}
+# Estrategia de focalización
 
-error_data<-cbind(predicciones_out$predictions, predics$spend, predics$spend_hat)
-colnames(error_data) <- c("cf","real","ddl")
-error_data<-as.data.frame(error_data)
+### 15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente:
 
-error_data<-error_data %>% mutate(error_cf=real-cf, 
-                                  error_ddl=real-ddl)
+Para este inciso usaremos la base de datos completa de ambos modelos, es decir, training y validation, donde los cates se han calculado comparando cada valor observado de gasto contra su contrafactual generado con nuestros modelos. En dichas base, cada CATE de cada individuo representa el beneficio marginal mientras que el costo marginal de la estrategia es de 99 centavos. Finalmente, quitaremos de ambas bases de datos a las personas que ya habían recibido tratamiento de tal manera que solo nos queden personas del grupo de control, el cúal es el universo de la población que buscamos focalizar.
 
-1-sum((error_data$error_ddl)^2)/sum((error_data$real)^2)
-1-sum((error_data$error_cf)^2)/sum((error_data$real)^2)
+**Cantidad de personas y lift**
 
-#ddl 
-#cf 
-#ddl 0.114936
-#cf  0.02970433
+El primer paso es identificar a las personas de nuestra estrategia, aquellas que cuyos beneficios potenciales del tratamiento superan los costos de implementación. Esta población cumple la siguiente condición:
 
-#undersample
-#ddl 0.1133851
-#cf 0.0311426
+$$markup \cdot Bmg_{i} > Cmg_i$$
+$$.325 \cdot \hat\tau>.99$$
 
-#ddl 0.1151426
-#cf  0.0318769
+```{r }
+#_______________
+#DDBL ML
+#______________
+#junto mis bases de datos de training y validación con los cates que use anteriormente
+cate_ddbl<-rbind(cates,cates_train)
+cate_ddbl<-cate_ddbl%>% filter(treat==0)
+cate_ddbl<-rbind(cates,cates_train)
+
+#obtengo mi población objetivo
+cate_ddbl<-cate_ddbl%>% filter(treat==0)%>% 
+                        mutate(limit=.325*cate)
+objetivo_ddbl<-cate_ddbl%>% filter(limit >.99)
+
+
+#_______________
+#CF
+#______________
+#junto mis bases de datos de training y validación con los cates que use anteriormente
+cate_cf_trainc<-cbind(predicciones_is$predictions,cates_train$treat)
+cate_cf_test<-cbind(predicciones_out$predictions,cates$treat)
+cates_cf<-rbind(cate_cf_trainc,cate_cf_test)
+colnames(cates_cf) <- c("cate","treat")
+cates_cf<-as.data.frame(cates_cf)
+#obtengo mi población objetivo
+cates_cf<-cates_cf%>% filter(treat==0)%>% 
+                      mutate(limit=.325*cate)
+objetivo_cf<-cates_cf%>% filter(limit >.99)
+
+
+#_______________
+#GRAFICAS
+#______________
+
+p1<-ggplot(cate_ddbl, aes(x= cate)) +
+  geom_histogram(binwidth=1)+
+  geom_vline(aes(xintercept=3.046335),
+            color="red", linetype="dashed", size=.5)+
+  xlim(-10,30)+
+  labs(title = "DDBL ML",
+       x = "Beneficio marginal")+
+  theme_bw()
+
+p2<-ggplot(cates_cf, aes(x= cate)) +
+  geom_histogram(binwidth=1)+
+  geom_vline(aes(xintercept=3.046159),
+            color="red", linetype="dashed", size=.5)+
+  xlim(-10,30)+
+  labs(title = "CF",
+       x = "Beneficio marginal")+
+  theme_bw()
+grid.arrange(p1, p2, ncol=2)
+
+```
+Notamos que los beneficios son superiores al costo a partir de un incremento en ventas de **3.046335 (lift) para el primer modelo y 3.046159 para el segundo modelo** (mostrado con una línea roja en los histográmas). Es decir, a partir de este *treshold* queremos focalizar, por lo tanto la población  objetivo se comppondría de 23,561 individuos bajo el primer modelo (ddbl ml) y de 23,477 bajo el segundo (cf). 
+
+**Impacto promedio esperado**
+
+Dichas poblaciones tienen un impacto promedio esperado de: 
+
+```{r }
+#estimo impacto promedio
+a<-mean(objetivo_ddbl$cate)
+b<-sd(objetivo_ddbl$cate)
+c<-mean(objetivo_cf$cate)
+d<-sd(objetivo_ddbl$cate)
+
+#creo dataframe
+Impacto<-rbind(a,b)
+DE<-rbind(c,d)
+efectos<-data.frame(Impacto,DE)
+rownames(efectos)<-c("Impacto", "DE")
+
+kable(efectos, align = 'c',booktabs=T,digits = 3,
+        caption = "Impacto promedio esperado de campaña con focalización",
+      col.names = c("DDBL ML", "CF")) %>%
+  kable_styling(position = "center")
+```
+```{r }
+#estimo impacto promedio
+a<-mean(cate_ddbl$cate)
+b<-sd(cates_cf$cate)
+c<-mean(cate_ddbl$cate)
+d<-sd(cates_cf$cate)
+
+#creo dataframe
+Impacto<-rbind(a,b)
+DE<-rbind(c,d)
+efectos<-data.frame(Impacto,DE)
+rownames(efectos)<-c("Impacto", "DE")
+
+kable(efectos, align = 'c',booktabs=T,digits = 3,
+        caption = "Impacto promedio esperado de campaña sin focalización",
+      col.names = c("DDBL ML", "CF")) %>%
+  kable_styling(position = "center")
+```
+
+
+**Utilidad**
+
+Para calcular la utilidad de la campaña con focalización, simplemente sumamos los beneficios marginales de estos individuos que están a la izquierda de la línera roja en los histogramas y le restamos los costos marginales. En cambio para calcular los beneficios sin focalizar simplemente sumamos el beneficio de todos los invividuos del grupo de control menos el costo.  
+
+```{r }
+#BENEFICIOS CON FOCALIZACION
+#DDBL ML
+a<-.325*sum(objetivo_ddbl$cate)-nrow(objetivo_ddbl)*.99
+#CF
+b<-.325*sum(objetivo_cf$cate)-nrow(objetivo_cf)*.99
+
+#BENEFICIOS SIN FOCALIZACION
+#DDBL ML
+c<-.325*sum(cate_ddbl$cate)-nrow(cate_ddbl)*.99
+#CF
+d<-.325*sum(cates_cf$cate)-nrow(cates_cf)*.99
+
+#creo dataframe
+e<-rbind(a,c)
+f<-rbind(b,d)
+efectos<-data.frame(e,f)
+rownames(efectos)<-c("Con", "Sin")
+
+kable(efectos, align = 'c',booktabs=T,digits = 3,
+        caption = "Utilidad de campaña con y sin focalización",
+      col.names = c("DDBL ML", "CF")) %>%
+  kable_styling(position = "center")
+
 
 ```
 
-# Estrategia de focalización
-
-### 15 (6 pts). Construye una estrategia de focalización a nivel usuario con base a los resultados de cada modelo. Considera lo siguiente: 
-
-- El costo marginal de mandar el mail es 0.99 USD
-
-fijo y no hay pex es .99 por cada mail....
- 
- 
-- El Beneficio marginal es el impacto incremental la utilidad generada por esas ventas
-
-beneficio marginal  = spend- costo del mail
-
-- El margen de ganancia sobre las ventas es de 32.5 fijo 
-
-¿cual es la diferencia entre margen de ganancia beneficio marginal? margen de 
-
-ganacial=¿precio-costo?=32.5
-En primer lugar debe puntualizarse que la estrategia de focalización, a partir del experimento implementado por esta empresa de electrodomésticos es, lograr dirigir el tratamiento (el envío del mail) a aquellos clientes a los cuales les genere mayor impacto y en consecuencia, derive en un incremento en las ventas. 
-
-En este caso tenemos los resultados de dos modelos -Double Debiased Machine Learning y Casual Forest- a través de los cuales se estimó el impacto del envío del catálogo de productos vía mail a los clientes.
-
-Con el DDML se logró un impacto de:
-Con el CF se logró un impacto de:
+Notamos que ambos modelos bien focalizados nos predicen una utilidad (despúes de markup) de más de 27,000 USD mientras que sin focalización se predicen pérdidas. Esto debido a que a) existe una cola en los histogramas a la izquierda que nos indica que el CATE es negativo para algunos usuarios y b) incluso para usuarios con beneficios positivos, muchas veces no se cubre el costo. Sin embargo, esta cola negativa de los histogramas se puede deber a ruido estadístico y en principio no esperamos que el tratamiento no afecte de manera negativa (claro podría pasar que el hartazgo de mensajes tenga un efecto negativo pero no nos meteremos a ese tema). Por ello podemos corregir estas predicciones si inputamos un valor de cero en los beneficios potenciales de dichas observaciones de las colas izquirdas. De esta manera, podemos tener una comparación un poco más realista de la utilidad del programa.
 
 
-Con esto, indica: 
+```{r }
+#Inputo cero en las colas izquierdas
+objetivo_ddbl_corrected_tails<-cate_ddbl%>%mutate(cate=ifelse(cate<0,0,cate))
+objetivo_cf_corrected_tails<-cates_cf%>%mutate(cate=ifelse(cate<0,0,cate))
+  
+#BENEFICIOS CON FOCALIZACION
+#DDBL ML
+a<-.325*sum(objetivo_ddbl$cate)-nrow(objetivo_ddbl)*.99
+#CF
+b<-.325*sum(objetivo_cf$cate)-nrow(objetivo_cf)*.99
 
-- Cuantos usuarios entrarían a la campaña? 
+#BENEFICIOS SIN FOCALIZACION
+#DDBL ML
+c<-.325*sum(objetivo_ddbl_corrected_tails$cate)-nrow(objetivo_ddbl_corrected_tails)*.99
+#CF
+d<-.325*sum(objetivo_cf_corrected_tails$cate)-nrow(objetivo_cf_corrected_tails)*.99
 
-Los usuarios que entrarían a la campaña son aquellos que generan un beneficio marginal mayor al costo marginal de mandar un mail. 
+#creo dataframe
+e<-rbind(a,c)
+f<-rbind(b,d)
+efectos<-data.frame(e,f)
+rownames(efectos)<-c("Con", "Sin")
 
-Beneficio marginal: impacto incremental de las ventas por persona
-Costo marginal: .99 centavos de dólar
+kable(efectos, align = 'c',booktabs=T,digits = 3,
+        caption = "Utilidad de campaña con y sin focalización (imputando ceros)",
+      col.names = c("DDBL ML", "CF")) %>%
+  kable_styling(position = "center")
 
-length (which(crm$ate>.99))
+```
 
-- A partir de cuánto lift (ventas incrementales) entran? 
-
-Los usuarios entrarían a la campaña a partir de que generen ventas incrementales que produzcan mayores margenes de ganancia que las ventas reales, mayores al 32.5%.
-
-Ventas incrementales = ventas reales durante campaña – ventas estimadas sin la campaña.
-
-- Cuál es el impacto promedio esperado de tu población final? 
-
-El impacto promedio esperado de los usuarios que entraron a la campaña se mide con el cambio en las ventas incrementales condicional a que recibieron el mail y restringido a esa población. Es el valor esperado de las ventas incrementales totales.
-
-
-
-- Cuánta utilidad haremos con esta estrategia? Cómo se compara con la utilidad de la campaña sin focalizar?
-
-Utilidad de la estrategia: monto de ventas incrementales totales menos el costo total de la campaña. O por usuario: monto de venta incremental marginal menos costo marginal de la campaña. Restringido a la población que entró a la campaña (a los que se les dirigió: población objetivo)
-
-Utilidad de la campaña sin focalizar: monto de ventas incrementales totales menos el costo total de la campaña. O por usuario: monto de venta incremental marginal menos costo marginal de la campaña. Pero sin que la campaña esté restringida a la población objetivo.  
-
-
+Notamos que las perdidas siguen siendo negativas pero a con dimensiones menores.  
 
 ### 16 (3pts). Haz una gráfica del la utilidad total vs q (personas que entran en la campaña) para DDML y CF
 
+```{r }
+#grafico comenzando desde el individuo con el mayor impacto hasta el menor
+#reordeno en descendente los impactos
+f<-sort(cate_ddbl$cate, decreasing = T)
+
+#creo un data frame con cada utilidad vs q
+plot<- as.data.frame(matrix(0, nrow(cate_ddbl), 2))
+for (i in 1:nrow(cate_ddbl)) {
+plot[i,1]<-.325*sum(f[1:i])-.99*i
+plot[i,2]<-i}
+
+#grafico
+ggplot(plot, aes(x=V2, y=V1)) +
+    geom_line() +
+    geom_point()+
+  labs(title = "Utilidad neta de la campaña (DDBL ML)",
+       x = "Personas",
+       y= "Utilidad")+
+  geom_vline(aes(xintercept=nrow(objetivo_ddbl)),
+            color="red", linetype="dashed", size=.5)+  theme_bw()
 
 
+
+```
+
+
+
+
+```{r }
+#para cf
+#reordeno en descendente los impactos
+g<-sort(cates_cf$cate, decreasing = T)
+
+#creo un data frame con cada utilidad vs q
+plot<- as.data.frame(matrix(0, nrow(cates_cf), 2))
+for (i in 1:nrow(cates_cf)) {
+plot[i,1]<-.325*sum(g[1:i])-.99*i
+plot[i,2]<-i}
+
+#grafico
+ggplot(plot, aes(x=V2, y=V1)) +
+    geom_line() +
+    geom_point()+
+  labs(title = "Utilidad neta de la campaña (CF)",
+       x = "Personas",
+       y= "Utilidad")+
+  geom_vline(aes(xintercept=nrow(objetivo_cf)),
+            color="red", linetype="dashed", size=.5)+  theme_bw()
+
+
+```
+
+En las gráficas anteriores hemos indicado con una línea roja la cantidad de personas de cada focalización exitosa. A la izquierda de cada línea roja, cada individuo tiene un beneficio marginal neto mayor al costo del programa, a la derecha lo contrario, al grado de representar pérdidas importantes. Estas graficas ponen en evidencia la importancia de la focalización.
+
+# Anexo: Remuestreos
+
+Como mencionamos antes, hay un desbalance en la variable de tratamiento. Examinamos este desbalance con más detenimiento.
+
+```{r,eval = FALSE}
+#_______________________
+# EVALUACIÓN DE BALANCE INICIAL
+#______________________
+
+set_training_original %>% group_by(mailing_indicator) %>%
+  dplyr::summarise(frecuencia_absoluta=n()) %>% 
+  mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta)) %>%
+  kable(col.names = c("Mailing_indicator",
+                      "Frecuencia absoluta",
+                      "Frecuencia relativa")) %>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+
+```
+
+Dado el desbalance en la variable de tratamiento, nos planteamos hacer remuestreo para aumentar la eficiencia de los modelos, tanto _undersampling_ como _oversampling_. A continuación se muestra el código que genera estas bases de entrenamiento.
+
+```{r,eval = FALSE }
+#UNDERSAMPLING
+undersampling_training <- sample_n((set_training_original %>% filter(mailing_indicator==1)),
+                             size=(set_training_original %>% 
+                                     filter(mailing_indicator==0) %>% 
+                                     nrow()), 
+         # tamaño de mailing_indicator==0
+                             replace = FALSE) %>% 
+  rbind((set_training_original %>% filter(mailing_indicator==0)),.)
+```
+
+```{r,eval = FALSE}
+#OVERSAMPLING
+
+# Synthetic Minority Oversampling Technique (SMOTE) librería smotefamily # fuente: https://rikunert.com/SMOTE_explained
+smote <- smotefamily::SMOTE(set_training_original, # data
+set_training_original$mailing_indicator, # class attribute
+K=10) # number of nearest neighbors dup_size=2 # minority instances
+# over original number of majority instances )
+
+class(set_training_original %>% na.exclude)
+oversampled_training <- as.data.frame(smote$data)
+
+# smote guarda la variable de clase como class.
+# se renombra y convierte a numerica colnames(oversampled)[68] <- "churn" oversampled$churn <- oversampled$churn %>% as.numeric
+# ahora está mmejor balanceado pero como el SMOTE da vueltas completas, # en este caso de tamaño 2, el balance no es perfecto
+tabulado <- oversampled_training %>% group_by(mailing_indicator) %>%
+    dplyr::summarise(frecuencia_absoluta=n()) %>%
+    mutate(frecuencia_relativa = frecuencia_absoluta/sum(frecuencia_absoluta))
+kable(tabulado,
+      col.names = c("Churn","Frecuencia absoluta","Frecuencia relativa"))%>%
+  kable_styling(position = "center",
+                latex_options="HOLD_position")
+#preprocesamiento para que bases queden trabajables
+oversampled_training$class<-NULL
+oversampled_training$customer_id <- seq.int(nrow(oversampled_training))
+oversampled_training$X1<-NULL
+oversampled_training<-as.matrix(oversampled_training)
+oversampled_training<-as.data.frame(oversampled_training)
+oversampled_training<-as.data.table(oversampled_training)
+```
+
+Posteriormente, hemos estimado cada modelo con cada enfoque de remuestreo y al final los resultados no son muy diferentes. En particular, el CF trabajó muy bien con el undersampling pero muy mal con el oversampling (arrojando una gran cantidad de propensity scores muy cerca del); y el DDBL ML trabajó muy bien con cualquier enfoque (aunque ligeramente mejor con oversampling). Para intentar tener un mismo tamaño de muestra (sobretodo para que las ultimas preguntas sean más parejas entre modelos), decidimos mejor quedarnos con la base de datos sin ningún remuestreo. Sin embargo, a continuación mostramos los residuales.
+
+
+```{r ERRORES}
+
+dbl<-c(138849966,139093274,138887452)
+cf<-c(152221223,151995586,152386415)
+
+resi<-data.frame(dbl,cf)
+rownames(resi)<-c("normal", "under", "over")
+
+kable(resi, align = 'c',booktabs=T,digits = 3,
+        caption = "Residuales OOB",
+      col.names = c("DDBL ML", "CF")) %>%
+  kable_styling(position = "center")
+
+```
+
+![Propensity score con oversampling para CF](img.png "Title")
+
+# Anexo: Causal Tree
+
+```{r}
+
+#CAUSAL TREE (ES OPCIONAL, para quien le interese)
+####################################################
+
+#_______________________
+# DIVISION INICIAL
+#______________________
+set.seed(1990)
+crm<-
+  crm %>% 
+  mutate(training_sample = rbinom(n = nrow(crm), 1, 0.7))
+  
+set_validation_original <- crm[crm$training_sample==0,] %>%
+  select(-c(outcome_spend,training_sample))
+
+y_validation <- crm[crm$training_sample==0,] %>%
+  select(outcome_spend)
+
+set_training_original <- crm[crm$training_sample==1,] 
+
+
+#1.- usamos nuestra base de entrenamiento
+df_training <- crm %>% 
+filter(training_sample==1)
+
+
+#2.- Dividimos entrenamiento entre Splitting y Estimating
+
+# tamaño del split
+split_size <- floor(nrow(set_training_original)*0.5)
+
+# aleatoriamente generamos el split
+split_id <- sample(nrow(set_training_original),replace=FALSE, size=split_size)
+
+# hacemos el split
+df_split <- set_training_original[split_id,] 
+df_est <- set_training_original[-split_id]
+
+# Ahora sí, el árbol:
+
+tree_formula <- as.formula(paste("outcome_spend",paste(names(crm %>% select(-no_covariates)),collapse = ' + '), sep = " ~ "))
+
+ctree_unpruned <- honest.causalTree(
+  formula=tree_formula,
+  data=df_split,
+  est_data=df_est,
+  treatment=df_split$mailing_indicator,       # variable de tratamiento
+  est_treatment=df_est$mailing_indicator,
+  split.Rule="CT",
+  cv.option = "TOT",
+  cp=0,
+  split.Honest = TRUE,
+  cv.Honest=TRUE,
+  minsize=5,
+  HonestSampleSize = nrow(df_est)
+)
+
+
+# Ahora hacemos crossvalidation
+ctree_cptable <- as.data.frame(ctree_unpruned$cptable)
+
+# Obtenemos parámetro óptimo de complejidad para podar el árbol
+selected_cp <- which.min(ctree_cptable$xerror)
+optim_cp_ct <- ctree_cptable[selected_cp, "CP"]
+
+# dibujemos el árbol sin nombres de variables pues no se vería nada
+plot(ctree_unpruned)
+title("Árbol sin podar",line=0.5)
+
+
+# podamos el árbol
+ctree_pruned <- prune(tree=ctree_unpruned, cp=optim_cp_ct)
+
+
+# predecimos estimaciones puntuales en la estimation sample
+tauhat_causaltree_est <- predict(ctree_pruned, newdata=df_est)
+
+# saquemos errore estándar
+# el paquete no los saca
+
+num_hojas <- length(unique(tauhat_causaltree_est))
+
+```
