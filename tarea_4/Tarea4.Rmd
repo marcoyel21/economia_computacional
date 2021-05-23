@@ -1188,32 +1188,42 @@ beneficio marginal  = spend- costo del mail
 ¿cual es la diferencia entre margen de ganancia beneficio marginal? margen de 
 
 ganacial=¿precio-costo?=32.5
+En primer lugar debe puntualizarse que la estrategia de focalización, a partir del experimento implementado por esta empresa de electrodomésticos es, lograr dirigir el tratamiento (el envío del mail) a aquellos clientes a los cuales les genere mayor impacto y en consecuencia, derive en un incremento en las ventas. 
 
+En este caso tenemos los resultados de dos modelos -Double Debiased Machine Learning y Casual Forest- a través de los cuales se estimó el impacto del envío del catálogo de productos vía mail a los clientes.
 
-
+Con el DDML se logró un impacto de:
+Con el CF se logró un impacto de:
 
 
 Con esto, indica: 
 
 - Cuantos usuarios entrarían a la campaña? 
 
-caluclau en cuantos el beneficio > 0
+Los usuarios que entrarían a la campaña son aquellos que generan un beneficio marginal mayor al costo marginal de mandar un mail. 
+
+Beneficio marginal: impacto incremental de las ventas por persona
+Costo marginal: .99 centavos de dólar
+
+length (which(crm$ate>.99))
 
 - A partir de cuánto lift (ventas incrementales) entran? 
 
-de la poblacion anterior calcular su lift (el treshold del modelo)
+Los usuarios entrarían a la campaña a partir de que generen ventas incrementales que produzcan mayores margenes de ganancia que las ventas reales, mayores al 32.5%.
 
-
+Ventas incrementales = ventas reales durante campaña – ventas estimadas sin la campaña.
 
 - Cuál es el impacto promedio esperado de tu población final? 
 
-suma de beneficios totales/personas participantes
+El impacto promedio esperado de los usuarios que entraron a la campaña se mide con el cambio en las ventas incrementales condicional a que recibieron el mail y restringido a esa población. Es el valor esperado de las ventas incrementales totales.
+
+
 
 - Cuánta utilidad haremos con esta estrategia? Cómo se compara con la utilidad de la campaña sin focalizar?
 
-suma de beneficios totales
+Utilidad de la estrategia: monto de ventas incrementales totales menos el costo total de la campaña. O por usuario: monto de venta incremental marginal menos costo marginal de la campaña. Restringido a la población que entró a la campaña (a los que se les dirigió: población objetivo)
 
-resta de beneficios totales con campaña menos beneficios totales sin campaña
+Utilidad de la campaña sin focalizar: monto de ventas incrementales totales menos el costo total de la campaña. O por usuario: monto de venta incremental marginal menos costo marginal de la campaña. Pero sin que la campaña esté restringida a la población objetivo.  
 
 
 
