@@ -555,7 +555,7 @@ data = modelo)
 
 Repetimos este procedimiento para estimar el ATE en el set de validación.
 
-```{r}
+```{r, results='asis'}
 predics$spend <- y_validation[[1]]
 predics$treat <- trat_validation[[1]] 
 
@@ -1201,7 +1201,7 @@ kable(efectos, align = 'c',booktabs=T,digits = 3,
 
 **Utilidad**
 
-Para calcular la utilidad de la campaña con focalización, simplemente sumamos los beneficios marginales de estos individuos que están a la izquierda de la línera roja en los histogramas y le restamos los costos marginales. En cambio para calcular los beneficios sin focalizar simplemente sumamos el beneficio de todos los invividuos del grupo de control menos el costo.  
+Para calcular la utilidad de la campaña con focalización, simplemente sumamos los beneficios marginales de estos individuos que están a la derecha de la línera roja en los histogramas y le restamos los costos marginales. En cambio para calcular los beneficios sin focalizar simplemente sumamos el beneficio de todos los invividuos del grupo de control menos el costo.  
 
 ```{r }
 #BENEFICIOS CON FOCALIZACION
