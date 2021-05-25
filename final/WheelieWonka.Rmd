@@ -108,6 +108,41 @@ options(scipen = 999)
 
 ```
 
+## Planteamiento del Problema
+
+#### Nota: Los títulos indican el objetivo del párrafo, estos son para nosotros. Hay que quitarlos antes de la entrega final.
+
+(Contextualizar)
+Al conectar una multiplicidad de orígenes y destinos, el transporte público ha probado ser un motor del desarrollo económico urbano, además de potencialmente impactar los ámbitos de salud y seguridad pública, congestión vehicular, y la inclusión social. En este contexto, los sistemas de bicicletas compartidas han ofrecido una alternativa a las opciones de transporte en redes urbanas altamente complejas.
+
+(Objetivos del negocio)
+Como tal, cualquier empresa de bicicletas compartidas debe ser capaz de ofrecer a sus usuarios una opción para trasladarse eficaz, es decir, práctica y accesible. Wheelie Wonka no es la excepción.
+
+
+(Evaluación de la situación actual)
+Tal como es el caso de los flujos de tráfico, las bicicletas enfrentan el problema de demandas asimétricas en tiempo y espacio. Esto puede significar un problema en la medida en que la infraestructura de la red de bicicletas limite a los usuarios en momentos de alta demanda, y también que el uso y desplazamiento de las bicicletas en un momento dado no corresponda a las necesidades de los usuarios siguientes, creando excesos de oferta y de demanda en distintas zonas de Boston.
+
+
+(Objetivos del proyecto de datos. Ojo, no son iguales a los objetivos del negocio)
+En este contexto, la ciencia de datos ofrece una solución muy atractiva. Mediante el análisis computacional del uso de las bicicletas, es posible reconocer patrones y predecir la disponibilidad de bicicletas en un lugar y momento específicos. Esto puede ayudar a Wheelie Wonka en dos sentidos.
+
+1) Proveer al usuario de información con la cual pueda tomar decisiones óptimas de transporte.
+2) Poder hacer ajustes en la distribución de las bicicletas a lo largo de las cicloestaciones para prevenir escaseces y excesos en el sistema.
+
+Estos puntos seguramente aumentarían la satisfacción del usuario y permitirían un mayor uso del servicio, lo cual sólo podría traer beneficios a Wheelie Wonka.
+
+En este sentido, los objetivos específicos de este proyecto son los siguientes:
+
+a. Poder pronosticar la duración de los viajes
+b. Entender los factores que tienen un impacto en la duración de los viajes. Identificar patrones geográficos en los datos.
+c. Estimar el número de bicicletas por estación en ventanas de 10 minutos.
+
+(Estructura del proyecto de datos)
+
+
+(Establecer medidas de éxito del proyecto de datos)
+
+
 ## Datos
 
 Cargamos los datos
@@ -120,6 +155,9 @@ weather <- read.csv("weather.csv", header = TRUE)
 Buscamos NAs en las variables para poder tomar decisiones al respecto.
 
 ````{r}
+
+# asignar NAs a valores vacíos de measurement_flag
+weather$Measurement_Flag[weather$Measurement_Flag==" "] <- NA
 
 # función para NAs
 check_nas <- function(df){
@@ -164,14 +202,16 @@ colnames(trips)[colnames(trips) == 'start_date'] <- 'start_DateTime'
 startDateTime <- strsplit(trips$start_DateTime, ' ')
 
 startDate <- sapply(startDateTime, "[", 1)
-trips$start_date <- as.Date(startDate, '%m/%d/%Y')
-trips$start_year <- format(trips$start_date, '%Y')
-trips$start_month <- format(trips$start_date, '%m')
+trips$start_date <- as.Date(startDate, '%m/%d/%Y') %>% date()
+trips$start_year <- trips$start_date %>% year()
+trips$start_month <- trips$start_date %>% month()
 trips$start_weekday <- weekdays(trips$start_date)
 
 startTime <- sapply(startDateTime, "[", 2)
-trips$start_hour <- format(as.POSIXct(startTime,format="%H:%M:%S"),"%H")
+trips$start_hour <- as.POSIXct(startTime,format="%H:%M:%S") %>% 
+  hour()
 trips$start_minute <- format(as.POSIXct(startTime,format="%H:%M:%S"),"%M")
+
 
 # Se divide end_date en fecha y hora para extraer la información (poder utilizarla posteriormente)
 colnames(trips)[colnames(trips) == 'end_date'] <- 'end_DateTime'
@@ -190,12 +230,153 @@ trips$end_minute <- format(as.POSIXct(endTime,format="%H:%M:%S"),"%M")
 # Se genera la edad del usuario al empezar con el servicio
 trips$age <- as.integer(trips$start_year) - trips$birth_date
 
+# se hace lo mismo para sacar fecha y hora en la base de clima
+weather$start_date <- weather$DATE %>% strsplit(' ') %>% 
+  sapply("[", 1) %>% as.Date('%Y%m%d') %>% date()
+
+weather$start_hour <- weather$DATE %>% strsplit(' ') %>% 
+  sapply("[", 2) %>% as.POSIXct(format="%H:%M") %>% 
+  hour()
+
+# ahora unimos la HPCP y measurement flag a la base de viajes
+trips <- weather %>% 
+  select("HPCP", "Measurement_Flag", "start_date", "start_hour") %>%
+  left_join(trips,.,by=c("start_date","start_hour"))
+
+# NOTA. QUEDAN UNIDAS POR LA HORA DE INICIO DEL VIAJE.
+
+# remover objetos grandes
+rm(endDateTime,startDateTime,endDate,endTime,startDate,startTime)
 ```
 
+
 ```{r}
+# Transformación de variables
+summary(trips)
+
+# categoricas
+trips$subsc_type <- trips$subsc_type %>% as.factor
+trips$gender <- trips$gender %>% as.factor
+trips$start_weekday <- trips$start_weekday %>% as.factor
+trips$Measurement_Flag <- trips$Measurement_Flag %>% as.factor
+
+```
+
+## EDA
+
+Una vez construidas las variables temporales, procedemos a hacer el análisis exploratorio de los datos, teniendo en mente que la variable objetivo es la duración de los viajes.
+
+### Análisis univariado
+
+Primero, revisamos la distribución de las variables.
+
+```{r}
+library(ggthemes)
+library(gridExtra)
+library(grid)
+
+# histograma para variables continuas
+myhist <- function(yvar){
+  ggplot(trips, aes_(x=as.name(yvar)))+
+  geom_histogram()+
+  ggtitle(paste0(as.name(yvar)))+
+  xlab("")+
+  ylab("")+ geom_rangeframe()+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+        axis.text.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+}
+
+hists<- trips %>%
+  select(
+    duration,
+    start_hour,
+    age,
+    HPCP
+  ) %>%
+names() %>%
+lapply(myhist)
+
+# grafico las variables
+grid.arrange(grobs=hists,ncol=4,
+             top=textGrob("Distribución de las variables"))
+
+
+# barras para las categóricas
+# histograma para variables continuas
+mybar <- function(yvar){
+  ggplot(trips, aes_(x=as.name(yvar)))+
+  geom_bar()+
+  ggtitle(paste0(as.name(yvar)))+
+  xlab("")+
+  ylab("")+ geom_rangeframe()+
+  theme_bw()+
+  theme(axis.line = element_line(colour = "black"),
+        axis.text.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+}
+
+bars <- trips %>%
+  select(
+    start_year,
+    start_month,
+    strt_statn,
+    end_statn,
+    start_weekday,
+    subsc_type,
+    gender,
+    Measurement_Flag
+  ) %>%
+names() %>%
+lapply(mybar)
+
+# grafico las variables
+grid.arrange(grobs=bars,ncol=4,
+             top=textGrob("Distribución de las variables"))
+
+```
+
+
+## Análisis bivariado
+
+```{r}
+# Mapa de calor start y end station
+x <- trips %>% count(strt_statn, end_statn)
+summary(x)
+
+y <- pivot_wider(x, id_cols=c("strt_statn"), 
+              names_from=c("end_statn"),
+              values_from=c("n"),
+              values_fill=0)
+class(y)
+
+# Matrix format. nota. las columnas son end stations y las filas start stations
+rownames(y) <- y[,1] %>% unlist()
+y <- y %>% dplyr::select(c(-1))
+y <- as.matrix(y)
+
+library('heatmaply')
+heatmaply(y,
+          dendrogram = "none",
+          colors = c("wheat","navyblue"),
+          grid_color = "white",
+          fontsize_row = 7, fontsize_col = 7,
+          xlab = "",
+          ylab = "",
+)
+
+
+```
+
+```{r, cache=TRUE}
 # Se muestra la relación entre edad y duración (acotada superiormente por su percentil 99%)
 ggplot(trips, aes(age, duration)) +
-  geom_point() +
+  geom_point(alpha=0.3) +
   geom_smooth() +
   ylim(0, quantile(trips$duration, probs=0.99))
 
@@ -234,7 +415,7 @@ ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
 
 FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor.
 
-FVG_comentario: también tendremos que decidir cómo tratar valores vacíos de "gender" y de "zip_code" (como el 29.93%). De la tabla de abajo noten cómo los valore vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". De momento les imputo unknown, y muestro una tabla con porcentajes de valores vacíos en ambas.
+FVG_comentario: también tendremos que decidir cómo tratar valores vacíos de "gender" y de "zip_code" (como el 29.93%). De la tabla de abajo noten cómo los valores vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". De momento les imputo unknown, y muestro una tabla con porcentajes de valores vacíos en ambas.
 
 ```{r}
 empty_gender <- sum(trips$gender=='')
