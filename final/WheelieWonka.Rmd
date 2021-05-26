@@ -88,8 +88,10 @@ packages <- c(
   "kableExtra",
   "GGally",
   "stargazer",
-  "gridExtra"
+  "gridExtra",
+  "igraph","tidygraph","ggraph","networkD3","visNetwork"
   )
+
 
 # instala los paquetes que no se tengan
 installed_packages <- packages %in% rownames(installed.packages())
@@ -524,3 +526,40 @@ rownames(aux) <- colnames(tdf)
 kable(aux, booktabs=T) %>% kable_styling(position = "center", latex_options="HOLD_position")
 
 ```
+
+## Análisis de redes 
+
+```{r}
+
+edges<-trips %>% select(strt_statn,end_statn,duration) %>% na.omit()
+names(edges)<-c("from","to","weight")
+nodes<-stations%>% select(id,terminal)
+#edges<-sample_n(edges,1000)
+edges<-edges %>% filter(from==3)
+```
+
+```{r}
+routes_igraph <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+
+```
+
+
+```{r}
+
+ggraph(routes_igraph, layout = "linear") + 
+  geom_edge_arc(aes(width = weight), alpha = 0.8) + 
+  scale_edge_width(range = c(0.2, 2)) +
+  labs(edge_width = "Letters") +
+  theme_graph()
+
+
+```
+
+```{r}
+
+sankeyNetwork(Links = edges, Nodes = nodes, Source = "from", Target = "to", 
+              NodeID = "terminal", Value = "weight")
+
+```
+
+se me ocurre un arbol /logit multinomial/ o algo con efectos fijos donde aprovechemos la esperanza del tiempo de bici dado una terminal en particual
