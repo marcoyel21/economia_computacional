@@ -627,6 +627,20 @@ kable(aux, booktabs=T) %>% kable_styling(position = "center", latex_options="HOL
 rm(tdf, hists, ss_by_date, ss_by_hr)
 
 ```
+Se asignan las coordenadas de cada estación por cada arrivo y salida.
+
+```{r}
+# Coordenadas
+stations$strt_statn <- stations$id
+stations$end_statn <- stations$id
+trips <- merge(trips, stations[, c('strt_statn', 'lat','lng')], by='strt_statn', all.x=T)
+colnames(trips)[colnames(trips) == 'lat'] <- 'start_lat'
+colnames(trips)[colnames(trips) == 'lng'] <- 'start_lng'
+trips <- merge(trips, stations[, c('end_statn', 'lat','lng')], by='end_statn', all.x=T)
+colnames(trips)[colnames(trips) == 'lat'] <- 'end_lat'
+colnames(trips)[colnames(trips) == 'lng'] <- 'end_lng'
+
+```
 
 ## Análisis de redes 
 
