@@ -500,10 +500,15 @@ ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
            size = 4)
 ```
 
+FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor. Provisionalmente, le imputo la mediana.
 
-FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor.
+Dada la distribución que sigue la edad, observada en los histogramas, se imputa la mediana a las edades.
 
-FVG_comentario: también tendremos que decidir cómo tratar valores vacíos de "gender" y de "zip_code" (como el 29.93%). De la tabla de abajo noten cómo los valores vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". De momento les imputo unknown, y muestro una tabla con porcentajes de valores vacíos en ambas.
+```{r}
+trips[is.na(trips$age), 'age'] <- median(trips$age, na.rm = T)
+```
+
+Pasando ahora la atención a las variables de "gender" y de "zip_code", es posible notar que valores vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". A estos se les imputa "Unknown" y se les trata como factor.
 
 ```{r}
 empty_gender <- sum(trips$gender=='')
@@ -523,8 +528,6 @@ trips$gender <- droplevels(trips$gender)
 
 trips$zip_code <- factor(trips$zip_code, levels=c(levels(trips$zip_code), 'Unknown'))
 trips$zip_code[is.na(trips$zip_code)] <- 'Unknown'
-
-summary(trips)
 
 ```
 
