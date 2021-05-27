@@ -581,6 +581,11 @@ kable(cbind(uselessCols, uValues),
 
 ```
 
+Se elimina, entonces, la variable "status", pues esta no contiene información útil.
+```{r}
+trips$status <- NULL
+```
+
 FVG_comentario: Compañeros, noten cómo las lecturas del clima de weather pertenecen a una sola estación de medición ubicada en Boston, MA., mientras que las estaciones de bicicletas están no sólo en Boston, sino en Cambridge, Brookline, y Somerville como se observa en la tabla de abajo. Si queremos usar estos datos habrá que argumentar el porqué de su validez (por ejemplo, suficiente cercanía -medible a través de latitud y longitud- implica mismo clima). 
 
 ```{r}
