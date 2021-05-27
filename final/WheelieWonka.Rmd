@@ -76,22 +76,14 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
 ```{r, include=FALSE}
 
 packages <- c(
-  "tidyverse",
-  "data.table",
-  "broom",
-  "knitr",
-  "naniar",
-  "lubridate",
-  "RCT",
-  "splitstackshape",
-  "magrittr",
-  "kableExtra",
-  "GGally",
-  "stargazer",
-  "gridExtra",
-  "igraph","tidygraph","ggraph","networkD3","visNetwork", "reshape2"
+  "tidyverse", "data.table", "broom", 
+  "knitr", "naniar", "lubridate",
+  "RCT", "splitstackshape", "magrittr",
+  "kableExtra", "GGally", "stargazer",
+  "gridExtra", "igraph", "tidygraph",
+  "ggraph","networkD3","visNetwork", 
+  "reshape2", "ggthemes", "grid"
   )
-
 
 # instala los paquetes que no se tengan
 installed_packages <- packages %in% rownames(installed.packages())
@@ -255,7 +247,7 @@ HPCP_NAs_prcnt <- trunc(mean(is.na(naive_merge$HPCP))*100*100)/100
 rm(naive_merge)
 ```
 
-Ahora, se procede a unir la base que contiene la información sobre los viajes con las columnas relevantes de las otras bases. Esto se hace primero con la información sobre el clima a la hora que inicia y termina el viaje. Naturalmente, sería ideal tener información sobre el nivel de precipitación registrada durante cada minuto de los viajes de los usuarios. Sin embargo, este no es el caso. En nuestra base principal tenemos `length(unique(trips$start_date))` días para los cuales se registró al menos un viaje, pero únicamente contamos con `length(unique(weather$start_date))` días que sí tienen mediciones. Más aún, si fuésemos a asignar valores a cada viaje para el nivel de precipitación con base en un match estricto con la fecha y hora de la medición, tendríamos que el `HPCP_NAs_prcnt`% de esta nueva columna serían NAs. Consideramos que esta variable podría tener mucha información importante como para eliminarla, y que las mediciones con las que contamos aún pueden decirnos mucho más: cuando llueve, las afectaciones de dicho fenómeno son persistentes temporalmente, pues el hecho de que no se tenga medición para una hora después de un registro, esto no implica que ya no esté lloviendo, o que el clima ha mejorado. Del mismo modo, las calles suelen continuar mojadas una o varias horas después. Por otra parte, cuando llueve, esto no sucede sin previo aviso, de un minuto a otro. Con base en este razonamiento, se decide utilizar las pocas observaciones que sí se tienen para crear un índice alrededor de la hora sobre la cual sí se tien registro de la siguiente manera: para cada día y hora en que se registró un viaje, si existe un registro para el clima este se deja intacto. Cuando no, se utiliza un promedio de la lluvia registrada en el intervalo que comprende desde tres horas antes (efectos persistentes del clima del pasado) y hasta una hora después (previsión del clima futuro dado el presente). Nótese que los registros del nivel de precipitación en esta nueva variable únicamente toman `length(unique(trips$HPCP))-1` valores posibles. Como los NA aún persisten, a estos se les asigna el valor "SR" (Sin Registro), y se trata a toda la variable como un factor. 
+Ahora, se procede a unir la base que contiene la información sobre los viajes con las columnas relevantes de las otras bases. Esto se hace primero con la información sobre el clima a la hora que inicia y termina el viaje. Naturalmente, sería ideal tener información sobre el nivel de precipitación registrada durante cada minuto de los viajes de los usuarios. Sin embargo, este no es el caso. En nuestra base principal tenemos `length(unique(trips$start_date))` días para los cuales se registró al menos un viaje, pero únicamente contamos con `length(unique(weather$start_date))` días que sí tienen mediciones. Más aún, si fuésemos a asignar valores a cada viaje para el nivel de precipitación con base en un match estricto con la fecha y hora de la medición, tendríamos que el `HPCP_NAs_prcnt`% de esta nueva columna serían NAs. Consideramos que esta variable podría tener mucha información importante como para eliminarla, y que las mediciones con las que contamos aún pueden decirnos mucho más: cuando llueve, las afectaciones de dicho fenómeno son persistentes temporalmente, pues el hecho de que no se tenga medición para una hora después de un registro, esto no implica que ya no esté lloviendo, o que el clima ha mejorado. Del mismo modo, las calles suelen continuar mojadas una o varias horas después. Por otra parte, cuando llueve, esto no sucede sin previo aviso, de un minuto a otro. Con base en este razonamiento, se decide utilizar las pocas observaciones que sí se tienen para crear un índice alrededor de la hora sobre la cual sí se tien registro de la siguiente manera: para cada día y hora en que se registró un viaje, si existe un registro para el clima este se deja intacto. Cuando no, se utiliza un promedio de la lluvia registrada en el intervalo que comprende desde tres horas antes (efectos persistentes del clima del pasado) y hasta una hora después (previsión del clima futuro dado el presente). Nótese que los registros del nivel de precipitación en esta nueva variable únicamente toman `length(unique(trips$HPCP))-1` valores posibles. Como los NA aún persisten, a estos se les asigna el valor "SR" (Sin Registro), y se trata a toda la variable como un factor por intervalos. 
 
 Usando un razonamiento similar, se considera que, en general, el hecho de que haya llovido durante el día puede también decirnos algo de información relativamente distinta. Por un lado, si había llovido antes de tomar una bicicleta, esto podría tener un efecto en las decisiones de los usuarios a través de sus ánimos y la expectativa del clima para el resto del día. Por otro, si aún no había llovido, es altamente probable que los usuarios hayan elegido iniciar un viaje con base en sus propias predicciones respecto al clima para el resto del día con base en factores que, para efectos de nuestros datos, no son observables. Es por ello que también se crea una variable que nos informa si llovió o no en un determinado día. 
 
@@ -264,9 +256,10 @@ Usando un razonamiento similar, se considera que, en general, el hecho de que ha
 
 # Imputación a los NA para HPCP en la base trips
 weather$start_hour <- as.integer(weather$start_hour)
+unique_dates <- unique(trips$start_date)
 weather_calendar <- as.data.frame(matrix(NA, nrow = length(unique_dates), ncol = 25))
 colnames(weather_calendar) <- c('start_date', 0:23)
-weather_calendar$start_date <- unique(trips$start_date)
+weather_calendar$start_date <- unique_dates
 for ( i in 1:nrow(weather_calendar) ) {
   curr_date <- weather_calendar$start_date[i]
   ss_by_date <- weather[weather$start_date == curr_date, c('start_hour', 'HPCP')]
@@ -304,6 +297,7 @@ date_matcher$start_hour <- as.integer(date_matcher$start_hour)
 colnames(date_matcher)[3] <- 'HPCP'
 trips <- merge(trips, date_matcher, by=c("start_date", "start_hour"), all.x=T)
 
+# Creación de la variable indicadora de día lluvioso
 rained_matcher <- aggregate(HPCP~start_date, data=weather, FUN=sum, na.action = na.omit)
 rained_matcher$rained <- ifelse(rained_matcher$HPCP>0, 1, 0)
 trips <- merge(trips, rained_matcher[,c('start_date', 'rained')], by='start_date', all.x=T)
@@ -311,12 +305,17 @@ trips <- merge(trips, rained_matcher[,c('start_date', 'rained')], by='start_date
 HPCP_NAs_prcnt <- trunc(mean(is.na(trips$HPCP))*100*100)/100 # Porcentaje de NAs en HPCP
 rained_NAs_prcnt <- trunc(mean(is.na(trips$rained))*100*100)/100 # Porcentaje de NAs en rained
 
+# Se forman intervalos para el nivel de lluvia
+trips$HPCP <- cut(trips$HPCP, 
+                  breaks=c(-0.001, seq(0,0.09,.015), seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5), 
+                  labels=c(0, seq(0,0.09,.015)[-1], seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5))
+
 # Se asigna SR a las NA para poder trabajar como factor
-trips[is.na(trips$HPCP), 'HPCP'] <- 'SR'
 trips[is.na(trips$rained), 'rained'] <- 'SR'
+trips$HPCP = factor(trips$HPCP, levels=c(levels(trips$HPCP), 'SR'))
+trips$HPCP[is.na(trips$HPCP)] = 'SR'
 
 # Se transforman a factor
-trips$HPCP <- trips$HPCP %>% as.factor
 trips$rained <- trips$rained %>% as.factor
 
 ```
@@ -325,13 +324,28 @@ Con lo anterior, se disminuyó el número de NAs en "HPCP" a `HPCP_NAs_prcnt`, y
 
 ```{r}
 # Transformación de variables
-summary(trips)
 
-# categoricas
+# categóricas
 trips$subsc_type <- trips$subsc_type %>% as.factor
 trips$gender <- trips$gender %>% as.factor
+trips$status <- trips$status %>% as.factor
+trips$bike_nr <- trips$bike_nr %>% as.factor
+trips$zip_code <- trips$zip_code %>% as.factor
+
+trips$start_year <- trips$start_year %>% as.factor
+trips$end_year <- trips$end_year %>% as.factor
+trips$start_month <- trips$start_month %>% as.factor
+trips$end_month <- trips$end_month %>% as.factor
 trips$start_weekday <- trips$start_weekday %>% as.factor
-trips$Measurement_Flag <- trips$Measurement_Flag %>% as.factor
+trips$end_weekday <- trips$end_weekday %>% as.factor
+
+# numéricas 
+trips$start_hour <- trips$start_hour %>% as.integer
+trips$end_hour <- trips$end_hour %>% as.integer
+trips$start_minute <- trips$start_minute %>% as.integer
+trips$end_minute <- trips$end_minute %>% as.integer
+
+summary(trips)
 
 ```
 
@@ -344,10 +358,6 @@ Una vez construidas las variables temporales, procedemos a hacer el análisis ex
 Primero, revisamos la distribución de las variables.
 
 ```{r}
-library(ggthemes)
-library(gridExtra)
-library(grid)
-
 # histograma para variables continuas
 myhist <- function(yvar){
   ggplot(trips, aes_(x=as.name(yvar)))+
@@ -367,14 +377,13 @@ hists<- trips %>%
   select(
     duration,
     start_hour,
-    age,
-    HPCP
+    age
   ) %>%
-names() %>%
-lapply(myhist)
+  names() %>%
+  lapply(myhist)
 
 # grafico las variables
-grid.arrange(grobs=hists,ncol=4,
+grid.arrange(grobs=hists,ncol=3,
              top=textGrob("Distribución de las variables"))
 
 
@@ -403,7 +412,7 @@ bars <- trips %>%
     start_weekday,
     subsc_type,
     gender,
-    Measurement_Flag
+    HPCP
   ) %>%
 names() %>%
 lapply(mybar)
