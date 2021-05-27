@@ -76,7 +76,7 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
 ```{r, include=FALSE}
 
 packages <- c(
-  "tidyverse", "data.table", "broom", 
+  "tidyverse", "data.table", "broom",
   "knitr", "naniar", "lubridate",
   "RCT", "splitstackshape", "magrittr",
   "kableExtra", "stargazer",
@@ -156,7 +156,7 @@ weather$Measurement_Flag[weather$Measurement_Flag==" "] <- NA
 
 # función para NAs
 check_nas <- function(df){
-  df %>% 
+  df %>%
     select_if(~sum(is.na(.)) > 0) %>%
     miss_var_summary()
 }
@@ -175,12 +175,12 @@ kable(check_nas(weather), booktabs=T, align = 'c',
 
 ```{r}
 # Análisis para imputación de estaciones
-prcnt_sameStation <- trunc(sum(trips$strt_statn == trips$end_statn, 
+prcnt_sameStation <- trunc(sum(trips$strt_statn == trips$end_statn,
                                na.rm = T) / nrow(trips) * 100 * 100)/100
 NA_either <- sum(is.na(trips$strt_statn) | is.na(trips$end_statn))
 ```
 
-Se decide eliminar la variable "Quality_Flag", pues esta contiene únicamente NAs. 
+Se decide eliminar la variable "Quality_Flag", pues esta contiene únicamente NAs.
 
 Además, analizando las observaciones con NA en "strt_statn" o "end_statn", notamos que estas sí tienen valores para variables importantes como "duration", y que no necesariamente coinciden en tener NA para ambas variables, por lo que sí podrían ser útiles si se les imputara algún valor. Lo más directo sería imputarle a la variable con NA el valor de la variable que sí tiene información. Sin embargo, notamos que tan solo el `prcnt_sameStation`% de las observaciones siguen este comportamiento. Dado que para poder predecir la disponibilidad de bicicletas por estación las variables de "strt_statn" o "end_statn" serán muy importantes, se decide simplemente eliminar las observaciones con NA en cualquiera de estas dos variables. Dado que son únicamente `NA_either` las observaciones que cumplen con esta última característica, el efecto eliminarlas es prácticamente nulo.
 
@@ -204,7 +204,7 @@ trips$start_month <- trips$start_date %>% month()
 trips$start_weekday <- weekdays(trips$start_date)
 
 startTime <- sapply(startDateTime, "[", 2)
-trips$start_hour <- as.POSIXct(startTime,format="%H:%M:%S") %>% 
+trips$start_hour <- as.POSIXct(startTime,format="%H:%M:%S") %>%
   hour()
 trips$start_minute <- format(as.POSIXct(startTime,format="%H:%M:%S"),"%M")
 
@@ -227,11 +227,11 @@ trips$end_minute <- format(as.POSIXct(endTime,format="%H:%M:%S"),"%M")
 trips$age <- as.integer(trips$start_year) - trips$birth_date
 
 # se hace lo mismo para sacar fecha y hora en la base de clima
-weather$start_date <- weather$DATE %>% strsplit(' ') %>% 
+weather$start_date <- weather$DATE %>% strsplit(' ') %>%
   sapply("[", 1) %>% as.Date('%Y%m%d') %>% date()
 
-weather$start_hour <- weather$DATE %>% strsplit(' ') %>% 
-  sapply("[", 2) %>% as.POSIXct(format="%H:%M") %>% 
+weather$start_hour <- weather$DATE %>% strsplit(' ') %>%
+  sapply("[", 2) %>% as.POSIXct(format="%H:%M") %>%
   hour()
 
 # remover objetos grandes
@@ -242,15 +242,15 @@ rm(endDateTime,startDateTime,endDate,endTime,startDate,startTime)
 ```{r}
 # Para analizar problemas con unir trips y weather
 naive_merge <- merge(trips[, c('start_date', 'start_hour')],
-                     weather[, c('start_date', 'start_hour', 'HPCP')], 
+                     weather[, c('start_date', 'start_hour', 'HPCP')],
                      by = c('start_date', 'start_hour'), all.x = T)
 HPCP_NAs_prcnt <- trunc(mean(is.na(naive_merge$HPCP))*100*100)/100
 rm(naive_merge)
 ```
 
-Ahora, se procede a unir la base que contiene la información sobre los viajes con las columnas relevantes de las otras bases. Esto se hace primero con la información sobre el clima a la hora que inicia y termina el viaje. Naturalmente, sería ideal tener información sobre el nivel de precipitación registrada durante cada minuto de los viajes de los usuarios. Sin embargo, este no es el caso. En nuestra base principal tenemos `length(unique(trips$start_date))` días para los cuales se registró al menos un viaje, pero únicamente contamos con `length(unique(weather$start_date))` días que sí tienen mediciones. Más aún, si fuésemos a asignar valores a cada viaje para el nivel de precipitación con base en un match estricto con la fecha y hora de la medición, tendríamos que el `HPCP_NAs_prcnt`% de esta nueva columna serían NAs. Consideramos que esta variable podría tener mucha información importante como para eliminarla, y que las mediciones con las que contamos aún pueden decirnos mucho más: cuando llueve, las afectaciones de dicho fenómeno son persistentes temporalmente, pues el hecho de que no se tenga medición para una hora después de un registro, esto no implica que ya no esté lloviendo, o que el clima ha mejorado. Del mismo modo, las calles suelen continuar mojadas una o varias horas después. Por otra parte, cuando llueve, esto no sucede sin previo aviso, de un minuto a otro. Con base en este razonamiento, se decide utilizar las pocas observaciones que sí se tienen para crear un índice alrededor de la hora sobre la cual sí se tien registro de la siguiente manera: para cada día y hora en que se registró un viaje, si existe un registro para el clima este se deja intacto. Cuando no, se utiliza un promedio de la lluvia registrada en el intervalo que comprende desde tres horas antes (efectos persistentes del clima del pasado) y hasta una hora después (previsión del clima futuro dado el presente). Nótese que los registros del nivel de precipitación en esta nueva variable únicamente toman `length(unique(trips$HPCP))-1` valores posibles. Como los NA aún persisten, a estos se les asigna el valor "SR" (Sin Registro), y se trata a toda la variable como un factor por intervalos. 
+Ahora, se procede a unir la base que contiene la información sobre los viajes con las columnas relevantes de las otras bases. Esto se hace primero con la información sobre el clima a la hora que inicia y termina el viaje. Naturalmente, sería ideal tener información sobre el nivel de precipitación registrada durante cada minuto de los viajes de los usuarios. Sin embargo, este no es el caso. En nuestra base principal tenemos `length(unique(trips$start_date))` días para los cuales se registró al menos un viaje, pero únicamente contamos con `length(unique(weather$start_date))` días que sí tienen mediciones. Más aún, si fuésemos a asignar valores a cada viaje para el nivel de precipitación con base en un match estricto con la fecha y hora de la medición, tendríamos que el `HPCP_NAs_prcnt`% de esta nueva columna serían NAs. Consideramos que esta variable podría tener mucha información importante como para eliminarla, y que las mediciones con las que contamos aún pueden decirnos mucho más: cuando llueve, las afectaciones de dicho fenómeno son persistentes temporalmente, pues el hecho de que no se tenga medición para una hora después de un registro, esto no implica que ya no esté lloviendo, o que el clima ha mejorado. Del mismo modo, las calles suelen continuar mojadas una o varias horas después. Por otra parte, cuando llueve, esto no sucede sin previo aviso, de un minuto a otro. Con base en este razonamiento, se decide utilizar las pocas observaciones que sí se tienen para crear un índice alrededor de la hora sobre la cual sí se tien registro de la siguiente manera: para cada día y hora en que se registró un viaje, si existe un registro para el clima este se deja intacto. Cuando no, se utiliza un promedio de la lluvia registrada en el intervalo que comprende desde tres horas antes (efectos persistentes del clima del pasado) y hasta una hora después (previsión del clima futuro dado el presente). Nótese que los registros del nivel de precipitación en esta nueva variable únicamente toman `length(unique(trips$HPCP))-1` valores posibles. Como los NA aún persisten, a estos se les asigna el valor "SR" (Sin Registro), y se trata a toda la variable como un factor por intervalos.
 
-Usando un razonamiento similar, se considera que, en general, el hecho de que haya llovido durante el día puede también decirnos algo de información relativamente distinta. Por un lado, si había llovido antes de tomar una bicicleta, esto podría tener un efecto en las decisiones de los usuarios a través de sus ánimos y la expectativa del clima para el resto del día. Por otro, si aún no había llovido, es altamente probable que los usuarios hayan elegido iniciar un viaje con base en sus propias predicciones respecto al clima para el resto del día con base en factores que, para efectos de nuestros datos, no son observables. Es por ello que también se crea una variable que nos informa si llovió o no en un determinado día. 
+Usando un razonamiento similar, se considera que, en general, el hecho de que haya llovido durante el día puede también decirnos algo de información relativamente distinta. Por un lado, si había llovido antes de tomar una bicicleta, esto podría tener un efecto en las decisiones de los usuarios a través de sus ánimos y la expectativa del clima para el resto del día. Por otro, si aún no había llovido, es altamente probable que los usuarios hayan elegido iniciar un viaje con base en sus propias predicciones respecto al clima para el resto del día con base en factores que, para efectos de nuestros datos, no son observables. Es por ello que también se crea una variable que nos informa si llovió o no en un determinado día.
 
 
 ```{r}
@@ -267,7 +267,7 @@ for ( i in 1:nrow(weather_calendar) ) {
   if (nrow(ss_by_date) > 0) {
     aux <- 3
     for ( j in 0:22 ) {
-      ss_by_hr <- ss_by_date[ss_by_date$start_hour >= (j-3+aux) & ss_by_date$start_hour <= (j+1), 
+      ss_by_hr <- ss_by_date[ss_by_date$start_hour >= (j-3+aux) & ss_by_date$start_hour <= (j+1),
                              c('start_hour', 'HPCP')]
       est_weather <- sum(ss_by_hr$HPCP, na.rm=T) / 5
       if (nrow(ss_by_hr) > 0) {
@@ -280,7 +280,7 @@ for ( i in 1:nrow(weather_calendar) ) {
       aux <- max(aux - 1,0)
     }
     # La hora 23, inalcanzable en el loop anterior
-    ss_by_hr <- ss_by_date[ss_by_date$start_hour >= (23-3) & ss_by_date$start_hour <= (23), 
+    ss_by_hr <- ss_by_date[ss_by_date$start_hour >= (23-3) & ss_by_date$start_hour <= (23),
                            c('start_hour', 'HPCP')]
     est_weather <- sum(ss_by_hr$HPCP, na.rm=T) / 5
     if (nrow(ss_by_hr) > 0) {
@@ -307,8 +307,8 @@ HPCP_NAs_prcnt <- trunc(mean(is.na(trips$HPCP))*100*100)/100 # Porcentaje de NAs
 rained_NAs_prcnt <- trunc(mean(is.na(trips$rained))*100*100)/100 # Porcentaje de NAs en rained
 
 # Se forman intervalos para el nivel de lluvia
-trips$HPCP <- cut(trips$HPCP, 
-                  breaks=c(-0.001, seq(0,0.09,.015), seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5), 
+trips$HPCP <- cut(trips$HPCP,
+                  breaks=c(-0.001, seq(0,0.09,.015), seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5),
                   labels=c(0, seq(0,0.09,.015)[-1], seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5))
 
 # Se asigna SR a las NA para poder trabajar como factor
@@ -318,6 +318,10 @@ trips$HPCP[is.na(trips$HPCP)] = 'SR'
 
 # Se transforman a factor
 trips$rained <- trips$rained %>% as.factor
+
+# Se asigna también Measurement_Flag
+trips <- merge(trips, weather[,c('start_date','start_hour', 'Measurement_Flag')],
+               by = c('start_date','start_hour'), all.x = T)
 
 ```
 
@@ -332,7 +336,7 @@ trips$gender <- trips$gender %>% as.factor
 trips$status <- trips$status %>% as.factor
 trips$bike_nr <- trips$bike_nr %>% as.factor
 trips$zip_code <- trips$zip_code %>% as.factor
-trips$Me_Flag <- trips$Measurement_flag %>% as.factor
+trips$Measurement_Flag <- trips$Measurement_Flag %>% as.factor
 
 trips$start_year <- trips$start_year %>% as.factor
 trips$end_year <- trips$end_year %>% as.factor
@@ -341,7 +345,7 @@ trips$end_month <- trips$end_month %>% as.factor
 trips$start_weekday <- trips$start_weekday %>% as.factor
 trips$end_weekday <- trips$end_weekday %>% as.factor
 
-# numéricas 
+# numéricas
 trips$start_hour <- trips$start_hour %>% as.integer
 trips$end_hour <- trips$end_hour %>% as.integer
 trips$start_minute <- trips$start_minute %>% as.integer
@@ -363,7 +367,7 @@ Una vez construidas las variables temporales, procedemos a hacer el análisis ex
 corr_age_duration <- cor(trips$age, trips$duration, use = "complete.obs")
 
 # Histograma de la edad por género
-ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) + 
+ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
   geom_histogram(alpha=0.2, position="identity") +
   geom_vline(aes(xintercept=mean(age, na.rm=T)), color="orange", size=1) +
   geom_vline(aes(xintercept=median(age, na.rm=T)), color="black", linetype="dashed", size=1) +
@@ -372,7 +376,7 @@ ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
            y = 30000,
            label = paste("Median =", median(trips$age, na.rm=T)),
            col = "black",
-           size = 4) + 
+           size = 4) +
   annotate("text",                        # Add text for mean
            x = 42,
            y = 30000,
@@ -381,10 +385,15 @@ ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
            size = 4)
 ```
 
+FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor. Provisionalmente, le imputo la mediana.
 
-FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor.
+Dada la distribución que sigue la edad, observada en los histogramas, se imputa la mediana a las edades.
 
-FVG_comentario: también tendremos que decidir cómo tratar valores vacíos de "gender" y de "zip_code" (como el 29.93%). De la tabla de abajo noten cómo los valores vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". De momento les imputo unknown, y muestro una tabla con porcentajes de valores vacíos en ambas.
+```{r}
+trips[is.na(trips$age), 'age'] <- median(trips$age, na.rm = T)
+```
+
+Pasando ahora la atención a las variables de "gender" y de "zip_code", es posible notar que valores vacíos de "gender" corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su "zip_code". A estos se les imputa "Unknown" y se les trata como factor.
 
 ```{r}
 empty_gender <- sum(trips$gender=='')
@@ -397,13 +406,17 @@ rownames(aux) <- NULL
 kable(aux, col.names = c("Variable","Número de valores vacíos", "%"), align = "lrr", booktabs=T) %>%
   kable_styling(position = "center", latex_options="HOLD_position")
 
-# Asigna un valor a los valores vacíos del género y zip_code. 
-trips$gender[trips$gender==''] <- 'Unknown' 
-trips$zip_code[trips$zip_code==''] <- 'Unknown' 
+# Asigna un valor a los valores vacíos del género y zip_code.
+trips$gender <- factor(trips$gender, levels=c(levels(trips$gender), 'Unknown'))
+trips$gender[is.na(trips$gender)] <- 'Unknown'
+trips$gender <- droplevels(trips$gender)
+
+trips$zip_code <- factor(trips$zip_code, levels=c(levels(trips$zip_code), 'Unknown'))
+trips$zip_code[is.na(trips$zip_code)] <- 'Unknown'
 
 ```
 
-FVG: Eliminamos también `sum(trips$duration < 0)` (49) observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen `sum(trips$duration == 0)` (4389) observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante. 
+FVG: Eliminamos también `sum(trips$duration < 0)` (49) observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen `sum(trips$duration == 0)` (4389) observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante.
 
 ```{r}
 
@@ -412,7 +425,7 @@ trips <- trips[trips$duration>0, ]
 ```
 
 Ahora buscamos columnas con el mismo valor para todas las observaciones, pues de ser el caso no serían útiles para el modelo.
-  
+
 ```{r}
 
 # trips
@@ -447,18 +460,18 @@ Notamos que la variables "status" en la base con información de los viajes cont
 uselessCols <- c(uselessCols_trips, uselessCols_weather)
 uValues <- c(unique(trips[,uselessCols_trips]), unique(weather[,uselessCols_weather]))
 names(uValues) <- NULL
-kable(cbind(uselessCols, uValues), 
+kable(cbind(uselessCols, uValues),
       col.names = c("Nombre de la variable","Valor único"), align = "lr", booktabs=T) %>%
   kable_styling(position = "center", latex_options="HOLD_position")
 
 ```
 
+Se elimina, entonces, la variable "status", pues esta no contiene información útil.
 ```{r}
-# tiramos la variable status que tiene un valor constante
 trips$status <- NULL
 ```
 
-FVG_comentario: Compañeros, noten cómo las lecturas del clima de weather pertenecen a una sola estación de medición ubicada en Boston, MA., mientras que las estaciones de bicicletas están no sólo en Boston, sino en Cambridge, Brookline, y Somerville como se observa en la tabla de abajo. Si queremos usar estos datos habrá que argumentar el porqué de su validez (por ejemplo, suficiente cercanía -medible a través de latitud y longitud- implica mismo clima). 
+FVG_comentario: Compañeros, noten cómo las lecturas del clima de weather pertenecen a una sola estación de medición ubicada en Boston, MA., mientras que las estaciones de bicicletas están no sólo en Boston, sino en Cambridge, Brookline, y Somerville como se observa en la tabla de abajo. Si queremos usar estos datos habrá que argumentar el porqué de su validez (por ejemplo, suficiente cercanía -medible a través de latitud y longitud- implica mismo clima).
 
 ```{r}
 
@@ -467,7 +480,7 @@ for (i in unique(stations$municipal)) {
   n_obs <- c(n_obs, nrow(stations[stations$municipal==i,]))
 }
 
-kable(cbind(unique(stations$municipal), n_obs), 
+kable(cbind(unique(stations$municipal), n_obs),
       col.names = c("Municipalidad","Número de estaciones"), align = "lr", booktabs=T) %>%
   kable_styling(position = "center", latex_options="HOLD_position")
 
@@ -476,26 +489,40 @@ Se presentan finalmente  algunos estadísticos relevantes sobre las variables nu
 
 ```{r}
 # No muestro las variables de id de la estación y viaje, ni el año de nacimiento (debatible)
-trips$start_hour <- as.numeric(trips$start_hour)
 tdf <- select_if(trips, is.numeric)
 tdf <- subset(tdf, select = -c(seq_id,hubway_id))
 #tdf <- tdf[ ,-c(seq_id,hubway_id)]
-aux <- matrix(NA, ncol = 8, nrow = 10) 
+aux <- matrix(NA, ncol = 8, nrow = 9)
 k <- 1
 for (i in colnames(tdf)) {
-  qu <- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE) 
+  qu <- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
   n <- length(which(!is.na(trips[[i]])))
   NAs <- nrow(trips)-n
-  mean <- format(round(mean(trips[[i]], na.rm = TRUE), digits = 4), scientific = FALSE) 
+  mean <- format(round(mean(trips[[i]], na.rm = TRUE), digits = 4), scientific = FALSE)
   min <- min(trips[[i]],na.rm = TRUE)
-  max <- max(trips[[i]], na.rm = TRUE) 
-  aux[k,] <- c(mean, min, qu, max) 
+  max <- max(trips[[i]], na.rm = TRUE)
+  aux[k,] <- c(mean, min, qu, max)
   k <- k + 1
 }
-colnames(aux) <- c("Media", "Mín.", "p05", "p25", "p50", "p75", "p95", "Máx.") 
+colnames(aux) <- c("Media", "Mín.", "p05", "p25", "p50", "p75", "p95", "Máx.")
 rownames(aux) <- colnames(tdf)
 kable(aux, booktabs=T) %>% kable_styling(position = "center", latex_options="HOLD_position")
 
+rm(tdf, hists, ss_by_date, ss_by_hr)
+```
+Se asignan las coordenadas de cada estación por cada arrivo y salida.
+
+```{r}
+# Coordenadas
+stations$strt_statn <- stations$id
+stations$end_statn <- stations$id
+trips <- merge(trips, stations[, c('strt_statn', 'lat','lng')], by='strt_statn', all.x=T)
+colnames(trips)[colnames(trips) == 'lat'] <- 'start_lat'
+colnames(trips)[colnames(trips) == 'lng'] <- 'start_lng'
+trips <- merge(trips, stations[, c('end_statn', 'lat','lng')], by='end_statn', all.x=T)
+colnames(trips)[colnames(trips) == 'lat'] <- 'end_lat'
+colnames(trips)[colnames(trips) == 'lng'] <- 'end_lng'
+```
 
 ```
 
@@ -523,26 +550,26 @@ Primero separamos la base de validación y de entrenamiento
 set.seed(1990)
 # usaremos un set de entrenamiento del 80%
 trips_filter <-
-  trips_filter %>% 
+  trips_filter %>%
   mutate(training_sample = rbinom(n = nrow(trips_filter), 1, 0.8))
 
 # si queremos estratificar por alguna variable
 #treat_id <- treatment_assign(data = trips, share_control = 0.2,
-#                    n_t = 1, 
+#                    n_t = 1,
 #                    strata_varlist = c(""), missfits = "global",
 #                    seed = 2020, key = "seq_id")$data
 
 # separamos las bases
 # a la de validación le dejo el seq_id a las x y a la Y para unir resultados por id
-train <- trips_filter[trips_filter$training_sample==1,] %>% 
+train <- trips_filter[trips_filter$training_sample==1,] %>%
   select(-c("training_sample","seq_id"))
 
 #y_train <- trips$duration[trips$training_sample==1]
 
-test <- trips_filter[trips_filter$training_sample==0,] %>% 
+test <- trips_filter[trips_filter$training_sample==0,] %>%
   select(-c("training_sample","duration"))
 
-y_test <- trips_filter[trips_filter$training_sample==0,] %>% 
+y_test <- trips_filter[trips_filter$training_sample==0,] %>%
   select(c("seq_id","duration"))
 ```
 
@@ -558,8 +585,8 @@ cores <- detectCores()
 cl<-makeCluster(cores)
 inicio<-Sys.time()
 
-random_forest <- map(c(100,200,300,500, 700, 800), 
-                     function(z) 
+random_forest <- map(c(100,200,300,500, 700, 800),
+                     function(z)
                        ranger(y_train~.,
                               data= train,
                               num.trees = z,
@@ -583,7 +610,7 @@ ggplot(error_prediccion, aes(trees, 100*oob_error)) +
 
 ```
 
-## Análisis de redes 
+## Análisis de redes
 
 ```{r}
 
@@ -602,8 +629,8 @@ routes_igraph <- graph_from_data_frame(d = edges, vertices = nodes, directed = T
 
 ```{r}
 
-ggraph(routes_igraph, layout = "linear") + 
-  geom_edge_arc(aes(width = weight), alpha = 0.8) + 
+ggraph(routes_igraph, layout = "linear") +
+  geom_edge_arc(aes(width = weight), alpha = 0.8) +
   scale_edge_width(range = c(0.2, 2)) +
   labs(edge_width = "Letters") +
   theme_graph()
@@ -613,7 +640,7 @@ ggraph(routes_igraph, layout = "linear") +
 
 ```{r}
 
-sankeyNetwork(Links = edges, Nodes = nodes, Source = "from", Target = "to", 
+sankeyNetwork(Links = edges, Nodes = nodes, Source = "from", Target = "to",
               NodeID = "terminal", Value = "weight")
 
 ```
