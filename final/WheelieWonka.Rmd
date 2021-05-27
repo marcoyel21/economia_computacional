@@ -179,13 +179,13 @@ prcnt_sameStation <- trunc(sum(trips$strt_statn == trips$end_statn,
 NA_either <- sum(is.na(trips$strt_statn) | is.na(trips$end_statn))
 ```
 
-Se decide eliminar la variable "Quality_Flag", pues esta contiene únicamente NAs. De manera similar, se elimina "Measurement_Flag", pues su elevado número de NAs, así como la poca información que comunican los únicos valores que toma cuando sí es observado ("T" y "g").
+Se decide eliminar la variable "Quality_Flag", pues esta contiene únicamente NAs. 
 
-FVG: Además, analizando las observaciones con NA en "strt_statn" o "end_statn", notamos que estas sí tienen valores para variables importantes como "duration", y que no necesariamente coinciden en tener NA para ambas variables, por lo que sí podrían ser útiles si se les imputara algún valor. Lo más directo sería imputarle a la variable con NA el valor de la variable que sí tiene información. Sin embargo, notamos que tan solo el `prcnt_sameStation`% de las observaciones siguen este comportamiento. Dado que para poder predecir la disponibilidad de bicicletas por estación las variables de "strt_statn" o "end_statn" serán muy importantes, se decide simplemente eliminar las observaciones con NA en cualquiera de estas dos variables. Dado que son únicamente `NA_either` las observaciones que cumplen con esta última característica, el efecto eliminarlas es prácticamente nulo.
+Además, analizando las observaciones con NA en "strt_statn" o "end_statn", notamos que estas sí tienen valores para variables importantes como "duration", y que no necesariamente coinciden en tener NA para ambas variables, por lo que sí podrían ser útiles si se les imputara algún valor. Lo más directo sería imputarle a la variable con NA el valor de la variable que sí tiene información. Sin embargo, notamos que tan solo el `prcnt_sameStation`% de las observaciones siguen este comportamiento. Dado que para poder predecir la disponibilidad de bicicletas por estación las variables de "strt_statn" o "end_statn" serán muy importantes, se decide simplemente eliminar las observaciones con NA en cualquiera de estas dos variables. Dado que son únicamente `NA_either` las observaciones que cumplen con esta última característica, el efecto eliminarlas es prácticamente nulo.
 
 ```{r}
 weather$Quality_Flag <- NULL
-weather$Measurement_Flag <- NULL
+#weather$Measurement_Flag <- NULL
 trips <- trips[!is.na(trips$strt_statn) & !is.na(trips$end_statn), ]
 ```
 
@@ -331,6 +331,7 @@ trips$gender <- trips$gender %>% as.factor
 trips$status <- trips$status %>% as.factor
 trips$bike_nr <- trips$bike_nr %>% as.factor
 trips$zip_code <- trips$zip_code %>% as.factor
+trips$Quality_Flag <- trips$Quality_Flag %>% as.factor
 
 trips$start_year <- trips$start_year %>% as.factor
 trips$end_year <- trips$end_year %>% as.factor
@@ -412,7 +413,8 @@ bars <- trips %>%
     start_weekday,
     subsc_type,
     gender,
-    HPCP
+    HPCP,
+    Quality_Flag
   ) %>%
 names() %>%
 lapply(mybar)
