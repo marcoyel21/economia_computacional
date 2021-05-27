@@ -89,7 +89,7 @@ packages <- c(
   "GGally",
   "stargazer",
   "gridExtra",
-  "igraph","tidygraph","ggraph","networkD3","visNetwork"
+  "igraph","tidygraph","ggraph","networkD3","visNetwork", "reshape2"
   )
 
 
@@ -187,16 +187,17 @@ prcnt_sameStation <- trunc(sum(trips$strt_statn == trips$end_statn,
 NA_either <- sum(is.na(trips$strt_statn) | is.na(trips$end_statn))
 ```
 
-Se decide eliminar la variable "Quality_Flag", pues esta únicamente contiene NAs.
+Se decide eliminar la variable "Quality_Flag", pues esta contiene únicamente NAs. De manera similar, se elimina "Measurement_Flag", pues su elevado número de NAs, así como la poca información que comunican los únicos valores que toma cuando sí es observado ("T" y "g").
 
 FVG: Además, analizando las observaciones con NA en "strt_statn" o "end_statn", notamos que estas sí tienen valores para variables importantes como "duration", y que no necesariamente coinciden en tener NA para ambas variables, por lo que sí podrían ser útiles si se les imputara algún valor. Lo más directo sería imputarle a la variable con NA el valor de la variable que sí tiene información. Sin embargo, notamos que tan solo el `prcnt_sameStation`% de las observaciones siguen este comportamiento. Dado que para poder predecir la disponibilidad de bicicletas por estación las variables de "strt_statn" o "end_statn" serán muy importantes, se decide simplemente eliminar las observaciones con NA en cualquiera de estas dos variables. Dado que son únicamente `NA_either` las observaciones que cumplen con esta última característica, el efecto eliminarlas es prácticamente nulo.
 
 ```{r}
 weather$Quality_Flag <- NULL
+weather$Measurement_Flag <- NULL
 trips <- trips[!is.na(trips$strt_statn) & !is.na(trips$end_statn), ]
 ```
 
-Nótese que la información contenida en "birth_date" no es directamente útil, pues se tienen observaciones de distintos años. La información que seguramente será muy relevante es la edad del usuario cuando hizo uso del servicio, no su edad actual. Por ello, para poder analizar la variable "birth_date" y tomar una decisión respecto a sus NA, primero se procesa las variables "start_date", "end_date", y finalmente se genera una variable con la edad a partir de "birth_date".
+Nótese que la información contenida en "birth_date" no es directamente útil, pues se tienen observaciones de distintos años. La información que seguramente será muy relevante es la edad del usuario cuando hizo uso del servicio, no su edad actual. Por ello, para poder analizar la variable "birth_date" y tomar una decisión respecto a sus NA, primero se procesa las variables "start_date", "end_date", y finalmente se genera una variable con la edad a partir de "birth_date". Asimismo, se procesan las fechas en la base del clima para extraer una fecha y hora utilizables. Todo esto con la finalidad de poder realizar un análisis exploratorio que posteriormente permita tomar una decisión.
 
 ```{r}
 # Se divide start_date en fecha y hora para extraer la información
@@ -240,17 +241,87 @@ weather$start_hour <- weather$DATE %>% strsplit(' ') %>%
   sapply("[", 2) %>% as.POSIXct(format="%H:%M") %>% 
   hour()
 
-# ahora unimos la HPCP y measurement flag a la base de viajes
-trips <- weather %>% 
-  select("HPCP", "Measurement_Flag", "start_date", "start_hour") %>%
-  left_join(trips,.,by=c("start_date","start_hour"))
-
-# NOTA. QUEDAN UNIDAS POR LA HORA DE INICIO DEL VIAJE.
-
 # remover objetos grandes
 rm(endDateTime,startDateTime,endDate,endTime,startDate,startTime)
+
 ```
 
+```{r}
+# Para analizar problemas con unir trips y weather
+naive_merge <- merge(trips[, c('start_date', 'start_hour')],
+                     weather[, c('start_date', 'start_hour', 'HPCP')], 
+                     by = c('start_date', 'start_hour'), all.x = T)
+HPCP_NAs_prcnt <- trunc(mean(is.na(naive_merge$HPCP))*100*100)/100
+rm(naive_merge)
+```
+
+Ahora, se procede a unir la base que contiene la información sobre los viajes con las columnas relevantes de las otras bases. Esto se hace primero con la información sobre el clima a la hora que inicia y termina el viaje. Naturalmente, sería ideal tener información sobre el nivel de precipitación registrada durante cada minuto de los viajes de los usuarios. Sin embargo, este no es el caso. En nuestra base principal tenemos `length(unique(trips$start_date))` días para los cuales se registró al menos un viaje, pero únicamente contamos con `length(unique(weather$start_date))` días que sí tienen mediciones. Más aún, si fuésemos a asignar valores a cada viaje para el nivel de precipitación con base en un match estricto con la fecha y hora de la medición, tendríamos que el `HPCP_NAs_prcnt`% de esta nueva columna serían NAs. Consideramos que esta variable podría tener mucha información importante como para eliminarla, y que las mediciones con las que contamos aún pueden decirnos mucho más: cuando llueve, las afectaciones de dicho fenómeno son persistentes temporalmente, pues el hecho de que no se tenga medición para una hora después de un registro, esto no implica que ya no esté lloviendo, o que el clima ha mejorado. Del mismo modo, las calles suelen continuar mojadas una o varias horas después. Por otra parte, cuando llueve, esto no sucede sin previo aviso, de un minuto a otro. Con base en este razonamiento, se decide utilizar las pocas observaciones que sí se tienen para crear un índice alrededor de la hora sobre la cual sí se tien registro de la siguiente manera: para cada día y hora en que se registró un viaje, si existe un registro para el clima este se deja intacto. Cuando no, se utiliza un promedio de la lluvia registrada en el intervalo que comprende desde tres horas antes (efectos persistentes del clima del pasado) y hasta una hora después (previsión del clima futuro dado el presente). Nótese que los registros del nivel de precipitación en esta nueva variable únicamente toman `length(unique(trips$HPCP))-1` valores posibles. Como los NA aún persisten, a estos se les asigna el valor "SR" (Sin Registro), y se trata a toda la variable como un factor. 
+
+Usando un razonamiento similar, se considera que, en general, el hecho de que haya llovido durante el día puede también decirnos algo de información relativamente distinta. Por un lado, si había llovido antes de tomar una bicicleta, esto podría tener un efecto en las decisiones de los usuarios a través de sus ánimos y la expectativa del clima para el resto del día. Por otro, si aún no había llovido, es altamente probable que los usuarios hayan elegido iniciar un viaje con base en sus propias predicciones respecto al clima para el resto del día con base en factores que, para efectos de nuestros datos, no son observables. Es por ello que también se crea una variable que nos informa si llovió o no en un determinado día. 
+
+
+```{r}
+
+# Imputación a los NA para HPCP en la base trips
+weather$start_hour <- as.integer(weather$start_hour)
+weather_calendar <- as.data.frame(matrix(NA, nrow = length(unique_dates), ncol = 25))
+colnames(weather_calendar) <- c('start_date', 0:23)
+weather_calendar$start_date <- unique(trips$start_date)
+for ( i in 1:nrow(weather_calendar) ) {
+  curr_date <- weather_calendar$start_date[i]
+  ss_by_date <- weather[weather$start_date == curr_date, c('start_hour', 'HPCP')]
+  if (nrow(ss_by_date) > 0) {
+    aux <- 3
+    for ( j in 0:22 ) {
+      ss_by_hr <- ss_by_date[ss_by_date$start_hour >= (j-3+aux) & ss_by_date$start_hour <= (j+1), 
+                             c('start_hour', 'HPCP')]
+      est_weather <- sum(ss_by_hr$HPCP, na.rm=T) / 5
+      if (nrow(ss_by_hr) > 0) {
+        weather_calendar[i, j+2] <- est_weather
+      }
+      true_weather <- ss_by_date[ss_by_date$start_hour == j, c('start_hour', 'HPCP')]
+      if (nrow(true_weather) > 0) {
+        weather_calendar[i, j+2] <- max(true_weather$HPCP[1], est_weather)
+      }
+      aux <- max(aux - 1,0)
+    }
+    # La hora 23, inalcanzable en el loop anterior
+    ss_by_hr <- ss_by_date[ss_by_date$start_hour >= (23-3) & ss_by_date$start_hour <= (23), 
+                           c('start_hour', 'HPCP')]
+    est_weather <- sum(ss_by_hr$HPCP, na.rm=T) / 5
+    if (nrow(ss_by_hr) > 0) {
+        weather_calendar[i, 23+2] <- est_weather
+    }
+    true_weather <- ss_by_date[ss_by_date$start_hour == 23, c('start_hour', 'HPCP')]
+    if (nrow(true_weather) > 0) {
+      weather_calendar[i, 23+2] <- max(true_weather$HPCP[1], est_weather)
+      }
+  }
+}
+
+date_matcher <- melt(weather_calendar, id.var = 'start_date', variable.name = 'start_hour')
+date_matcher$start_hour <- as.integer(date_matcher$start_hour)
+colnames(date_matcher)[3] <- 'HPCP'
+trips <- merge(trips, date_matcher, by=c("start_date", "start_hour"), all.x=T)
+
+rained_matcher <- aggregate(HPCP~start_date, data=weather, FUN=sum, na.action = na.omit)
+rained_matcher$rained <- ifelse(rained_matcher$HPCP>0, 1, 0)
+trips <- merge(trips, rained_matcher[,c('start_date', 'rained')], by='start_date', all.x=T)
+
+HPCP_NAs_prcnt <- trunc(mean(is.na(trips$HPCP))*100*100)/100 # Porcentaje de NAs en HPCP
+rained_NAs_prcnt <- trunc(mean(is.na(trips$rained))*100*100)/100 # Porcentaje de NAs en rained
+
+# Se asigna SR a las NA para poder trabajar como factor
+trips[is.na(trips$HPCP), 'HPCP'] <- 'SR'
+trips[is.na(trips$rained), 'rained'] <- 'SR'
+
+# Se transforman a factor
+trips$HPCP <- trips$HPCP %>% as.factor
+trips$rained <- trips$rained %>% as.factor
+
+```
+
+Con lo anterior, se disminuyó el número de NAs en "HPCP" a `HPCP_NAs_prcnt`, y además tenemos información meteorológica útil para el `1-rained_NAs_prcnt` de las observaciones, que dado el tamaño de la base, es una buena cantidad.
 
 ```{r}
 # Transformación de variables
@@ -509,7 +580,7 @@ trips$start_hour <- as.numeric(trips$start_hour)
 tdf <- select_if(trips, is.numeric)
 tdf <- subset(tdf, select = -c(seq_id,hubway_id))
 #tdf <- tdf[ ,-c(seq_id,hubway_id)]
-aux <- matrix(NA, ncol = 8, nrow = 6) 
+aux <- matrix(NA, ncol = 8, nrow = 10) 
 k <- 1
 for (i in colnames(tdf)) {
   qu <- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE) 
