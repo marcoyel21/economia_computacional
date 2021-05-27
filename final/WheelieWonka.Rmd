@@ -79,11 +79,12 @@ packages <- c(
   "tidyverse", "data.table", "broom", 
   "knitr", "naniar", "lubridate",
   "RCT", "splitstackshape", "magrittr",
-  "kableExtra", "GGally", "stargazer",
+  "kableExtra", "stargazer",
   "gridExtra", "igraph", "tidygraph",
-  "ggraph","networkD3","visNetwork", 
-  "reshape2", "ggthemes", "grid"
+  "networkD3","visNetwork"
   )
+
+# "ggraph", "GGally",
 
 # instala los paquetes que no se tengan
 installed_packages <- packages %in% rownames(installed.packages())
@@ -331,7 +332,7 @@ trips$gender <- trips$gender %>% as.factor
 trips$status <- trips$status %>% as.factor
 trips$bike_nr <- trips$bike_nr %>% as.factor
 trips$zip_code <- trips$zip_code %>% as.factor
-trips$Quality_Flag <- trips$Quality_Flag %>% as.factor
+trips$Me_Flag <- trips$Measurement_flag %>% as.factor
 
 trips$start_year <- trips$start_year %>% as.factor
 trips$end_year <- trips$end_year %>% as.factor
@@ -354,129 +355,13 @@ summary(trips)
 
 Una vez construidas las variables temporales, procedemos a hacer el análisis exploratorio de los datos, teniendo en mente que la variable objetivo es la duración de los viajes.
 
-### Análisis univariado
-
-Primero, revisamos la distribución de las variables.
-
-```{r}
-# histograma para variables continuas
-myhist <- function(yvar){
-  ggplot(trips, aes_(x=as.name(yvar)))+
-  geom_histogram()+
-  ggtitle(paste0(as.name(yvar)))+
-  xlab("")+
-  ylab("")+ geom_rangeframe()+
-  theme_bw()+
-  theme(axis.line = element_line(colour = "black"),
-        axis.text.y = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank())
-}
-
-hists<- trips %>%
-  select(
-    duration,
-    start_hour,
-    age
-  ) %>%
-  names() %>%
-  lapply(myhist)
-
-# grafico las variables
-grid.arrange(grobs=hists,ncol=3,
-             top=textGrob("Distribución de las variables"))
+# script aparte con el EDA
 
 
-# barras para las categóricas
-# histograma para variables continuas
-mybar <- function(yvar){
-  ggplot(trips, aes_(x=as.name(yvar)))+
-  geom_bar()+
-  ggtitle(paste0(as.name(yvar)))+
-  xlab("")+
-  ylab("")+ geom_rangeframe()+
-  theme_bw()+
-  theme(axis.line = element_line(colour = "black"),
-        axis.text.y = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank())
-}
-
-bars <- trips %>%
-  select(
-    start_year,
-    start_month,
-    strt_statn,
-    end_statn,
-    start_weekday,
-    subsc_type,
-    gender,
-    HPCP,
-    Quality_Flag
-  ) %>%
-names() %>%
-lapply(mybar)
-
-# grafico las variables
-grid.arrange(grobs=bars,ncol=4,
-             top=textGrob("Distribución de las variables"))
-
-```
-
-
-## Análisis bivariado
 
 ```{r}
-# Mapa de calor start y end station
-x <- trips %>% count(strt_statn, end_statn)
-summary(x)
-
-y <- pivot_wider(x, id_cols=c("strt_statn"), 
-              names_from=c("end_statn"),
-              values_from=c("n"),
-              values_fill=0)
-class(y)
-
-# Matrix format. nota. las columnas son end stations y las filas start stations
-rownames(y) <- y[,1] %>% unlist()
-y <- y %>% dplyr::select(c(-1))
-y <- as.matrix(y)
-
-library('heatmaply')
-heatmaply(y,
-          dendrogram = "none",
-          colors = c("wheat","navyblue"),
-          grid_color = "white",
-          fontsize_row = 7, fontsize_col = 7,
-          xlab = "",
-          ylab = "",
-)
-
-
-```
-
-```{r, cache=TRUE}
-# Se muestra la relación entre edad y duración (acotada superiormente por su percentil 99%)
-ggplot(trips, aes(age, duration)) +
-  geom_point(alpha=0.3) +
-  geom_smooth() +
-  ylim(0, quantile(trips$duration, probs=0.99))
-
 corr_age_duration <- cor(trips$age, trips$duration, use = "complete.obs")
 
-```
-
-```{r}
-# Histograma de la edad para todas las observaciones
-ggplot(data=subset(trips, !is.na(age)), aes(x=age)) + 
-  geom_histogram() +
-  geom_vline(aes(xintercept=mean(age, na.rm=T)), color="black", size=1) +
-  geom_vline(aes(xintercept=median(age, na.rm=T)), color="black", linetype="dashed", size=1) 
-```
-
-```{r}
 # Histograma de la edad por género
 ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) + 
   geom_histogram(alpha=0.2, position="identity") +
@@ -568,6 +453,11 @@ kable(cbind(uselessCols, uValues),
 
 ```
 
+```{r}
+# tiramos la variable status que tiene un valor constante
+trips$status <- NULL
+```
+
 FVG_comentario: Compañeros, noten cómo las lecturas del clima de weather pertenecen a una sola estación de medición ubicada en Boston, MA., mientras que las estaciones de bicicletas están no sólo en Boston, sino en Cambridge, Brookline, y Somerville como se observa en la tabla de abajo. Si queremos usar estos datos habrá que argumentar el porqué de su validez (por ejemplo, suficiente cercanía -medible a través de latitud y longitud- implica mismo clima). 
 
 ```{r}
@@ -585,7 +475,6 @@ kable(cbind(unique(stations$municipal), n_obs),
 Se presentan finalmente  algunos estadísticos relevantes sobre las variables numéricas de los viajes.
 
 ```{r}
-
 # No muestro las variables de id de la estación y viaje, ni el año de nacimiento (debatible)
 trips$start_hour <- as.numeric(trips$start_hour)
 tdf <- select_if(trips, is.numeric)
@@ -606,6 +495,91 @@ for (i in colnames(tdf)) {
 colnames(aux) <- c("Media", "Mín.", "p05", "p25", "p50", "p75", "p95", "Máx.") 
 rownames(aux) <- colnames(tdf)
 kable(aux, booktabs=T) %>% kable_styling(position = "center", latex_options="HOLD_position")
+
+
+```
+
+
+# Base final
+```{r}
+
+#primero seleccionamos las variables
+
+trips_filter <- trips %>% select(-c("hubway_id","start_DateTime","end_DateTime",
+                    "birth_date","end_date","end_year","end_month","end_weekday",
+                    "end_hour","end_minute"))
+
+
+summary(trips_filter)
+
+# imputamos la mediana a la edad
+trips_filter$age[is.na(trips_filter$age)] <- median(trips_filter$age, na.rm=T)
+```
+
+## Modelos
+
+Primero separamos la base de validación y de entrenamiento
+```{r}
+set.seed(1990)
+# usaremos un set de entrenamiento del 80%
+trips_filter <-
+  trips_filter %>% 
+  mutate(training_sample = rbinom(n = nrow(trips_filter), 1, 0.8))
+
+# si queremos estratificar por alguna variable
+#treat_id <- treatment_assign(data = trips, share_control = 0.2,
+#                    n_t = 1, 
+#                    strata_varlist = c(""), missfits = "global",
+#                    seed = 2020, key = "seq_id")$data
+
+# separamos las bases
+# a la de validación le dejo el seq_id a las x y a la Y para unir resultados por id
+train <- trips_filter[trips_filter$training_sample==1,] %>% 
+  select(-c("training_sample","seq_id"))
+
+#y_train <- trips$duration[trips$training_sample==1]
+
+test <- trips_filter[trips_filter$training_sample==0,] %>% 
+  select(-c("training_sample","duration"))
+
+y_test <- trips_filter[trips_filter$training_sample==0,] %>% 
+  select(c("seq_id","duration"))
+```
+
+
+#### Random Forest
+```{r}
+library(ranger)
+library(parallel)
+library(Matrix)
+
+# para correr modelos en paralelo
+cores <- detectCores()
+cl<-makeCluster(cores)
+inicio<-Sys.time()
+
+random_forest <- map(c(100,200,300,500, 700, 800), 
+                     function(z) 
+                       ranger(y_train~.,
+                              data= train,
+                              num.trees = z,
+                              mtry = ncol(train) %>% sqrt() %>% floor(),
+                              min.node.size = 1,
+                              splitrule = 'gini',
+                              classification = T)
+                     )
+
+
+(tiempo<-Sys.time() - inicio)
+stopCluster(cl)
+
+error_prediccion<-tibble(trees = c(100,200,300,500, 700, 800),
+                         oob_error = map_dbl(random_forest, ~.$prediction.error))
+
+ggplot(error_prediccion, aes(trees, 100*oob_error)) +
+  geom_point() +
+  geom_path() +
+  theme_bw()
 
 ```
 
