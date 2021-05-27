@@ -517,8 +517,14 @@ kable(aux, col.names = c("Variable","Número de valores vacíos", "%"), align = 
   kable_styling(position = "center", latex_options="HOLD_position")
 
 # Asigna un valor a los valores vacíos del género y zip_code. 
-trips$gender[trips$gender==''] <- 'Unknown' 
-trips$zip_code[trips$zip_code==''] <- 'Unknown' 
+trips$gender <- factor(trips$gender, levels=c(levels(trips$gender), 'Unknown'))
+trips$gender[is.na(trips$gender)] <- 'Unknown'
+trips$gender <- droplevels(trips$gender)
+
+trips$zip_code <- factor(trips$zip_code, levels=c(levels(trips$zip_code), 'Unknown'))
+trips$zip_code[is.na(trips$zip_code)] <- 'Unknown'
+
+summary(trips)
 
 ```
 
