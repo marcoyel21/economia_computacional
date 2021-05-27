@@ -82,7 +82,8 @@ packages <- c(
   "kableExtra", "GGally", "stargazer",
   "gridExtra", "igraph", "tidygraph",
   "ggraph","networkD3","visNetwork", 
-  "reshape2", "ggthemes", "grid"
+  "reshape2", "ggthemes", "grid",
+  "geosphere"
   )
 
 # instala los paquetes que no se tengan
@@ -627,7 +628,8 @@ kable(aux, booktabs=T) %>% kable_styling(position = "center", latex_options="HOL
 rm(tdf, hists, ss_by_date, ss_by_hr)
 
 ```
-Se asignan las coordenadas de cada estación por cada arrivo y salida.
+
+Se asignan las coordenadas de cada estación por cada arrivo y salida. Asimismo, se utilizan para calcular las distancias entre ellas.
 
 ```{r}
 # Coordenadas
@@ -639,6 +641,10 @@ colnames(trips)[colnames(trips) == 'lng'] <- 'start_lng'
 trips <- merge(trips, stations[, c('end_statn', 'lat','lng')], by='end_statn', all.x=T)
 colnames(trips)[colnames(trips) == 'lat'] <- 'end_lat'
 colnames(trips)[colnames(trips) == 'lng'] <- 'end_lng'
+
+# Distancias en metros
+trips$distance <- distGeo(as.matrix(cbind(trips$start_lng, trips$start_lat)), 
+                          as.matrix(cbind(trips$end_lng, trips$end_lat)))
 
 ```
 
