@@ -318,6 +318,10 @@ trips$HPCP[is.na(trips$HPCP)] = 'SR'
 # Se transforman a factor
 trips$rained <- trips$rained %>% as.factor
 
+# Se asigna también Measurement_Flag
+trips <- merge(trips, weather[,c('start_date','start_hour', 'Measurement_Flag')], 
+               by = c('start_date','start_hour'), all.x = T)
+
 ```
 
 Con lo anterior, se disminuyó el número de NAs en "HPCP" a `HPCP_NAs_prcnt`, y además tenemos información meteorológica útil para el `1-rained_NAs_prcnt` de las observaciones, que dado el tamaño de la base, es una buena cantidad.
@@ -331,7 +335,7 @@ trips$gender <- trips$gender %>% as.factor
 trips$status <- trips$status %>% as.factor
 trips$bike_nr <- trips$bike_nr %>% as.factor
 trips$zip_code <- trips$zip_code %>% as.factor
-trips$Quality_Flag <- trips$Quality_Flag %>% as.factor
+trips$Measurement_Flag <- trips$Measurement_Flag %>% as.factor
 
 trips$start_year <- trips$start_year %>% as.factor
 trips$end_year <- trips$end_year %>% as.factor
@@ -414,7 +418,7 @@ bars <- trips %>%
     subsc_type,
     gender,
     HPCP,
-    Quality_Flag
+    Measurement_Flag
   ) %>%
 names() %>%
 lapply(mybar)
