@@ -764,7 +764,7 @@ sum(dep$oos_rf)
 
 #### Predicciones y flujo de biciletas por estación
 
-Para mostrar el desempeñor de los modelos, modelaremos los flujos de bicicleta de nuestra base de validación pero ahora en lugar de usar la duración del viaje real, usaremos la predicha. Para ellos crearemos primero una base de datos que compare los flujos de viaje cada 10 minutos entre lo que en realidad pasó y lo que predice nuestro modelo.
+Para mostrar el desempeño de los modelos, modelaremos los flujos de bicicleta de nuestra base de validación pero ahora en lugar de usar la duración del viaje real, usaremos la predicha. Para ellos crearemos primero una base de datos que compare los flujos de viaje cada 10 minutos entre lo que en realidad pasó y lo que predice nuestro modelo.
 
 
 
@@ -894,7 +894,7 @@ datatable(output,
 
 ### Error promedio a la hora de corte
 
-Derivado de estas tablas, se nos ocurrio que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte. 
+Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte. 
 
 ```{r}
 #medidas alternativas de error, cuantas bicis nos quedamos atrás en promedio
@@ -909,8 +909,9 @@ datatable(bici_error,options = list(
 
 
 ```
+#Conclusiones
 
-
+Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas. 
 
 
 
