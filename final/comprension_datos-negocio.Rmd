@@ -3,7 +3,7 @@ title: "Comprensión del Negocio y de los Datos"
 subtitle: "Proyecto Final"
 author: "Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval Fernández, Marco Antonio Ramos Juárez y Francisco Velazquez Guadarrama"
 date: "2021"
-output: 
+output:
   html_document:
     graphics: yes
     urlcolor: blue
@@ -412,7 +412,7 @@ Un punto muy evidente de la exploración visual es que unas estaciones tienen ma
 x <- trips %>% count(strt_statn, end_statn)
 summary(x)
 
-y <- pivot_wider(x, id_cols=c("strt_statn"), 
+y <- pivot_wider(x, id_cols=c("strt_statn"),
                  names_from=c("end_statn"),
                  values_from=c("n"),
                  values_fill=0)
@@ -447,10 +447,10 @@ corr_age_duration <- cor(trips$age, trips$duration, use = "complete.obs")
 
 
 # Histograma de la edad para todas las observaciones
-ggplot(data=subset(trips, !is.na(age)), aes(x=age)) + 
+ggplot(data=subset(trips, !is.na(age)), aes(x=age)) +
   geom_histogram() +
   geom_vline(aes(xintercept=mean(age, na.rm=T)), color="black", size=1) +
-  geom_vline(aes(xintercept=median(age, na.rm=T)), color="black", linetype="dashed", size=1) 
+  geom_vline(aes(xintercept=median(age, na.rm=T)), color="black", linetype="dashed", size=1)
 
 ```
 
@@ -667,7 +667,3 @@ save(trips_filter,file="base_modelo.RData")
 # tambien guardamos la base completa
 save(trips, file="base_trips.RData")
 ```
-
-
-
-
