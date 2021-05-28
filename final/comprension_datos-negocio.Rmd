@@ -621,6 +621,22 @@ trips$distance <- distGeo(as.matrix(cbind(trips$start_lng,
 ```
 
 
+# Base final
+
+Una vez hecho el análisis de los datos, guardamos la base final que usaremos para los modelos de ML.
+
+```{r}
+#primero seleccionamos las variables
+trips_filter <- trips %>%
+  select(-c("hubway_id","start_DateTime","end_DateTime",
+            "birth_date","end_date","end_year",
+            "end_month","end_weekday",
+            "end_hour","end_minute",
+            "start_lat","start_lng","end_lat","end_lng"))
+
+```
+
+
 ```{r}
 # nuevas variables para bike nr
 
@@ -642,28 +658,12 @@ trips_filter$bike_antiq[is.na(trips_filter$bike_antiq)] <- median(
 
 # elimino de la base la variable original
 trips_filter$bike_nr <- NULL
-
 ```
 
-# Base final
-
-Una vez hecho el análisis de los datos, guardamos la base final que usaremos para los modelos de ML.
-
-```{r}
-#primero seleccionamos las variables
-trips_filter <- trips %>%
-  select(-c("hubway_id","start_DateTime","end_DateTime",
-            "birth_date","end_date","end_year",
-            "end_month","end_weekday",
-            "end_hour","end_minute",
-            "start_lat","start_lng","end_lat","end_lng"))
 
 
-summary(trips_filter)
-
-
+```{r, guardo bases}
 save(trips_filter,file="base_modelo.RData")
-
 # tambien guardamos la base completa
 save(trips, file="base_trips.RData")
 ```
