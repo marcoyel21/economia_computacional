@@ -3,7 +3,7 @@ title: "Modelado"
 subtitle: "Proyecto Final"
 author: "Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval Fernández, Marco Antonio Ramos Juárez y Francisco Velazquez Guadarrama"
 date: "2021"
-output: 
+output:
   html_document:
     graphics: yes
     urlcolor: blue
@@ -56,17 +56,18 @@ Cargamos la base y revisamos sus variables. Notamos outliers en la variable de d
 
 ```{r}
 load("base_modelo.RData")
+load("base_trips.RData")
 summary(trips_filter)
 
 # funcion
 winsorize <- function(vector, list_lower_upper){
-  
+
   upper <- quantile(vector, probs = list_lower_upper)[[2]]
 
   lower <- quantile(vector, probs = list_lower_upper)[[1]]
-  
+
   vector <- replace(vector, vector>upper, upper) %>% replace(vector<lower, lower)
-  
+
   return(vector)
 }
 
@@ -86,8 +87,8 @@ stations_wide <- trips_filter %>%
 #  select("seq_id","zip_code") %>% as.data.table() %>%
 #  one_hot()
 
-trips_filter <- inner_join(trips_filter,stations_wide, by="seq_id") 
-#trips_filter <- inner_join(trips_filter,zipcode_wide, by="seq_id") 
+trips_filter <- inner_join(trips_filter,stations_wide, by="seq_id")
+#trips_filter <- inner_join(trips_filter,zipcode_wide, by="seq_id")
 
 
 trips_filter <- trips_filter %>%
@@ -115,7 +116,7 @@ dates <- trips_filter %>% select(c("start_date","start_month","start_weekday",
 treat_id <- treatment_assign(data = dates, share_control = 0.2,
                     n_t = 1,
                     strata_varlist = c("start_month","start_weekday",
-                                       "start_year"), 
+                                       "start_year"),
                     missfits = "global",
                     seed = 2021, key = "start_date")$data
 
@@ -175,12 +176,11 @@ test <- trips_filter[trips_filter$treat==0,] %>%
 
 sparse_test <- sparse.model.matrix(~.+0, data = test)
 
-y_test <- trips_filter[trips_filter$treat==0,] %>%
-  select(c("seq_id","duration"))
+y_test <- trips_filter[trips_filter$treat==0,] %>%select(c("seq_id","duration"))
 
+#summary(trips_filter)
 
 ```
-
 
 #### Lasso
 
@@ -248,6 +248,7 @@ df_imp <- data.frame(names=random_forest[[1]][["variable.importance"]] %>% names
   arrange(-importance)
 
 # predicciones OOS
+#y_test<-y_test %>%  mutate (pred_rf = predict(random_forest[[1]], data = sparse_test)$predictions)
 y_test$pred_rf<-predict(random_forest[[1]], data = sparse_test)$predictions
 
 y_test <- y_test %>% mutate(oos_rf = (duration - pred_rf)^2)
@@ -267,10 +268,10 @@ watchlist <- list(train = dtrain, eval = dtest)
 # Entrenamiento del modelo
 param <- list(max_depth = 6, learning_rate = 0.06,
               objective = "reg:squarederror",
-              eval_metric = "rmse", 
-              subsample = 0.85, 
+              eval_metric = "rmse",
+              subsample = 0.85,
               colsample_bytree = 0.7)
-xgb_model <- xgb.train(params = param, 
+xgb_model <- xgb.train(params = param,
                        dtrain,
                        early_stopping_rounds = 10,
                        nrounds = 100,
@@ -290,7 +291,6 @@ load("base_trips.RData")
 
 #creo base para deployment
 deployment<-cbind(y_test,test)
-deployment$seq_id<-NULL
 timestamps<-trips%>% select(start_DateTime,end_DateTime,seq_id,end_date)
 
 #formato timestamp
@@ -301,6 +301,9 @@ timestamps$end_DateTime<-strptime(timestamps$end_DateTime, "%m/%d/%Y %H:%M:%OS")
 dep<-left_join(deployment,timestamps, by = c("seq_id" ))
 dep<- dep %>% mutate(end_DateTime_predi=start_DateTime+pred_rf)
 uniquedates<-as.data.frame(unique(dep$start_date))
+stations<-trips %>% select(seq_id,strt_statn)
+dep<-left_join(dep,stations, by = c("seq_id" ))
+
 
 ```
 
@@ -314,6 +317,11 @@ sum((dep$pred_rf-mean(dep$duration))^2)/sum((dep$duration-mean(dep$duration))^2)
 
 #residuals rf
 sum(dep$oos_rf)
+
+# MSE
+sum((dep$pred_rf-(dep$duration))^2/nrow(dep))
+
+
 ```
 
 ## Medidas alternativas
@@ -327,14 +335,14 @@ Para mostrar el desempeño de los modelos, modelaremos los flujos de bicicleta d
 ```{r}
 #LOOP para crear bases de datos con predicciones de viajes
 
-#CREO LA BASE DE DATOS DE CADA 10 MINUTOS DEL SET TRAINING QUE VA ASERVIR COMO EL ESQUELETO 
+#CREO LA BASE DE DATOS DE CADA 10 MINUTOS DEL SET TRAINING QUE VA ASERVIR COMO EL ESQUELETO
 start.date <- strptime(paste(uniquedates[1,1],"0:0:0"), "%Y-%m-%d %H:%M:%OS")
 start.date <- format(start.date, "%Y-%m-%d %H:%M:%OS")
 end.date <- strptime(paste(uniquedates[1,1],"23:50:0"), "%Y-%m-%d %H:%M:%OS")
 end.date <- format(end.date, "%Y-%m-%d %H:%M:%OS")
-dates<-as.data.frame(seq(as.POSIXlt(start.date),as.POSIXlt(end.date), by = 10*60)) 
+dates<-as.data.frame(seq(as.POSIXlt(start.date),as.POSIXlt(end.date), by = 10*60))
 dates$date<-uniquedates[1,1]
-  
+
 for (i in 2:nrow(uniquedates))
 {
 start.date <- strptime(paste(uniquedates[i,1],"0:0:0"), "%Y-%m-%d %H:%M:%OS")
@@ -368,9 +376,9 @@ plantilla <- plantilla %>% rename (date=fecha)
 
 
 ```{r}
-#SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS SALIDAS DE BICIS 
-v1<-dep%>% mutate(interval_min = lubridate::minute(start_DateTime) %/% 10, 
-                 interval_hour = lubridate::hour(start_DateTime) %/% 1  ) %>% group_by(start_date, interval_min,interval_hour,strt_statn)%>% 
+#SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS SALIDAS DE BICIS
+v1<-dep%>% mutate(interval_min = lubridate::minute(start_DateTime) %/% 10,
+                 interval_hour = lubridate::hour(start_DateTime) %/% 1  ) %>% group_by(start_date, interval_min,interval_hour,strt_statn)%>%
     summarise(count_salida = n())%>%rename(date=start_date)
 v1<-v1%>% mutate(min=paste(interval_min,"0", sep = ""), hour=paste(interval_hour,min, sep = ":"))
 v1$interval_min<-NULL
@@ -383,8 +391,8 @@ v1$hour<-as.ITime(v1$hour)
 ```{r}
 
 #SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS LLEGADAS DE LAS BICIS CON DATOS REALES
-v2<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime) %/% 10, 
-                 interval_hour = lubridate::hour(end_DateTime) %/% 1  ) %>% group_by(end_date, interval_min,interval_hour,strt_statn)%>% 
+v2<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime) %/% 10,
+                 interval_hour = lubridate::hour(end_DateTime) %/% 1  ) %>% group_by(end_date, interval_min,interval_hour,strt_statn)%>%
     summarise(count_llegada_real = n())%>%rename(date=end_date)
 v2<-v2%>% mutate(min=paste(interval_min,"0", sep = ""), hour=paste(interval_hour,min, sep = ":"))
 v2$interval_min<-NULL
@@ -396,10 +404,10 @@ v2$hour<-as.ITime(v2$hour)
 ```{r}
 
 #SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS LLEGADAS DE LAS BICIS CON DATOS PREDECIDOS
-dep$end_date_pred <- as.Date(dep$end_DateTime_predi, '%m/%d/%Y') 
+dep$end_date_pred <- as.Date(dep$end_DateTime_predi, '%m/%d/%Y')
 
-v3<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime_predi) %/% 10, 
-                 interval_hour = lubridate::hour(end_DateTime_predi) %/% 1  ) %>% group_by(end_date_pred, interval_min,interval_hour,strt_statn)%>% 
+v3<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime_predi) %/% 10,
+                 interval_hour = lubridate::hour(end_DateTime_predi) %/% 1  ) %>% group_by(end_date_pred, interval_min,interval_hour,strt_statn)%>%
     summarise(count_llegada_pred = n())%>%rename(date=end_date_pred)
 v3<-v3%>% mutate(min=paste(interval_min,"0", sep = ""), hour=paste(interval_hour,min, sep = ":"))
 v3$interval_min<-NULL
@@ -450,7 +458,7 @@ datatable(output,
 
 ### Error promedio a la hora de corte
 
-Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte. 
+Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte.
 
 ```{r}
 #medidas alternativas de error, cuantas bicis nos quedamos atrás en promedio
@@ -470,7 +478,4 @@ datatable(bici_error,options = list(
 #Conclusiones
 
 
-Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas. 
-
-
-
+Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas.
