@@ -3,6 +3,7 @@ output:
   pdf_document: null
   geometry: margin=1in
   html_document:
+    self_contained: no
     df_print: paged
 fontsize: 11pt
 header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
@@ -360,6 +361,21 @@ summary(trips)
 ```
 
 ## EDA
+
+
+# Exploración visual
+Ants de realizar un análisis estadístico, para poder desarrollar una mejor intuición visual sobre las rutas más frecuentes hemos creado un dashboard donde se grafican georrefernciadamente 1000 viajes aleatorios de la base de datos. En el dashboard se dimensiona la importancia de cada estación. Además, se puede explorar con grado de detalle cada estación y obtener información sobre sus rutas más frecuentes y menos frecuentes.
+
+![Mapa del centro de Boston.](mapa.png)
+
+![Leyenda para el dashboard.](id.png){width=50%}
+
+```{r, out.width="100%",results='asis'}
+knitr::include_app("https://marcoyel21.github.io/gephi_vis/network/", height="1080px")
+```
+
+
+# Análisis estadístico
 
 Una vez construidas las variables temporales, procedemos a hacer el análisis exploratorio de los datos, teniendo en mente que la variable objetivo es la duración de los viajes.
 
