@@ -263,6 +263,16 @@ trips[is.na(trips$rained), 'rained'] <- 'SR'
 trips$HPCP = factor(trips$HPCP, levels=c(levels(trips$HPCP), 'SR'))
 trips$HPCP[is.na(trips$HPCP)] = 'SR'
 
+# Transformamos a numéricas la variable de lluvia
+#HPCP 2
+trips$hpcp2 <- 0
+trips$hpcp2[trips$HPCP=="SR"] <- 1
+summary(trips$hpcp2)
+
+# HPCP numerica
+trips$HPCP[trips$HPCP=="SR"] <- 0
+trips$HPCP <- trips$HPCP %>% as.character %>% as.numeric
+
 # Se transforman a factor
 trips$rained <- trips$rained %>% as.factor
 
@@ -582,7 +592,7 @@ Se presentan finalmente  algunos estadísticos relevantes sobre las variables nu
 tdf <- select_if(trips, is.numeric)
 tdf <- subset(tdf, select = -c(seq_id,hubway_id))
 #tdf <- tdf[ ,-c(seq_id,hubway_id)]
-aux <- matrix(NA, ncol = 8, nrow = 7)
+aux <- matrix(NA, ncol = 8, nrow = 9)
 k <- 1
 for (i in colnames(tdf)) {
   qu <- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
@@ -620,30 +630,29 @@ trips$distance <- distGeo(as.matrix(cbind(trips$start_lng,
                           as.matrix(cbind(trips$end_lng, trips$end_lat)))
 ```
 
+En lugar de usar el ID de la bici como una variable categórica, lo cual sería computacionalmente muy pesado ya que hay más de 1100 bicis, decidimos tomar la letra del ID como la familia de la bicicleta, o su generación, y el número de serie como proxy de la antigüedad de la bici, donde números más pequeños son bicicletas más viejas.
 
 ```{r}
 # nuevas variables para bike nr
 
 # numero de bicis en los datos
-unique(trips_filter$bike_nr)
+unique(trips$bike_nr)
 
 # familia de la bici
-trips_filter$bike_fam <- substr((trips_filter$bike_nr) %>% as.character(),1,1) %>%
+trips$bike_fam <- substr((trips$bike_nr) %>% as.character(),1,1) %>%
   as.factor
 
 # antigüedad
-trips_filter$bike_antiq <- substr(trips_filter$bike_nr %>% as.character(),2,6) %>% as.numeric()
+trips$bike_antiq <- substr(trips$bike_nr %>% as.character(),2,6) %>% as.numeric()
 
-summary(trips_filter$bike_antiq)
+summary(trips$bike_antiq)
 
 # sustituyo la mediana para la antigüedad de las bicis sin bike nr
-trips_filter$bike_antiq[is.na(trips_filter$bike_antiq)] <- median(
-  trips_filter$bike_antiq, na.rm=T)
-
-# elimino de la base la variable original
-trips_filter$bike_nr <- NULL
+trips$bike_antiq[is.na(trips$bike_antiq)] <- median(
+  trips$bike_antiq, na.rm=T)
 
 ```
+
 
 # Base final
 
@@ -655,6 +664,7 @@ trips_filter <- trips %>%
   select(-c("hubway_id","start_DateTime","end_DateTime",
             "birth_date","end_date","end_year",
             "end_month","end_weekday",
+            "bike_nr",
             "end_hour","end_minute",
             "start_lat","start_lng","end_lat","end_lng"))
 
