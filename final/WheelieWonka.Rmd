@@ -638,7 +638,35 @@ y_test <- trips_filter[trips_filter$treat==0,] %>%
   select(c("seq_id","duration"))
 
 ```
+#### Lasso
 
+```{r}
+library(gamlr)
+
+x_train <- sparse.model.matrix(duration ~.+0, train)
+y_train <- train$duration
+   
+lasso <- cv.gamlr(x = x_train,
+                  y = y_train,
+                  verb = T,
+                  nfold = 10)
+
+plot(lasso)
+
+plot(lasso$gamlr)
+
+coef(lasso, select="min", k=2, corrected=T)
+
+# Lambda óptima
+lambda_optima<- colnames(coef(lasso, select="min"))
+lasso$gamlr$lambda[lambda_optima]
+
+# predicciones del lasso
+predicciones_lasso <- predict(lasso,
+               newdata = test,
+               select = "min")
+
+```
 
 #### Random Forest
 ```{r}
