@@ -56,6 +56,7 @@ Cargamos la base y revisamos sus variables.
 
 ```{r}
 load("base_modelo.RData")
+load("base_trips.RData")
 summary(trips_filter)
 ```
 
@@ -136,8 +137,8 @@ summary(trips_filter$treat)
 # separamos las bases en entrenamiento y validacion
 # acotamos la de entrenamiento para tener una muestra más pequeña
 # a la de validación le dejo el seq_id a las x y a la Y para unir resultados por id
-train <- trips_filter[trips_filter$treat==1,] %>%
-  sample_n(100000)
+
+train <- trips_filter[trips_filter$treat==1,] %>% sample_n(100000)
 
 
 
@@ -153,11 +154,12 @@ test <- trips_filter[trips_filter$treat==0,] %>%
 
 sparse_test <- sparse.model.matrix(~.+0, data = test)
 
-y_test <- trips_filter[trips_filter$treat==0,] %>%
-  select(c("seq_id","duration"))
+y_test <- trips_filter[trips_filter$treat==0,] %>%select(c("seq_id","duration"))
 
+#summary(trips_filter)
 
 ```
+
 #### Lasso
 
 ```{r}
@@ -224,6 +226,7 @@ df_imp <- data.frame(names=random_forest[[1]][["variable.importance"]] %>% names
   arrange(-importance)
 
 # predicciones OOS
+#y_test<-y_test %>%  mutate (pred_rf = predict(random_forest[[1]], data = sparse_test)$predictions)
 y_test$pred_rf<-predict(random_forest[[1]], data = sparse_test)$predictions
 
 y_test <- y_test %>% mutate(oos_rf = (duration - pred_rf)^2)
@@ -266,7 +269,6 @@ load("base_trips.RData")
 
 #creo base para deployment
 deployment<-cbind(y_test,test)
-deployment$seq_id<-NULL
 timestamps<-trips%>% select(start_DateTime,end_DateTime,seq_id,end_date)
 
 #formato timestamp
@@ -277,6 +279,9 @@ timestamps$end_DateTime<-strptime(timestamps$end_DateTime, "%m/%d/%Y %H:%M:%OS")
 dep<-left_join(deployment,timestamps, by = c("seq_id" ))
 dep<- dep %>% mutate(end_DateTime_predi=start_DateTime+pred_rf)
 uniquedates<-as.data.frame(unique(dep$start_date))
+stations<-trips %>% select(seq_id,strt_statn)
+dep<-left_join(dep,stations, by = c("seq_id" ))
+
 
 ```
 
