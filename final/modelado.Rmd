@@ -234,10 +234,26 @@ sum(y_test$oos_rf)
 ## XGB
 
 ```{r}
-# Preparar la base de entrenamiento
-dtrain <- xgb.DMatrix(sparse_train, label = label_train)
+library(xgboost)
+# Preparar la base de entrenamiento y de validación
+dtrain <- xgb.DMatrix(sparse_train, label = y_train)
+dtest <- xgb.DMatrix(sparse_test, label = y_test$duration)
+watchlist <- list(train = dtrain, eval = dtest)
 
-# Pendiente
+# Entrenamiento del modelo
+param <- list(max_depth = 6, learning_rate = 0.06,
+              objective = "reg:squarederror",
+              eval_metric = "rmse", 
+              subsample = 0.85, 
+              colsample_bytree = 0.7)
+xgb_model <- xgb.train(params = param, 
+                       dtrain,
+                       early_stopping_rounds = 10,
+                       nrounds = 100,
+                       watchlist)
+
+# Predicción
+y_test$pred_xgb <- predict(xgb_model, sparse_test)
 
 ```
 
