@@ -475,8 +475,6 @@ ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
            size = 4)
 ```
 
-FVG_comentario: falta alguna decisión para imputar/no imputar los NA de "age". Son demasiados, pero no veo que la edad del usuario se relacione mucho con la duración del viaje. La correlación es apenas de `corr_age_duration` (0.002511551). Creo que son demasiadas NA para imputarlas con algún supuesto distribucional. Lo único lógico que veo si queremos usar esa variable es imputarle la media/mediana, o bien crear rangos de edad, asignar 'Unknown' a los NA, y tratarla como factor. Provisionalmente, le imputo la mediana.
-
 Dada la distribución que sigue la edad, observada en los histogramas, se imputa la mediana a las edades.
 
 ```{r}
@@ -506,12 +504,10 @@ trips$zip_code[is.na(trips$zip_code)] <- 'Unknown'
 
 ```
 
-FVG: Eliminamos también `sum(trips$duration < 0)` (49) observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen `sum(trips$duration == 0)` (4389) observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante.
+Eliminamos también `sum(trips$duration < 0)` observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen `sum(trips$duration == 0)` observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante.
 
 ```{r}
-
 trips <- trips[trips$duration>0, ]
-
 ```
 
 Ahora buscamos columnas con el mismo valor para todas las observaciones, pues de ser el caso no serían útiles para el modelo.
@@ -559,11 +555,6 @@ kable(cbind(uselessCols, uValues),
 Se elimina, entonces, la variable "status", pues esta no contiene información útil.
 ```{r}
 trips$status <- NULL
-```
-
-FVG_comentario: Compañeros, noten cómo las lecturas del clima de weather pertenecen a una sola estación de medición ubicada en Boston, MA., mientras que las estaciones de bicicletas están no sólo en Boston, sino en Cambridge, Brookline, y Somerville como se observa en la tabla de abajo. Si queremos usar estos datos habrá que argumentar el porqué de su validez (por ejemplo, suficiente cercanía -medible a través de latitud y longitud- implica mismo clima).
-
-```{r}
 
 n_obs <- c()
 for (i in unique(stations$municipal)) {
@@ -578,10 +569,9 @@ kable(cbind(unique(stations$municipal), n_obs),
 Se presentan finalmente  algunos estadísticos relevantes sobre las variables numéricas de los viajes.
 
 ```{r}
-# No muestro las variables de id de la estación y viaje, ni el año de nacimiento (debatible)
+# No muestro las variables de id de la estación y viaje, ni el año de nacimiento 
 tdf <- select_if(trips, is.numeric)
 tdf <- subset(tdf, select = -c(seq_id,hubway_id))
-#tdf <- tdf[ ,-c(seq_id,hubway_id)]
 aux <- matrix(NA, ncol = 8, nrow = 7)
 k <- 1
 for (i in colnames(tdf)) {
@@ -667,3 +657,119 @@ save(trips_filter,file="base_modelo.RData")
 # tambien guardamos la base completa
 save(trips, file="base_trips.RData")
 ```
+
+
+
+# Predicción de bicicletas por estación con otro acercamiento 
+
+POR FAVOR ALGUIEN ESCRIBA SOBRE EL DILEMA DE LAS BASES; ie POR QUÉ ERA PROBLEMÁTICO EL PUNTO 3.
+
+En esta sección se presenta un modelo distinto para predecir la disponibilidad de bicicletas por fecha y hora. Para ello, se aplica una transformación a los datos de manera que estos reflejen el flujo de entradas y salidas por cada intervalo de diez minutos. La idea es que la predicción de dichos flujos a futuro pueden ayudar a notar, por ejemplo, en qué estación han salido más bicicletas de las que han entrado, indicando una baja disponibilidad. Para ello, las observaciones se agregan por coincidencia de fecha, día, hora y estación. Naturalmente, una estación que no registra un flujo no tuvo entradas ni salidas de bicicletas para ese grupo horario. Con esto obtenemos una base de datos reales que cuenta con una observación para cada intervalo del día, y para todos los días de los que se tiene registro. Con esto se intenta predecir los flujos a futuro posteriormente.
+
+
+```{r eval = FALSE}
+# Reestructuración de la base de datos
+load('flux_df.RData')
+flux_df <- flux_df %>%
+  select(c('start_date', 'end_date', 
+           'strt_statn', 'start_month', 'start_weekday', 'start_hour', 'start_minute', 
+           'end_statn', 'end_month', 'end_weekday', 'end_hour', 'end_minute'))
+
+# Se transforma a los minutos por intervalos de 10 minutos
+flux_df$start_minute <- cut(flux_df$start_minute,
+                            breaks = seq(0, 60, 10),
+                            labels= seq(1:6),
+                            right = F)
+flux_df$end_minute <- cut(flux_df$end_minute,
+                          breaks = seq(0, 60, 10),
+                          labels= seq(1:6),
+                          right = F)
+# Columnas auxiliares para medir el flujo
+flux_df$arrival <- 1
+flux_df$departure <- 1
+
+# Se agrega todo movimiento de entrada y salida por estación, fecha y hora
+outflux <- aggregate(departure ~ start_date + strt_statn + start_hour + start_minute, 
+                     FUN = sum, drop = F, data=flux_df)
+influx <- aggregate(arrival ~ end_date + end_statn + end_hour + end_minute, 
+                    FUN = sum, drop = F, data=flux_df)
+rm(flux_df)
+
+outflux[is.na(outflux$departure), 'departure'] <- 0
+influx[is.na(influx$arrival), 'arrival'] <- 0
+
+colnames(outflux) <- c('date','station','hour','minute','outflux')
+colnames(influx) <- c('date','station','hour','minute','influx')
+# Indicadoras para la unión
+outflux$ID <- with(outflux, paste0(date,' ',station,'-',hour,'-',minute))
+influx$ID <- with(influx, paste0(date,' ',station,'-',hour,'-',minute))
+
+# Base con los movimientos de entrada y salida para cada grupo horario de cada día
+flux <- merge(outflux, influx[, c('ID','influx')], by = 'ID', 
+              all.x = T, all.y = F)
+rm(outflux, influx)
+
+# Resultado neto
+flux$netRes <- flux$influx - flux$outflux 
+flux$weekday <- weekdays(flux$date)
+
+flux <- flux %>%
+  select(-c('date','outflux','influx'))
+
+# Preparación de variables
+flux$station <- flux$station %>% as.factor
+flux$hour <- flux$hour %>% as.factor
+flux$minute <- flux$minute %>% as.factor
+flux$netRes <- flux$netRes %>% as.numeric
+flux$weekday <- flux$weekday %>% as.factor
+
+# Se guarda la base
+# save(flux, file="flux.RData")
+
+```
+
+
+```{r eval = FALSE}
+# Separación en test-train, y entrenamiento del modelo
+
+#load('flux.RData')   # Para cargar poder correr la generación de datos por separado.
+flux$ID <- NULL
+set.seed(2020) 
+sample <- sample.split(flux$weekday, SplitRatio = .75)
+train_f <- subset(flux, sample == TRUE) # Train 
+test_f <- subset(flux, sample == FALSE) # Test
+test_target <- select(test_f, 'netRes')
+test_f$netRes <- NULL
+
+# Modelo: Random Forest
+cores <- detectCores() # Paralelización
+cl <- makeCluster(cores)
+inicio <- Sys.time()
+flux_forest <- ranger(netRes ~ ., 
+                      #data = train_f, 
+                      data = under,
+                      num.trees = 300,
+                      classification = T,
+                      verbose = T, 
+                      oob.error = F,
+                      write.forest = T)
+tiempo <- Sys.time() - inicio
+stopCluster(cl)
+
+# Se guarda el modelo
+save(flux_forest, file = "flux_forest.RData")
+
+# Evaluación  
+flux_preds <- predict(flux_forest, 
+                      data = test_f, 
+                      type = "response",
+                      verbose = T)
+comparativa <- data.frame(test_target, flux_preds$predictions)
+
+```
+
+
+
+
+
+
