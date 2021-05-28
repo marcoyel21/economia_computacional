@@ -295,6 +295,11 @@ sum((dep$pred_rf-mean(dep$duration))^2)/sum((dep$duration-mean(dep$duration))^2)
 
 #residuals rf
 sum(dep$oos_rf)
+
+# MSE
+sum((dep$pred_rf-(dep$duration))^2/nrow(dep))
+
+
 ```
 
 ## Medidas alternativas
