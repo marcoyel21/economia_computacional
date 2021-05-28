@@ -108,34 +108,30 @@ options(scipen = 999)
 
 ## Planteamiento del Problema
 
-#### Nota: Los títulos indican el objetivo del párrafo, estos son para nosotros. Hay que quitarlos antes de la entrega final.
-
-(Contextualizar)
 Al conectar una multiplicidad de orígenes y destinos, el transporte público ha probado ser un motor del desarrollo económico urbano, además de potencialmente impactar los ámbitos de salud y seguridad pública, congestión vehicular, y la inclusión social. En este contexto, los sistemas de bicicletas compartidas han ofrecido una alternativa a las opciones de transporte en redes urbanas altamente complejas.
+Como tal, cualquier empresa de bicicletas compartidas debe ser capaz de ofrecer a sus usuarios una opción eficaz para trasladarse, es decir, práctica y accesible. La empresa Wheelie Wonka no debe ser la excepción.
 
-(Objetivos del negocio)
-Como tal, cualquier empresa de bicicletas compartidas debe ser capaz de ofrecer a sus usuarios una opción para trasladarse eficaz, es decir, práctica y accesible. Wheelie Wonka no es la excepción.
+Sin embargo, tal como es el caso de los flujos de tráfico, las bicicletas enfrentan el problema de demandas asimétricas en tiempo y espacio. Esto puede significar un problema en la medida en que la infraestructura de la red de bicicletas limite a los usuarios en momentos de alta demanda, y también que el uso y desplazamiento de las bicicletas en un momento dado no corresponda a las necesidades de los usuarios siguientes, creando excesos de oferta y de demanda en distintas zonas de Boston.
 
+En Boston, para el servicio de bicicletas compartidas, existen estaciones designadas para su  almacenamiento, por lo que la estación podría estar vacía o saturada en diferentes periodos. Los operadores de bicicletas compartidas generalmente redistribuyen las bicicletas entre las diferentes estaciones; no obstante, esta distribución desequilibrada puede conllevar a pérdidas para la empresa, al estar utilizando recursos humanos innecesarios, y perjudicar a los usuarios en su acceso al servicio, dado que podría generarse una situación de falta de disponibilidad de bicicletas o a la saturación de éstas. Por lo tanto, predecir un número exacto de bicicletas disponibles en las estaciones es importante.
 
-(Evaluación de la situación actual)
-Tal como es el caso de los flujos de tráfico, las bicicletas enfrentan el problema de demandas asimétricas en tiempo y espacio. Esto puede significar un problema en la medida en que la infraestructura de la red de bicicletas limite a los usuarios en momentos de alta demanda, y también que el uso y desplazamiento de las bicicletas en un momento dado no corresponda a las necesidades de los usuarios siguientes, creando excesos de oferta y de demanda en distintas zonas de Boston.
+Existen factores que pueden incidir en las tendencias de los viajes de los pasajeros que son relevantes para determinar la disponibilidad de las bicicletas, como la duración del viaje, la hora del día (horas punta), el día de la semana, el clima, la edad del pasajero, su género, las estaciones del año, las vacaciones, la popularidad de la ubicación, entre otros. Por tanto, mejores datos podrían ayudar a hacer una mejor predicción.
 
-
-(Objetivos del proyecto de datos. Ojo, no son iguales a los objetivos del negocio)
-En este contexto, la ciencia de datos ofrece una solución muy atractiva. Mediante el análisis computacional del uso de las bicicletas, es posible reconocer patrones y predecir la disponibilidad de bicicletas en un lugar y momento específicos. Esto puede ayudar a Wheelie Wonka en dos sentidos.
+En este contexto, la ciencia de datos ofrece una solución muy atractiva. Mediante el análisis computacional del uso de las bicicletas, es posible reconocer patrones y predecir la disponibilidad de bicicletas en un lugar y momento específicos. Esto puede ayudar a la empresa Wheelie Wonka en dos sentidos.
 
 1) Proveer al usuario de información con la cual pueda tomar decisiones óptimas de transporte.
 2) Poder hacer ajustes en la distribución de las bicicletas a lo largo de las cicloestaciones para prevenir escaseces y excesos en el sistema.
 
-Estos puntos seguramente aumentarían la satisfacción del usuario y permitirían un mayor uso del servicio, lo cual sólo podría traer beneficios a Wheelie Wonka.
+Estos puntos seguramente aumentarían la satisfacción del usuario, disminuirían las pérdidas en eficiencia, y permitirían un mayor uso del servicio, lo cual sólo podría traer beneficios a Wheelie Wonka.
 
 En este sentido, los objetivos específicos de este proyecto son los siguientes:
 
-a. Poder pronosticar la duración de los viajes
-b. Entender los factores que tienen un impacto en la duración de los viajes. Identificar patrones geográficos en los datos.
+a. Poder pronosticar la duración de los viajes.
+b. Entender los factores que tienen un impacto en la duración de los viajes e identificar patrones geográficos en los datos.
 c. Estimar el número de bicicletas por estación en ventanas de 10 minutos.
 
-(Estructura del proyecto de datos)
+El estudio comienza con la creación y transformación de variables, así como con la limpieza y unión de las bases de datos de las estaciones “Hubway Station”, de los viajes “Hubway trips”, y de datos climatológicos para 2011, 2012 y 2013. Después se llevó a cabo el análisis exploratorio de los datos que se consideraron relevantes para identificar los patrones de viajes de los pasajeros y se probaron dos modelos -LASSO y Random Forest- para la predicción de la duración de los viajes e identificación de los factores que tienen un impacto en ésta; posteriormente se modelaron los flujos para determinar la disponibilidad de las bicicletas en cada estación y se comparó el desempeño de ambos modelos.
+
 
 
 (Establecer medidas de éxito del proyecto de datos)
