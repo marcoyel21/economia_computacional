@@ -1,0 +1,433 @@
+---
+title: "Modelado"
+subtitle: "Proyecto Final"
+author: "Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval Fernández, Marco Antonio Ramos Juárez y Francisco Velazquez Guadarrama"
+date: "2021"
+output: 
+  html_document:
+    graphics: yes
+    urlcolor: blue
+    theme: spacelab
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
+                      fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r, include=FALSE}
+
+packages <- c(
+  "tidyverse", "data.table", "broom",
+  "knitr", "naniar", "lubridate",
+  "RCT", "splitstackshape", "magrittr",
+  "kableExtra", "stargazer",
+  "gridExtra", "igraph", "tidygraph",
+  "networkD3","visNetwork",
+  "reshape2","data.table","DT",
+  "ranger", "parallel", "Matrix", "gamlr",
+  "mltools"
+  )
+
+
+# instala los paquetes que no se tengan
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# cargar paquetes
+lapply(packages,
+       library,
+       character.only = TRUE)
+
+# desactiva notación científica       
+options(scipen = 999)
+
+
+```
+
+
+Cargamos la base y revisamos sus variables.
+
+```{r}
+load("base_modelo.RData")
+summary(trips_filter)
+```
+
+En lugar de usar el ID de la bici como una variable categórica, lo cual sería computacionalmente muy pesado ya que hay más de 1100 bicis, decidimos tomar la letra del ID como la familia de la bicicleta, o su generación, y el número de serie como proxy de la antigüedad de la bici, donde números más pequeños son bicicletas más viejas.
+
+
+```{r, cache=TRUE}
+
+# formato wide de zip code, start y end station
+stations_wide <- trips_filter %>%
+  select("seq_id","strt_statn","end_statn") %>% as.data.table() %>%
+  one_hot()
+
+#zipcode_wide <- trips_filter %>%
+#  select("seq_id","zip_code") %>% as.data.table() %>%
+#  one_hot()
+
+trips_filter <- inner_join(trips_filter,stations_wide, by="seq_id") 
+#trips_filter <- inner_join(trips_filter,zipcode_wide, by="seq_id") 
+
+
+trips_filter <- trips_filter %>%
+  select(-c("strt_statn","end_statn")) %>%
+  arrange(seq_id)
+
+```
+
+
+
+## Modelos
+
+Primero separamos la base de validación y de entrenamiento. Para esto decidimos estratificar por días y no por viajes. De esta manera tenemos un panorama completo de los días en entrenamiento, y evaluaremos en días nuevos en la base de validación. Esto nos parece un ejercicio más realista dados los objetivos del negocio.
+
+Para tener un balance en nuestros sets de entrenamiento y validación, estratificamos por año, mes y día de la semana.
+
+```{r}
+
+# para ello, nos fijamos en todos los días donde tenemos viajes
+dates <- trips_filter %>% select(c("start_date","start_month","start_weekday",
+                                   "start_year")) %>% unique()
+
+
+# estratificamos
+treat_id <- treatment_assign(data = dates, share_control = 0.2,
+                    n_t = 1,
+                    strata_varlist = c("start_month","start_weekday",
+                                       "start_year"), 
+                    missfits = "global",
+                    seed = 2020, key = "start_date")$data
+
+# pegamos la variable que asigna tratamiento a la base
+trips_filter <- left_join(trips_filter,treat_id,by=("start_date"))
+trips_filter <- trips_filter %>% select(-c("strata","missfit"))
+
+summary(trips_filter$treat)
+# el share control se mantiene estable
+
+# revisamos balance de clases no estratificadas
+
+# pruebas t. OJO. no jala porque todas son categóricas. habría que transformar la base
+#balance_t<-balance_table(data = trips_filter,
+#                         treatment = "treat")
+#balance_t$p_value1 <- balance_t$p_value1 %>% round(3)
+
+#filtramos las variables donde se rechaza la hipótesis de igualdad al 10%
+#balance_t_filter<- balance_t %>% filter(p_value1 < .1)
+#datatable(balance_t_filter, options = list(pageLength = 5))
+
+
+# pruebas F
+#balance_f<-balance_regression(data = sample_n(trips_filter[],10000),
+#                              treatment = "treat")
+
+
+
+
+
+# separamos las bases en entrenamiento y validacion
+# acotamos la de entrenamiento para tener una muestra más pequeña
+# a la de validación le dejo el seq_id a las x y a la Y para unir resultados por id
+train <- trips_filter[trips_filter$treat==1,] %>%
+  sample_n(100000)
+
+
+
+y_train <- train$duration[train$treat==1]
+
+train <-  train %>% select(-c("treat","seq_id","duration"))
+
+sparse_train <- sparse.model.matrix(~.+0, data = train)
+
+# validacion
+test <- trips_filter[trips_filter$treat==0,] %>%
+  select(-c("treat","seq_id","duration"))
+
+sparse_test <- sparse.model.matrix(~.+0, data = test)
+
+y_test <- trips_filter[trips_filter$treat==0,] %>%
+  select(c("seq_id","duration"))
+
+
+```
+#### Lasso
+
+```{r}
+
+lasso <- cv.gamlr(x = sparse_train[,-3],
+                  y = y_train,
+                  verb = T,
+                  nfold = 10)
+
+plot(lasso)
+
+plot(lasso$gamlr)
+
+coef(lasso, select="min", k=2, corrected=T)
+
+# Lambda óptima
+lambda_optima<- colnames(coef(lasso, select="min"))
+lasso$gamlr$lambda[lambda_optima]
+
+# predicciones del lasso
+predicciones_lasso <- predict(lasso,
+               newdata = sparse_test,
+               select = "min")
+
+```
+
+#### Random Forest
+```{r}
+
+# para correr modelos en paralelo
+cores <- detectCores()
+cl<-makeCluster(cores)
+inicio<-Sys.time()
+
+# c(100,200,350,500,700)
+random_forest <- map(c(500),
+                     function(z)
+                       ranger(y=y_train,
+                              x=sparse_train[,-3],
+                              num.trees = z,
+                              mtry = ncol(train) %>% sqrt() %>% floor(),
+                              min.node.size = 1,
+                              importance = 'impurity',
+                              status.variable.name = 1)
+                     )
+
+
+(tiempo<-Sys.time() - inicio)
+stopCluster(cl)
+
+error_prediccion<-tibble(trees = c(500),
+                         oob_error = map_dbl(random_forest, ~.$prediction.error))
+
+# error medido en horas
+ggplot(error_prediccion, aes(trees, oob_error/3600)) +
+  geom_point() +
+  geom_path() +
+  theme_bw()
+
+
+
+df_imp <- data.frame(names=random_forest[[1]][["variable.importance"]] %>% names(),
+           importance=random_forest[[1]][["variable.importance"]]) %>%
+  arrange(-importance)
+
+# predicciones OOS
+y_test$pred_rf<-predict(random_forest[[1]], data = sparse_test)$predictions
+
+y_test <- y_test %>% mutate(oos_rf = (duration - pred_rf)^2)
+
+sum(y_test$oos_rf)
+
+```
+## XGB
+
+```{r}
+# Preparar la base de entrenamiento
+dtrain <- xgb.DMatrix(sparse_train, label = label_train)
+
+# Pendiente
+
+```
+
+# Desempeño de modelos
+```{r}
+#PREPROCESAMIENTO
+
+# cargar la base completa
+load("base_trips.RData")
+
+#creo base para deployment
+deployment<-cbind(y_test,test)
+deployment$seq_id<-NULL
+timestamps<-trips%>% select(start_DateTime,end_DateTime,seq_id,end_date)
+
+#formato timestamp
+timestamps$start_DateTime<-strptime(timestamps$start_DateTime, "%m/%d/%Y %H:%M:%OS")
+timestamps$end_DateTime<-strptime(timestamps$end_DateTime, "%m/%d/%Y %H:%M:%OS")
+
+#creo predicciones de horrario de llega con base en la predicción del tiempo de duración
+dep<-left_join(deployment,timestamps, by = c("seq_id" ))
+dep<- dep %>% mutate(end_DateTime_predi=start_DateTime+pred_rf)
+uniquedates<-as.data.frame(unique(dep$start_date))
+
+```
+
+## Medidas tradicionales
+
+Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de los residuales. Al ser la variable objetico numérica,  podemos emplear el R^2.
+
+```{r}
+#r2 rf
+sum((dep$pred_rf-mean(dep$duration))^2)/sum((dep$duration-mean(dep$duration))^2)
+
+#residuals rf
+sum(dep$oos_rf)
+```
+
+## Medidas alternativas
+
+#### Predicciones y flujo de biciletas por estación
+
+Para mostrar el desempeñor de los modelos, modelaremos los flujos de bicicleta de nuestra base de validación pero ahora en lugar de usar la duración del viaje real, usaremos la predicha. Para ellos crearemos primero una base de datos que compare los flujos de viaje cada 10 minutos entre lo que en realidad pasó y lo que predice nuestro modelo.
+
+
+
+```{r}
+#LOOP para crear bases de datos con predicciones de viajes
+
+#CREO LA BASE DE DATOS DE CADA 10 MINUTOS DEL SET TRAINING QUE VA ASERVIR COMO EL ESQUELETO 
+start.date <- strptime(paste(uniquedates[1,1],"0:0:0"), "%Y-%m-%d %H:%M:%OS")
+start.date <- format(start.date, "%Y-%m-%d %H:%M:%OS")
+end.date <- strptime(paste(uniquedates[1,1],"23:50:0"), "%Y-%m-%d %H:%M:%OS")
+end.date <- format(end.date, "%Y-%m-%d %H:%M:%OS")
+dates<-as.data.frame(seq(as.POSIXlt(start.date),as.POSIXlt(end.date), by = 10*60)) 
+dates$date<-uniquedates[1,1]
+  
+for (i in 2:nrow(uniquedates))
+{
+start.date <- strptime(paste(uniquedates[i,1],"0:0:0"), "%Y-%m-%d %H:%M:%OS")
+start.date <- format(start.date, "%Y-%m-%d %H:%M:%OS")
+end.date <- strptime(paste(uniquedates[i,1],"23:50:0"), "%Y-%m-%d %H:%M:%OS")
+end.date <- format(end.date, "%Y-%m-%d %H:%M:%OS")
+dates_b<-as.data.frame(seq(as.POSIXlt(start.date),as.POSIXlt(end.date), by = 10*60))
+dates_b$date<-uniquedates[i,1]
+dates <- rbind(dates,dates_b)
+}
+names(dates)<-c("horario","fecha")
+
+#MULTIPLICO LA BASE POR LA CANTIDAD DE ESTACIONES
+
+unique_strt_stion<-as.data.frame(unique(dep$strt_statn))
+
+dates$strt_statn<-unique_strt_stion[i,1]
+dates_agr<-dates
+for (i in 2:nrow(unique_strt_stion))
+{
+dates$strt_statn<-unique_strt_stion[i,1]
+dates_agr <- rbind(dates_agr,dates)
+}
+
+#Esta es mi plantilla en la que vaciaré todos los datos
+plantilla<-separate(dates_agr, horario, into = c("date","hour"), sep = " (?=[^ ]+$)")
+plantilla$hour<-as.ITime(plantilla$hour)
+plantilla$date<-NULL
+plantilla <- plantilla %>% rename (date=fecha)
+```
+
+
+```{r}
+#SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS SALIDAS DE BICIS 
+v1<-dep%>% mutate(interval_min = lubridate::minute(start_DateTime) %/% 10, 
+                 interval_hour = lubridate::hour(start_DateTime) %/% 1  ) %>% group_by(start_date, interval_min,interval_hour,strt_statn)%>% 
+    summarise(count_salida = n())%>%rename(date=start_date)
+v1<-v1%>% mutate(min=paste(interval_min,"0", sep = ""), hour=paste(interval_hour,min, sep = ":"))
+v1$interval_min<-NULL
+v1$interval_hour<-NULL
+v1$min<-NULL
+v1$hour<-as.ITime(v1$hour)
+
+```
+
+```{r}
+
+#SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS LLEGADAS DE LAS BICIS CON DATOS REALES
+v2<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime) %/% 10, 
+                 interval_hour = lubridate::hour(end_DateTime) %/% 1  ) %>% group_by(end_date, interval_min,interval_hour,strt_statn)%>% 
+    summarise(count_llegada_real = n())%>%rename(date=end_date)
+v2<-v2%>% mutate(min=paste(interval_min,"0", sep = ""), hour=paste(interval_hour,min, sep = ":"))
+v2$interval_min<-NULL
+v2$interval_hour<-NULL
+v2$min<-NULL
+v2$hour<-as.ITime(v2$hour)
+```
+
+```{r}
+
+#SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS LLEGADAS DE LAS BICIS CON DATOS PREDECIDOS
+dep$end_date_pred <- as.Date(dep$end_DateTime_predi, '%m/%d/%Y') 
+
+v3<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime_predi) %/% 10, 
+                 interval_hour = lubridate::hour(end_DateTime_predi) %/% 1  ) %>% group_by(end_date_pred, interval_min,interval_hour,strt_statn)%>% 
+    summarise(count_llegada_pred = n())%>%rename(date=end_date_pred)
+v3<-v3%>% mutate(min=paste(interval_min,"0", sep = ""), hour=paste(interval_hour,min, sep = ":"))
+v3$interval_min<-NULL
+v3$interval_hour<-NULL
+v3$min<-NULL
+v3$hour<-as.ITime(v3$hour)
+```
+
+
+```{r}
+#Creo la base final para mostrar
+
+plantilla_llena<-merge(x = plantilla, y = v1, by = c("hour", "date","strt_statn"), all.x = TRUE)
+plantilla_llena$count_salida[is.na(plantilla_llena$count_salida)] <- 0
+
+plantilla_llena<-merge(x = plantilla_llena, y = v2, by = c("hour", "date","strt_statn"), all.x = TRUE)
+plantilla_llena$count_llegada_real[is.na(plantilla_llena$count_llegada_real)] <- 0
+
+plantilla_llena<-merge(x = plantilla_llena, y = v3, by = c("hour", "date","strt_statn"), all.x = TRUE)
+plantilla_llena$count_llegada_pred[is.na(plantilla_llena$count_llegada_pred)] <- 0
+
+#Agrego columna de acumulados
+
+plantilla_llena$acum_salida <- ave(plantilla_llena$count_salida, plantilla_llena$strt_statn,plantilla_llena$date, FUN=cumsum)
+
+plantilla_llena$acum_llegada_real <- ave(plantilla_llena$count_llegada_real, plantilla_llena$strt_statn,plantilla_llena$date, FUN=cumsum)
+
+plantilla_llena$acum_llegada_pred <- ave(plantilla_llena$count_llegada_pred, plantilla_llena$strt_statn,plantilla_llena$date, FUN=cumsum)
+
+#trial<-plantilla_llena%>%filter((date=="2011-10-18"|date== "2011-08-01") & strt_statn==3)
+
+```
+
+En la siguiente tabla se muestran los flujos acumulados de bicicletas que salen y llegan (con datos reales y predecidos). Por motivos de costo computacional, solamente mostramos algunos días completos para algunas estaciones aleatorias.Por favor haga click primer primero en estación y luego en fecha para que la tabla esté ordenada de acuerdo a la hora:
+
+```{r}
+#Deployment de las bases de datos en una app (selecciono de manera aleatoria algunas debido al peso computacional)
+
+random_stations<-sample(3:133, 3, replace=FALSE)
+
+output<-plantilla_llena%>% filter(strt_statn%in%random_stations )
+#output<-sample_n(plantilla_llena, 1000)
+output<- output%>% select(date,hour, strt_statn,acum_salida,acum_llegada_real,acum_llegada_pred)
+names(output)<- c("Fecha","Hora","Estación","Salidas","Llegadas(real)","Llegadas(modelo)")
+datatable(output,
+          options = list(pageLength = 15))
+```
+
+### Error promedio a la hora de corte
+
+Derivado de estas tablas, se nos ocurrio que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte. 
+
+```{r}
+#medidas alternativas de error, cuantas bicis nos quedamos atrás en promedio
+#ERROR EN LA CANTIDAD DE BICI AL FINAL DEL DÍA
+plantilla_llena$hour<-as.character(plantilla_llena$hour)
+bici_error<-plantilla_llena%>% filter(hour=='23:50:00') %>% mutate (error=abs(acum_llegada_real-acum_llegada_pred)) %>% group_by(strt_statn) %>% select(strt_statn,error) %>%
+    summarise(error_medio = mean((error)))
+
+datatable(bici_error,options = list(
+  pageLength = 10, autoWidth = TRUE
+), colnames = c("Estación","Error medio al final del día"))
+
+
+```
+
+
+
+
+
+
