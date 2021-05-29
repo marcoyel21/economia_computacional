@@ -51,8 +51,9 @@ options(scipen = 999)
 
 ```
 
+# Ambiente
 
-Cargamos la base y revisamos sus variables. Notamos outliers en la variable de duración. Los truncamos al 99.9% para que no afecten las predicciones de nuestros modelos.
+El primer paso para el análisis partiendo de modelos es importar los datos procesados de la etapa anterior.Por ello, cargamos la base y revisamos sus variables. Notamos outliers en la variable de duración. Los truncamos al 99.9% para que no afecten las predicciones de nuestros modelos.
 
 ```{r, include=FALSE}
 load("bases/base_modelo.RData")
@@ -102,7 +103,7 @@ trips_filter <- trips_filter %>%
 ```
 
 
-## Modelos
+# Modelos
 
 Primero separamos la base de validación y de entrenamiento. Usamos una división 80-20. Para esto decidimos estratificar por días y no por viajes. De esta manera tenemos un panorama completo de los días en entrenamiento, y evaluaremos en días nuevos en la base de validación. Esto nos parece un ejercicio más realista dados los objetivos del negocio.
 
@@ -188,7 +189,7 @@ y_test <- trips_filter[trips_filter$treat==0,] %>%select(c("seq_id","duration"))
 ```
 
 
-#### Lasso
+## Lasso
 
 Primero probamos un LASSO con Cross Validation.
 
@@ -223,7 +224,7 @@ y_test <- y_test %>% mutate(oos_lasso = (duration - pred_lasso)^2)
 ```
 Guardamos las predicciones del modelo.
 
-#### Random Forest
+## Random Forest
 
 El segundo modelo que deseamos probar es el random forest. Probamos con distintas B, desde 100 hasta 700, siendo 500 el óptimo por reducir el error OOB.
 
@@ -604,7 +605,7 @@ datatable(bici_error,options = list(
 ```
 
 
-#Conclusiones
+# Conclusiones
 
 
 Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas.
