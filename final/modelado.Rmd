@@ -285,7 +285,7 @@ xgb_model <- xgb.train(params = param,
 
 # Predicción
 y_test$pred_xgb <- predict(xgb_model, sparse_test)
-y_test <- y_test %>% mutate(oos_cgb = (duration - pred_xgb)^2)
+y_test <- y_test %>% mutate(oos_xgb = (duration - pred_xgb)^2)
 
 ```
 
@@ -324,9 +324,13 @@ Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de
 
 #residuals rf
 sum(dep$oos_rf)
+sum(dep$oos_lasso)
+sum(dep$oos_xgb)
 
 # MSE
 sum((dep$pred_rf-(dep$duration))^2/nrow(dep))
+sum((dep$pred_lasso-(dep$duration))^2/nrow(dep))
+sum((dep$pred_xgb-(dep$duration))^2/nrow(dep))
 
 
 ```
