@@ -53,7 +53,9 @@ options(scipen = 999)
 
 # Ambiente
 
-El primer paso para el análisis partiendo de modelos es importar los datos procesados de la etapa anterior.Por ello, cargamos la base y revisamos sus variables. Notamos outliers en la variable de duración. Los truncamos al 99.9% para que no afecten las predicciones de nuestros modelos.
+En esta segunda parte del proyecto pasaremos a estimar los modelos que mejor puedan predecir la duración de un viaje en bicicleta. Esto con el proposito de poder proveer tanto a la empresa Wheelie Wonka como a usuarios de alguna app de movilidad con información confiable del flujo de bicicletas y bicicletas disponibles para una hora del día determinada.
+
+El primer paso para el análisis es importar los datos procesados de la etapa de EDA. Para ello, cargamos la base y revisamos sus variables. Notamos outliers en la variable de duración. Los truncamos al 99.9% para que no afecten las predicciones de nuestros modelos.
 
 ```{r, include=FALSE}
 load("bases/base_modelo.RData")
@@ -105,7 +107,7 @@ trips_filter <- trips_filter %>%
 
 # Modelos
 
-Primero separamos la base de validación y de entrenamiento. Usamos una división 80-20. Para esto decidimos estratificar por días y no por viajes. De esta manera tenemos un panorama completo de los días en entrenamiento, y evaluaremos en días nuevos en la base de validación. Esto nos parece un ejercicio más realista dados los objetivos del negocio.
+Primero separamos la base de validación y de entrenamiento. Usamos una división 80-20. Para esto decidimos estratificar por días y no por viajes. De esta manera tenemos un panorama completo de los días en entrenamiento, y evaluaremos en días nuevos en la base de validación. Esto nos parece un ejercicio más realista dados los objetivos del negocio. De lo contrario, una separación *naive* correría el riesgo que separarnos los flujos de un día en específico en ambas bases.
 
 Para tener un balance en nuestros sets de entrenamiento y validación, estratificamos por año, mes y día de la semana. Una vez hecha la estratificación, verificamos el balance entre entrenamiento y validación.
 
@@ -152,8 +154,7 @@ balance_t_filter<- balance_t %>% filter(p_value1 < .1)
 datatable(balance_t_filter, options = list(pageLength = 5))
 ```
 
-37 variables muestran desbalance, dummies de estaciones y edad. La significancia conjunta no se rechaza. Por ende, consideramos que no es preocupante.
-
+De la tabla anterior podemos concluir que 37 variables muestran desbalance, dummies de estaciones y edad. La significancia conjunta no se rechaza. Por ende, consideramos que no es preocupante.
 
 ```{r}
 # pruebas F
@@ -166,7 +167,7 @@ kable(balance_f$F_test, align = 'c',booktabs=T,digits = 2,
   kable_styling(position = "center")
 ```
 
-Ahora procedemos a separar las bases en entrenamiento y validación. Acotamos la de entrenamiento para tener una muestra más pequeña. Convertimos las bases de covariables en matrices ralas.
+Ahora procedemos a separar las bases en entrenamiento y validación. Acotamos la de entrenamiento para tener una muestra más pequeña. Asimismo, convertimos las bases de covariables en matrices ralas.
 
 ```{r}
 
@@ -188,10 +189,11 @@ y_test <- trips_filter[trips_filter$treat==0,] %>%select(c("seq_id","duration"))
 
 ```
 
+Una vez realizado el preprocesamiento adecuado procedemos a estimar los modelos: Lasso; Random Forest y XG Boosting.
 
 ## Lasso
 
-Primero probamos un LASSO con Cross Validation.
+El primer modelo que estimaeros es un LASSO con Cross Validation.
 
 ```{r,eval=FALSE}
 lasso <- cv.gamlr(x = sparse_train,
@@ -224,11 +226,10 @@ y_test <- y_test %>% mutate(oos_lasso = (duration - pred_lasso)^2)
 ```
 Guardamos las predicciones del modelo.
 
+
 ## Random Forest
 
-El segundo modelo que deseamos probar es el random forest. Probamos con distintas B, desde 100 hasta 700, siendo 500 el óptimo por reducir el error OOB.
-
-Por razones de tiempo, corrimos el modelo sobre una submuestra de entrenamiento. Nos aseguramos que ésta respetara la estratificación antes descrita.
+El segundo modelo que deseamos probar es el random forest. Probamos con distintas B, desde 100 hasta 700, siendo 500 el óptimo por reducir el error OOS.
 
 ```{r,eval=FALSE}
 
@@ -340,8 +341,7 @@ y_test <- y_test %>% mutate(oos_xgb = (duration - pred_xgb)^2)
 
 ```
 
-
-
+Una vez estimados los tres modelos, procedemos a evaluar su desempeño, tanto para métricas tradicionales como para métricas más orientadas a los fines del negocio.
 
 # Desempeño de modelos
 
@@ -370,7 +370,7 @@ dep<-left_join(dep,stations, by = c("seq_id" ))
 
 ## Medidas tradicionales
 
-Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de los residuales. Al ser la variable objetico numérica,  podemos emplear el R^2.
+Como medidas tradicionales, al ser la variable objetico numérica (la predicción de la duración de un viaje en particular),  podemos emplear el R^2 y además podemos comparar ambos modelos midiendo el tamaño de los residuales
 
 ```{r, echo=FALSE}
 
@@ -410,13 +410,11 @@ kable(errors, booktabs=T, col.names = c("$$R^2$$","Minutos residuales totales","
       digits = 3, caption="Métricas Out of Sample")
 ```
 
-## Medidas alternativas
+## Medidas alternativas: aplicación de negocio
 
-#### Predicciones y flujo de biciletas por estación
+### Predicciones y flujo de biciletas por estación
 
-Para mostrar el desempeño de los modelos, modelaremos los flujos de bicicleta de nuestra base de validación pero ahora en lugar de usar la duración del viaje real, usaremos la predicha. Para ellos crearemos primero una base de datos que compare los flujos de viaje cada 10 minutos entre lo que en realidad pasó y lo que predice nuestro modelo.
-
-
+Para mostrar el desempeño de los modelos, modelaremos los flujos de bicicleta de los días que componen nuestra base de validación pero ahora en lugar de usar la duración del viaje real, usaremos la predicción de cada modelo. Para ellos crearemos primero una base de datos que compare los flujos de viaje cada 10 minutos entre lo que en realidad pasó y lo que predice nuestro modelo.
 
 ```{r, include=FALSE}
 #LOOP para crear bases de datos con predicciones de viajes
@@ -565,12 +563,14 @@ plantilla_llena$acum_llegada_pred_xgb <- ave(plantilla_llena$count_llegada_pred_
 #write.csv(plantilla_llena,"plantilla_llena")
 ```
 
-En la siguiente tabla se muestran los flujos acumulados de bicicletas que salen y llegan (con datos reales y predecidos). Por motivos de costo computacional, solamente mostramos algunos días completos para algunas estaciones aleatorias. **Por favor haga click primer primero en estación y luego en fecha para que la tabla esté ordenada de acuerdo a la hora**:
+En la siguiente tabla se muestran los flujos acumulados de bicicletas que salen y llegan (con datos reales y predecidos en el set de validación). Por motivos de costo computacional, solamente mostramos algunos días completos para algunas estaciones aleatorias. **Por favor haga click primer primero en estación y luego en fecha para que la tabla esté ordenada de acuerdo a la hora y de esta manera se pueda apreciar la acumulación de viajes**.
+
+**Predicción de flujos de llegadas de bicicleta para cada modelo**
 
 ```{r, echo==FALSE}
 #Deployment de las bases de datos en una app (selecciono de manera aleatoria algunas debido al peso computacional)
 
-random_stations<-sample(3:133, 3, replace=FALSE)
+random_stations<-sample(3:133, 10, replace=FALSE)
 
 output<-plantilla_llena%>% filter(strt_statn%in%random_stations )
 #output<-sample_n(plantilla_llena, 1000)
@@ -582,7 +582,7 @@ datatable(output,
 
 ### Error promedio a la hora de corte
 
-Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte.
+Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en dos escencarios: primero, que en las operaciones de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas; segundo, que tal vez como usuario, el saber cuantas bicis hay disponibles en cada estación es muy útil. Para este ejemplo, propusimos un punto de corte (de rellenado o vaciado de bicicletas) a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte.
 
 ```{r, echo=FALSE}
 #medidas alternativas de error, cuantas bicis nos quedamos atrás en promedio
@@ -610,4 +610,4 @@ datatable(bici_error,options = list(
 
 Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas.
 
-De manera más técnica, el modelo que resultó dar los mejores resultados tanto desde una perspectiva de análisis de resiudales tradicional como desde un problema aplicado de negocios fue el XGB.
+De manera más técnica, el modelo que resultó dar los mejores resultados tanto desde una perspectiva de análisis de residuales tradicional como desde un problema aplicado de negocios fue el XGB.
