@@ -54,11 +54,18 @@ options(scipen = 999)
 
 Cargamos la base y revisamos sus variables. Notamos outliers en la variable de duración. Los truncamos al 99.9% para que no afecten las predicciones de nuestros modelos.
 
-```{r}
-load("base_modelo.RData")
-load("base_trips.RData")
-summary(trips_filter)
+```{r, include=FALSE}
+load("bases/base_modelo.RData")
+load("bases/base_trips.RData")
 
+#modelos
+load("bases/random_forest.RData")
+load("bases/lasso.RData")
+load("bases/xgb.RData")
+```
+
+
+```{r, include=FALSE}
 # funcion
 winsorize <- function(vector, list_lower_upper){
 
@@ -185,12 +192,14 @@ y_test <- trips_filter[trips_filter$treat==0,] %>%select(c("seq_id","duration"))
 
 Primero probamos un LASSO con Cross Validation.
 
-```{r}
+```{r,eval=FALSE}
 lasso <- cv.gamlr(x = sparse_train,
                   y = y_train,
                   verb = T,
                   nfold = 10)
+```
 
+```{r}
 plot(lasso)
 
 plot(lasso$gamlr)
@@ -212,7 +221,6 @@ y_test<-y_test%>%rename(pred_lasso=`predicciones_lasso[, 1]`)
 y_test <- y_test %>% mutate(oos_lasso = (duration - pred_lasso)^2)
 
 ```
-
 Guardamos las predicciones del modelo.
 
 #### Random Forest
@@ -221,7 +229,7 @@ El segundo modelo que deseamos probar es el random forest. Probamos con distinta
 
 Por razones de tiempo, corrimos el modelo sobre una submuestra de entrenamiento. Nos aseguramos que ésta respetara la estratificación antes descrita.
 
-```{r}
+```{r,eval=FALSE}
 
 # ajuste del set de entrenamiento
 dates <- train %>% select(c("start_date","start_month","start_weekday",
@@ -253,7 +261,7 @@ sparse_train_cf <- sparse.model.matrix(~.+0, data = train_cf)
 
 Una vez hechos los ajustes, corremos el RF.
 
-```{r}
+```{r, eval=FALSE}
 # para correr modelos en paralelo
 cores <- detectCores()
 cl<-makeCluster(cores)
@@ -284,7 +292,10 @@ error_prediccion<-tibble(trees = c(500),
 #  geom_path() +
 #  theme_bw()
 
+```
 
+
+```{r}
 
 df_imp <- data.frame(names=random_forest[[1]][["variable.importance"]] %>% names(),
            importance=random_forest[[1]][["variable.importance"]]) %>%
@@ -293,6 +304,8 @@ df_imp <- data.frame(names=random_forest[[1]][["variable.importance"]] %>% names
 
 # predicciones OOS
 y_test$pred_rf<-predict(random_forest[[1]], data = sparse_test)$predictions
+y_test <- y_test %>% mutate(oos_rf = (duration - pred_rf)^2)
+
 
 ```
 
@@ -300,7 +313,7 @@ y_test$pred_rf<-predict(random_forest[[1]], data = sparse_test)$predictions
 
 Finalmente, probamos un XGB. Entrenamos el modelo y unimos las predicciones a la base de evaluación.
 
-```{r}
+```{r, eval=FALSE}
 # Preparar la base de entrenamiento y de validación
 dtrain <- xgb.DMatrix(sparse_train, label = y_train)
 dtest <- xgb.DMatrix(sparse_test, label = y_test$duration)
@@ -317,17 +330,22 @@ xgb_model <- xgb.train(params = param,
                        early_stopping_rounds = 10,
                        nrounds = 100,
                        watchlist)
+```
 
+```{r}
 # Predicción
 y_test$pred_xgb <- predict(xgb_model, sparse_test)
 y_test <- y_test %>% mutate(oos_xgb = (duration - pred_xgb)^2)
 
 ```
 
-# Desempeño de modelos
-```{r}
-#PREPROCESAMIENTO
 
+
+
+# Desempeño de modelos
+
+```{r, include=FALSE}
+#PREPROCESAMIENTO
 
 #creo base para deployment
 deployment<-cbind(y_test,test)
@@ -353,7 +371,7 @@ dep<-left_join(dep,stations, by = c("seq_id" ))
 
 Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de los residuales. Al ser la variable objetico numérica,  podemos emplear el R^2.
 
-```{r}
+```{r, include=FALSE}
 
 #r2 rf
 a<-1-sum((dep$duration-(dep$pred_rf))^2)/sum((dep$duration-mean(dep$duration))^2)
@@ -380,14 +398,14 @@ l<-sqrt(sum(dep$pred_xgb-dep$duration)^2)/(nrow(dep)*60)
 
 r2<-c(a,b,c)
 residuals<-c(d,e,f)
-mse<-c(h,h,i)
+mse<-c(g,h,i)
 min<-c(j,k,l)
 
 errors<-data.frame(r2,residuals,min)
 
 rownames(errors)<-c("RF","Lasso", "XGB")
 kable(errors, booktabs=T, col.names = c("$$R^2$$","Minutos residuales totales","Desviación en minutos"), 
-      digits = 3, caption="Métricas Out of Bag")
+      digits = 3, caption="Métricas Out of Sample")
 ```
 
 ## Medidas alternativas
@@ -398,7 +416,7 @@ Para mostrar el desempeño de los modelos, modelaremos los flujos de bicicleta d
 
 
 
-```{r}
+```{r, include=FALSE}
 #LOOP para crear bases de datos con predicciones de viajes
 
 #CREO LA BASE DE DATOS DE CADA 10 MINUTOS DEL SET TRAINING QUE VA ASERVIR COMO EL ESQUELETO
@@ -441,7 +459,7 @@ plantilla <- plantilla %>% rename (date=fecha)
 ```
 
 
-```{r}
+```{r,include=FALSE}
 #SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS SALIDAS DE BICIS
 v1<-dep%>% mutate(interval_min = lubridate::minute(start_DateTime) %/% 10,
                  interval_hour = lubridate::hour(start_DateTime) %/% 1  ) %>% group_by(start_date, interval_min,interval_hour,strt_statn)%>%
@@ -454,7 +472,7 @@ v1$hour<-as.ITime(v1$hour)
 
 ```
 
-```{r}
+```{r,include=FALSE}
 
 #SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS LLEGADAS DE LAS BICIS CON DATOS REALES
 v2<-dep%>% mutate(interval_min = lubridate::minute(end_DateTime) %/% 10,
@@ -467,7 +485,7 @@ v2$min<-NULL
 v2$hour<-as.ITime(v2$hour)
 ```
 
-```{r}
+```{r,include=FALSE}
 
 #SEGMENTO LA BASE EN INTERVALOS DE TIEMPO PARA VER LAS LLEGADAS DE LAS BICIS CON DATOS PREDECIDOS
 #RF
@@ -508,7 +526,7 @@ v5$hour<-as.ITime(v5$hour)
 ```
 
 
-```{r}
+```{r, include=FALSE}
 #Creo la base final para mostrar
 
 plantilla_llena<-merge(x = plantilla, y = v1, by = c("hour", "date","strt_statn"), all.x = TRUE)
@@ -547,7 +565,7 @@ trial<-plantilla_llena%>%filter((date=="2011-08-07"|date== "2011-08-17
 
 En la siguiente tabla se muestran los flujos acumulados de bicicletas que salen y llegan (con datos reales y predecidos). Por motivos de costo computacional, solamente mostramos algunos días completos para algunas estaciones aleatorias. **Por favor haga click primer primero en estación y luego en fecha para que la tabla esté ordenada de acuerdo a la hora**:
 
-```{r}
+```{r, include=FALSE}
 #Deployment de las bases de datos en una app (selecciono de manera aleatoria algunas debido al peso computacional)
 
 random_stations<-sample(3:133, 3, replace=FALSE)
@@ -564,7 +582,7 @@ datatable(output,
 
 Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte.
 
-```{r}
+```{r, include=FALSE}
 #medidas alternativas de error, cuantas bicis nos quedamos atrás en promedio
 #ERROR EN LA CANTIDAD DE BICI AL FINAL DEL DÍA
 plantilla_llena$hour<-as.character(plantilla_llena$hour)
@@ -589,3 +607,5 @@ datatable(bici_error,options = list(
 
 
 Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas.
+
+De manera más técnica, el modelo que resultó dar los mejores resultados tanto desde una perspectiva de análisis de resiudales tradicional como desde un problema aplicado de negocios fue el XGB.
