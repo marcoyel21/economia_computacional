@@ -204,6 +204,11 @@ lasso$gamlr$lambda[lambda_optima]
 predicciones_lasso <- predict(lasso,
                newdata = sparse_test,
                select = "min")
+
+lasso_pred<-as.data.frame(predicciones_lasso[,1])
+y_test<-cbind(y_test,lasso_pred)
+y_test<-y_test%>%rename(pred_lasso=`predicciones_lasso[, 1]`)
+
 ```
 
 #### Random Forest
