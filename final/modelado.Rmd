@@ -30,7 +30,7 @@ packages <- c(
   "networkD3","visNetwork",
   "reshape2","data.table","DT",
   "ranger", "parallel", "Matrix", "gamlr",
-  "mltools"
+  "mltools","xgboost"
   )
 
 
@@ -71,25 +71,22 @@ winsorize <- function(vector, list_lower_upper){
   return(vector)
 }
 
+# aplicamos la función para truncar outliers
 trips_filter$duration <- trips_filter$duration %>% winsorize(c(0,0.999))
 
 
 ```
 
+Para poder aumentar la eficiencia de los modelos, transformamos la base a formato ancho. Esto lo hacemos para dos variables con muchas categorías, las estaciones de salida y llegada.
+
 ```{r, cache=TRUE}
 
-# formato wide de zip code, start y end station
+# formato wide de start y end station
 stations_wide <- trips_filter %>%
   select("seq_id","strt_statn","end_statn") %>% as.data.table() %>%
   one_hot()
 
-#zipcode_wide <- trips_filter %>%
-#  select("seq_id","zip_code") %>% as.data.table() %>%
-#  one_hot()
-
 trips_filter <- inner_join(trips_filter,stations_wide, by="seq_id")
-#trips_filter <- inner_join(trips_filter,zipcode_wide, by="seq_id")
-
 
 trips_filter <- trips_filter %>%
   select(-c("strt_statn","end_statn")) %>%
@@ -98,10 +95,9 @@ trips_filter <- trips_filter %>%
 ```
 
 
-
 ## Modelos
 
-Primero separamos la base de validación y de entrenamiento. Para esto decidimos estratificar por días y no por viajes. De esta manera tenemos un panorama completo de los días en entrenamiento, y evaluaremos en días nuevos en la base de validación. Esto nos parece un ejercicio más realista dados los objetivos del negocio.
+Primero separamos la base de validación y de entrenamiento. Usamos una división 80-20. Para esto decidimos estratificar por días y no por viajes. De esta manera tenemos un panorama completo de los días en entrenamiento, y evaluaremos en días nuevos en la base de validación. Esto nos parece un ejercicio más realista dados los objetivos del negocio.
 
 Para tener un balance en nuestros sets de entrenamiento y validación, estratificamos por año, mes y día de la semana. Una vez hecha la estratificación, verificamos el balance entre entrenamiento y validación.
 
@@ -115,7 +111,8 @@ dates <- trips_filter %>% select(c("start_date","start_month","start_weekday",
 # estratificamos
 treat_id <- treatment_assign(data = dates, share_control = 0.2,
                     n_t = 1,
-                    strata_varlist = c("start_month","start_weekday",
+                    strata_varlist = c("start_month",
+                                       "start_weekday",
                                        "start_year"),
                     missfits = "global",
                     seed = 2021, key = "start_date")$data
@@ -123,7 +120,11 @@ treat_id <- treatment_assign(data = dates, share_control = 0.2,
 # pegamos la variable que asigna tratamiento a la base
 trips_filter <- left_join(trips_filter,treat_id,by=("start_date"))
 trips_filter <- trips_filter %>% select(-c("strata","missfit"))
+```
 
+Al hacer la separación, nos cercioramos de que exista balance entre ambas bases. Esto lo hacemos con prubas t y F para las variables numéricas.
+
+```{r}
 summary(trips_filter$treat)
 # el share control se mantiene estable
 
@@ -143,7 +144,7 @@ balance_t_filter<- balance_t %>% filter(p_value1 < .1)
 datatable(balance_t_filter, options = list(pageLength = 5))
 ```
 
-41 variables muestran desbalance, dummies de estaciones y edad. La significancia conjunta no se rechaza. Por ende, consideramos que no es preocupante.
+37 variables muestran desbalance, dummies de estaciones y edad. La significancia conjunta no se rechaza. Por ende, consideramos que no es preocupante.
 
 
 ```{r}
@@ -161,8 +162,7 @@ Ahora procedemos a separar las bases en entrenamiento y validación. Acotamos la
 
 ```{r}
 
-train <- trips_filter[trips_filter$treat==1,] %>%
-  sample_n(319431)
+train <- trips_filter[trips_filter$treat==1,]
 
 y_train <- train$duration[train$treat==1]
 
@@ -178,11 +178,12 @@ sparse_test <- sparse.model.matrix(~.+0, data = test)
 
 y_test <- trips_filter[trips_filter$treat==0,] %>%select(c("seq_id","duration"))
 
-#summary(trips_filter)
-
 ```
 
+
 #### Lasso
+
+Primero probamos un LASSO con Cross Validation.
 
 ```{r}
 lasso <- cv.gamlr(x = sparse_train,
@@ -201,16 +202,52 @@ lambda_optima<- colnames(coef(lasso, select="min"))
 lasso$gamlr$lambda[lambda_optima]
 
 # predicciones del lasso
-predicciones_lasso <- predict(lasso,
-               newdata = sparse_test,
-               select = "min")
+y_test$pred_lasso <- predict(lasso,
+                             newdata = sparse_test,
+                             select = "min") %>% drop()
 ```
+
+Guardamos las predicciones del modelo.
 
 #### Random Forest
 
 El segundo modelo que deseamos probar es el random forest. Probamos con distintas B, desde 100 hasta 700, siendo 500 el óptimo por reducir el error OOB.
+
+Por razones de tiempo, corrimos el modelo sobre una submuestra de entrenamiento. Nos aseguramos que ésta respetara la estratificación antes descrita.
+
 ```{r}
 
+# ajuste del set de entrenamiento
+dates <- train %>% select(c("start_date","start_month","start_weekday",
+                                   "start_year")) %>% unique()
+
+# estratificamos
+treat_id <- treatment_assign(data = dates, share_control = 0.75,
+                    n_t = 1,
+                    strata_varlist = c("start_month",
+                                       "start_weekday",
+                                       "start_year"),
+                    missfits = "global",
+                    seed = 2021, key = "start_date")$data
+
+# pegamos la variable que asigna tratamiento a la base
+train_cf <- left_join(cbind(train,y_train),
+                      treat_id,
+                      by=("start_date"))
+train_cf <- train_cf %>% select(-c("strata","missfit"))
+
+# subset de la base para los días elegidos
+train_cf <- train_cf[train_cf$treat==1,]
+y_train_cf <- train_cf$y_train[train_cf$treat==1]
+
+train_cf <-  train_cf %>% select(-c("treat","y_train"))
+
+sparse_train_cf <- sparse.model.matrix(~.+0, data = train_cf)
+```
+
+Una vez hechos los ajustes, corremos el RF.
+
+```{r}
 # para correr modelos en paralelo
 cores <- detectCores()
 cl<-makeCluster(cores)
@@ -219,8 +256,8 @@ inicio<-Sys.time()
 # c(100,200,350,500,700)
 random_forest <- map(c(500),
                      function(z)
-                       ranger(y=y_train,
-                              x=sparse_train[,-3],
+                       ranger(y=y_train_cf,
+                              x=sparse_train_cf,
                               num.trees = z,
                               mtry = ncol(train) %>% sqrt() %>% floor(),
                               min.node.size = 1,
@@ -236,10 +273,10 @@ error_prediccion<-tibble(trees = c(500),
                          oob_error = map_dbl(random_forest, ~.$prediction.error))
 
 # error medido en horas
-ggplot(error_prediccion, aes(trees, oob_error/60)) +
-  geom_point() +
-  geom_path() +
-  theme_bw()
+#ggplot(error_prediccion, aes(trees, oob_error/60)) +
+#  geom_point() +
+#  geom_path() +
+#  theme_bw()
 
 
 
@@ -247,26 +284,24 @@ df_imp <- data.frame(names=random_forest[[1]][["variable.importance"]] %>% names
            importance=random_forest[[1]][["variable.importance"]]) %>%
   arrange(-importance)
 
+
 # predicciones OOS
-#y_test<-y_test %>%  mutate (pred_rf = predict(random_forest[[1]], data = sparse_test)$predictions)
 y_test$pred_rf<-predict(random_forest[[1]], data = sparse_test)$predictions
 
-y_test <- y_test %>% mutate(oos_rf = (duration - pred_rf)^2)
-
-sum(y_test$oos_rf)
-
 ```
+
 ## XGB
 
+Finalmente, probamos un XGB. Entrenamos el modelo y unimos las predicciones a la base de evaluación.
+
 ```{r}
-library(xgboost)
 # Preparar la base de entrenamiento y de validación
 dtrain <- xgb.DMatrix(sparse_train, label = y_train)
 dtest <- xgb.DMatrix(sparse_test, label = y_test$duration)
 watchlist <- list(train = dtrain, eval = dtest)
 
 # Entrenamiento del modelo
-param <- list(max_depth = 6, learning_rate = 0.06,
+param <- list(max_depth = 5, learning_rate = 0.06,
               objective = "reg:squarederror",
               eval_metric = "rmse",
               subsample = 0.85,
@@ -299,7 +334,7 @@ timestamps$end_DateTime<-strptime(timestamps$end_DateTime, "%m/%d/%Y %H:%M:%OS")
 
 #creo predicciones de horrario de llega con base en la predicción del tiempo de duración
 dep<-left_join(deployment,timestamps, by = c("seq_id" ))
-dep<- dep %>% mutate(end_DateTime_predi=start_DateTime+pred_rf)
+dep<- dep %>% mutate(end_DateTime_predi=start_DateTime+pred_lasso)
 uniquedates<-as.data.frame(unique(dep$start_date))
 stations<-trips %>% select(seq_id,strt_statn)
 dep<-left_join(dep,stations, by = c("seq_id" ))
@@ -313,14 +348,18 @@ Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de
 
 ```{r}
 #r2 rf
-sum((dep$pred_rf-mean(dep$duration))^2)/sum((dep$duration-mean(dep$duration))^2)
+sum((dep$pred_lasso-mean(dep$duration))^2)/sum((dep$duration-mean(dep$duration))^2)
 
 #residuals rf
-sum(dep$oos_rf)
 
 # MSE
-sum((dep$pred_rf-(dep$duration))^2/nrow(dep))
+# LASSO
+sqrt(sum(dep$pred_lasso-dep$duration)^2)/(nrow(dep)*60)
+# RF
+sqrt(sum(dep$pred_rf-dep$duration)^2)/(nrow(dep)*60)
 
+# XGB
+sqrt(sum(dep$pred_xgb-dep$duration)^2)/(nrow(dep)*60)
 
 ```
 
