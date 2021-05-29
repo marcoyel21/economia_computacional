@@ -86,7 +86,7 @@ trips_filter$duration <- trips_filter$duration %>% winsorize(c(0,0.999))
 
 Para poder aumentar la eficiencia de los modelos, transformamos la base a formato ancho. Esto lo hacemos para dos variables con muchas categorías, las estaciones de salida y llegada.
 
-```{r, cache=TRUE}
+```{r}
 
 # formato wide de start y end station
 stations_wide <- trips_filter %>%
@@ -132,7 +132,7 @@ trips_filter <- trips_filter %>% select(-c("strata","missfit"))
 Al hacer la separación, nos cercioramos de que exista balance entre ambas bases. Esto lo hacemos con prubas t y F para las variables numéricas.
 
 ```{r}
-summary(trips_filter$treat)
+#summary(trips_filter$treat)
 # el share control se mantiene estable
 
 # revisamos balance de clases no estratificadas
@@ -199,12 +199,12 @@ lasso <- cv.gamlr(x = sparse_train,
                   nfold = 10)
 ```
 
-```{r}
+```{r, echo=FALSE}
 plot(lasso)
 
 plot(lasso$gamlr)
 
-coef(lasso, select="min", k=2, corrected=T)
+#coef(lasso, select="min", k=2, corrected=T)
 
 # Lambda óptima
 lambda_optima<- colnames(coef(lasso, select="min"))
@@ -371,7 +371,7 @@ dep<-left_join(dep,stations, by = c("seq_id" ))
 
 Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de los residuales. Al ser la variable objetico numérica,  podemos emplear el R^2.
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 
 #r2 rf
 a<-1-sum((dep$duration-(dep$pred_rf))^2)/sum((dep$duration-mean(dep$duration))^2)
@@ -404,6 +404,7 @@ min<-c(j,k,l)
 errors<-data.frame(r2,residuals,min)
 
 rownames(errors)<-c("RF","Lasso", "XGB")
+
 kable(errors, booktabs=T, col.names = c("$$R^2$$","Minutos residuales totales","Desviación en minutos"), 
       digits = 3, caption="Métricas Out of Sample")
 ```
@@ -558,14 +559,14 @@ plantilla_llena$acum_llegada_pred_lasso <- ave(plantilla_llena$count_llegada_pre
 plantilla_llena$acum_llegada_pred_xgb <- ave(plantilla_llena$count_llegada_pred_xgb, plantilla_llena$strt_statn,plantilla_llena$date, FUN=cumsum)
 
 
-trial<-plantilla_llena%>%filter((date=="2011-08-07"|date== "2011-08-17
-") & strt_statn==3)
+#trial<-plantilla_llena%>%filter((date=="2011-08-07"|date== "2011-08-17") & strt_statn==3)
 
+#write.csv(plantilla_llena,"plantilla_llena")
 ```
 
 En la siguiente tabla se muestran los flujos acumulados de bicicletas que salen y llegan (con datos reales y predecidos). Por motivos de costo computacional, solamente mostramos algunos días completos para algunas estaciones aleatorias. **Por favor haga click primer primero en estación y luego en fecha para que la tabla esté ordenada de acuerdo a la hora**:
 
-```{r, include=FALSE}
+```{r, echo==FALSE}
 #Deployment de las bases de datos en una app (selecciono de manera aleatoria algunas debido al peso computacional)
 
 random_stations<-sample(3:133, 3, replace=FALSE)
@@ -582,7 +583,7 @@ datatable(output,
 
 Derivado de estas tablas, se nos ocurrió que una forma muy util de probar el desempeño de los modelos es a través del error del flujo en determinado punto del día. Esto pensando en que en las empresas de este tipo, hay un punto de corte en el que las estaciones se tienen que llenar o vaciar de bicicletas. Para este ejemplo, propusimos un punto de corte a las 12 de la noche, pero bien podría ser en la madrugada, o en la tarde. En la siguiente tabla se muestra el error promedio en el cálculo del flujo de bicis para la hora de corte.
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 #medidas alternativas de error, cuantas bicis nos quedamos atrás en promedio
 #ERROR EN LA CANTIDAD DE BICI AL FINAL DEL DÍA
 plantilla_llena$hour<-as.character(plantilla_llena$hour)
