@@ -202,9 +202,15 @@ lambda_optima<- colnames(coef(lasso, select="min"))
 lasso$gamlr$lambda[lambda_optima]
 
 # predicciones del lasso
-y_test$pred_lasso <- predict(lasso,
-                             newdata = sparse_test,
-                             select = "min") %>% drop()
+predicciones_lasso <- predict(lasso,
+               newdata = sparse_test,
+               select = "min")
+
+lasso_pred<-as.data.frame(predicciones_lasso[,1])
+y_test<-cbind(y_test,lasso_pred)
+y_test<-y_test%>%rename(pred_lasso=`predicciones_lasso[, 1]`)
+y_test <- y_test %>% mutate(oos_lasso = (duration - pred_lasso)^2)
+
 ```
 
 Guardamos las predicciones del modelo.
@@ -314,6 +320,7 @@ xgb_model <- xgb.train(params = param,
 
 # Predicción
 y_test$pred_xgb <- predict(xgb_model, sparse_test)
+y_test <- y_test %>% mutate(oos_xgb = (duration - pred_xgb)^2)
 
 ```
 
@@ -321,8 +328,6 @@ y_test$pred_xgb <- predict(xgb_model, sparse_test)
 ```{r}
 #PREPROCESAMIENTO
 
-# cargar la base completa
-load("base_trips.RData")
 
 #creo base para deployment
 deployment<-cbind(y_test,test)
@@ -339,7 +344,6 @@ uniquedates<-as.data.frame(unique(dep$start_date))
 stations<-trips %>% select(seq_id,strt_statn)
 dep<-left_join(dep,stations, by = c("seq_id" ))
 
-
 ```
 
 ## Medidas tradicionales
@@ -348,16 +352,25 @@ Como medidas tradicionales, podemos compara ambos modelos midiendo el tamaño de
 
 ```{r}
 #r2 rf
-sum((dep$pred_lasso-mean(dep$duration))^2)/sum((dep$duration-mean(dep$duration))^2)
+1-sum((dep$duration-(dep$pred_rf))^2)/sum((dep$duration-mean(dep$duration))^2)
+1-sum((dep$duration-(dep$pred_lasso))^2)/sum((dep$duration-mean(dep$duration))^2)
+1-sum((dep$duration-(dep$pred_xgb))^2)/sum((dep$duration-mean(dep$duration))^2)
+
 
 #residuals rf
+sum(dep$oos_rf)
+sum(dep$oos_lasso)
+sum(dep$oos_xgb)
 
 # MSE
+sum((dep$pred_rf-(dep$duration))^2/nrow(dep))
+sum((dep$pred_lasso-(dep$duration))^2/nrow(dep))
+sum((dep$pred_xgb-(dep$duration))^2/nrow(dep))
+
 # LASSO
 sqrt(sum(dep$pred_lasso-dep$duration)^2)/(nrow(dep)*60)
 # RF
 sqrt(sum(dep$pred_rf-dep$duration)^2)/(nrow(dep)*60)
-
 # XGB
 sqrt(sum(dep$pred_xgb-dep$duration)^2)/(nrow(dep)*60)
 
