@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval Fernández, Marco Antonio Ramos Juárez y Francisco Velazquez Guadarrama" />
+
+<meta name="date" content="2021-01-01" />
+
+<title>Comprensión del Negocio y de los Datos</title>
+
+<script src="comprension_datos-negocio_files/header-attrs-2.7/header-attrs.js"></script>
+<script src="comprension_datos-negocio_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="comprension_datos-negocio_files/bootstrap-3.3.5/css/spacelab.min.css" rel="stylesheet" />
+<script src="comprension_datos-negocio_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="comprension_datos-negocio_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="comprension_datos-negocio_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="comprension_datos-negocio_files/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="comprension_datos-negocio_files/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="comprension_datos-negocio_files/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="comprension_datos-negocio_files/navigation-1.1/tabsets.js"></script>
+<link href="comprension_datos-negocio_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="comprension_datos-negocio_files/highlightjs-9.12.0/highlight.js"></script>
+<link href="comprension_datos-negocio_files/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="comprension_datos-negocio_files/pagedtable-1.1/js/pagedtable.js"></script>
+<script src="comprension_datos-negocio_files/kePrint-0.0.1/kePrint.js"></script>
+<link href="comprension_datos-negocio_files/lightable-0.0.1/lightable.css" rel="stylesheet" />
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-sm-12 col-md-4 col-lg-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-sm-12 col-md-8 col-lg-9">
+
+
+
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Comprensión del Negocio y de los Datos</h1>
+<h3 class="subtitle">Proyecto Final</h3>
+<h4 class="author">Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval Fernández, Marco Antonio Ramos Juárez y Francisco Velazquez Guadarrama</h4>
+<h4 class="date">2021</h4>
+
+</div>
+
+
+<div id="planteamiento-del-problema" class="section level2">
+<h2>Planteamiento del Problema</h2>
+<p>Al conectar una multiplicidad de orígenes y destinos, el transporte público ha probado ser un motor del desarrollo económico urbano, además de potencialmente impactar los ámbitos de salud y seguridad pública, congestión vehicular, y la inclusión social. En este contexto, los sistemas de bicicletas compartidas han ofrecido una alternativa a las opciones de transporte en redes urbanas altamente complejas. Como tal, cualquier empresa de bicicletas compartidas debe ser capaz de ofrecer a sus usuarios una opción eficaz para trasladarse, es decir, práctica y accesible. La empresa Wheelie Wonka no debe ser la excepción.</p>
+<p>Sin embargo, tal como es el caso de los flujos de tráfico, las bicicletas enfrentan el problema de demandas asimétricas en tiempo y espacio. Esto puede significar un problema en la medida en que la infraestructura de la red de bicicletas limite a los usuarios en momentos de alta demanda, y también que el uso y desplazamiento de las bicicletas en un momento dado no corresponda a las necesidades de los usuarios siguientes, creando excesos de oferta y de demanda en distintas zonas de Boston.</p>
+<p>En Boston, para el servicio de bicicletas compartidas, existen estaciones designadas para su almacenamiento, por lo que la estación podría estar vacía o saturada en diferentes periodos. Los operadores de bicicletas compartidas generalmente redistribuyen las bicicletas entre las diferentes estaciones; no obstante, esta distribución desequilibrada puede conllevar a pérdidas para la empresa, al estar utilizando recursos humanos innecesarios, y perjudicar a los usuarios en su acceso al servicio, dado que podría generarse una situación de falta de disponibilidad de bicicletas o a la saturación de éstas. Por lo tanto, predecir un número exacto de bicicletas disponibles en las estaciones es importante.</p>
+<p>Existen factores que pueden incidir en las tendencias de los viajes de los pasajeros que son relevantes para determinar la disponibilidad de las bicicletas, como la duración del viaje, la hora del día (horas punta), el día de la semana, el clima, la edad del pasajero, su género, las estaciones del año, las vacaciones, la popularidad de la ubicación, entre otros. Por tanto, mejores datos podrían ayudar a hacer una mejor predicción.</p>
+<p>En este contexto, la ciencia de datos ofrece una solución muy atractiva. Mediante el análisis computacional del uso de las bicicletas, es posible reconocer patrones y predecir la disponibilidad de bicicletas en un lugar y momento específicos. Esto puede ayudar a la empresa Wheelie Wonka en dos sentidos.</p>
+<ol style="list-style-type: decimal">
+<li>Proveer al usuario de información con la cual pueda tomar decisiones óptimas de transporte.</li>
+<li>Poder hacer ajustes en la distribución de las bicicletas a lo largo de las cicloestaciones para prevenir escaseces y excesos en el sistema.</li>
+</ol>
+<p>Estos puntos seguramente aumentarían la satisfacción del usuario, disminuirían las pérdidas en eficiencia, y permitirían un mayor uso del servicio, lo cual sólo podría traer beneficios a Wheelie Wonka.</p>
+<p>En este sentido, los objetivos específicos de este proyecto son los siguientes:</p>
+<ol style="list-style-type: lower-alpha">
+<li>Poder pronosticar la duración de los viajes.</li>
+<li>Entender los factores que tienen un impacto en la duración de los viajes e identificar patrones geográficos en los datos.</li>
+<li>Estimar el número de bicicletas por estación en ventanas de 10 minutos.</li>
+</ol>
+<p>Estos tres puntos se verán reflejados en nuestro entregable final, el producto para los clientes: un dashboard que modele el flujo de bicicletas en las estaciones para un día de la semana dado, en intervalos de 10 minutos.</p>
+<p>El estudio comienza con la creación y transformación de variables, así como con la limpieza y unión de las bases de datos de las estaciones “Hubway Station”, de los viajes “Hubway trips”, y de datos climatológicos para 2011, 2012 y 2013. Después se llevó a cabo el análisis exploratorio de los datos que se consideraron relevantes para identificar los patrones de viajes de los pasajeros y se probaron dos modelos -LASSO, Random Forest y XGB- para la predicción de la duración de los viajes e identificación de los factores que tienen un impacto en ésta; posteriormente se modelaron los flujos para determinar la disponibilidad de las bicicletas en cada estación y se comparó el desempeño de ambos modelos.</p>
+<p>Consideraremos nuestras predicciones como buenas a partir de que generen valor para la empresa. Esto es, la predicción debe ser útil al usuario para tomar sus decisiones de transporte casi en tiempo real, y también debe permitir al negocio monitorear de manera realista los flujos de bicicletas en Boston y las cicloestaciones.</p>
+</div>
+<div id="comprensión-de-los-datos" class="section level2">
+<h2>Comprensión de los Datos</h2>
+<p>En lo que resta de este documento analizamos los datos, y los preparamos para el modelado. Primero hacemos una exploración inicial de las bases y de valores faltantes. Asimismo, generamos variables útiles a partir de las ya existentes. Una vez hecho esto, mostramos nuestros principales hallazgos del análisis exploratorio de los datos. Por último, realizamos transformaciones finales e integramos una base final para pasar a los modelos.</p>
+<p>Empezamos por cargar los datos.</p>
+<p>Buscamos NAs en las variables para poder tomar decisiones al respecto.</p>
+<pre class="r"><code># asignar NAs a valores vacíos de measurement_flag
+weather$Measurement_Flag[weather$Measurement_Flag==&quot; &quot;] &lt;- NA
+
+# función para NAs
+check_nas &lt;- function(df){
+  df %&gt;%
+    select_if(~sum(is.na(.)) &gt; 0) %&gt;%
+    miss_var_summary()
+}
+
+# tabla resumen de missing values: trips
+kable(check_nas(trips), booktabs=T, align = &#39;c&#39;,
+      col.names = c(&quot;Variable&quot;, &quot;Cantidad&quot;,&quot;%&quot;), digits = 4, caption = &quot;trips&quot;) %&gt;%
+  kable_styling(position = &quot;center&quot;, latex_options=&quot;HOLD_position&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<caption>
+trips
+</caption>
+<thead>
+<tr>
+<th style="text-align:center;">
+Variable
+</th>
+<th style="text-align:center;">
+Cantidad
+</th>
+<th style="text-align:center;">
+%
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+birth_date
+</td>
+<td style="text-align:center;">
+1228381
+</td>
+<td style="text-align:center;">
+77.7936
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+end_statn
+</td>
+<td style="text-align:center;">
+45
+</td>
+<td style="text-align:center;">
+0.0028
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+strt_statn
+</td>
+<td style="text-align:center;">
+14
+</td>
+<td style="text-align:center;">
+0.0009
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># tabla resumen de missing values: weather
+kable(check_nas(weather), booktabs=T, align = &#39;c&#39;,
+      col.names = c(&quot;Variable&quot;, &quot;Cantidad&quot;,&quot;%&quot;), digits = 4, caption = &quot;weather&quot;) %&gt;%
+  kable_styling(position = &quot;center&quot;, latex_options=&quot;HOLD_position&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<caption>
+weather
+</caption>
+<thead>
+<tr>
+<th style="text-align:center;">
+Variable
+</th>
+<th style="text-align:center;">
+Cantidad
+</th>
+<th style="text-align:center;">
+%
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+Quality_Flag
+</td>
+<td style="text-align:center;">
+2654
+</td>
+<td style="text-align:center;">
+100.0000
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+Measurement_Flag
+</td>
+<td style="text-align:center;">
+1387
+</td>
+<td style="text-align:center;">
+52.2607
+</td>
+</tr>
+</tbody>
+</table>
+<div id="análisis-para-imputación-de-estaciones" class="section level4">
+<h4>Análisis para imputación de estaciones</h4>
+<pre class="r"><code>prcnt_sameStation &lt;- trunc(sum(trips$strt_statn == trips$end_statn,
+                               na.rm = T) / nrow(trips) * 100 * 100)/100
+NA_either &lt;- sum(is.na(trips$strt_statn) | is.na(trips$end_statn))</code></pre>
+<p>Se decide eliminar la variable “Quality_Flag”, pues esta contiene únicamente NAs.</p>
+<p>Además, analizando las observaciones con NA en “strt_statn” o “end_statn”, notamos que estas sí tienen valores para variables importantes como “duration”, y que no necesariamente coinciden en tener NA para ambas variables, por lo que sí podrían ser útiles si se les imputara algún valor. Lo más directo sería imputarle a la variable con NA el valor de la variable que sí tiene información. Sin embargo, notamos que tan solo el <code>prcnt_sameStation</code>% de las observaciones siguen este comportamiento. Dado que para poder predecir la disponibilidad de bicicletas por estación las variables de “strt_statn” o “end_statn” serán muy importantes, se decide simplemente eliminar las observaciones con NA en cualquiera de estas dos variables. Dado que son únicamente <code>NA_either</code> las observaciones que cumplen con esta última característica, el efecto eliminarlas es prácticamente nulo.</p>
+<pre class="r"><code>weather$Quality_Flag &lt;- NULL
+#weather$Measurement_Flag &lt;- NULL
+trips &lt;- trips[!is.na(trips$strt_statn) &amp; !is.na(trips$end_statn), ]</code></pre>
+<p>Nótese que la información contenida en “birth_date” no es directamente útil, pues se tienen observaciones de distintos años. La información que seguramente será muy relevante es la edad del usuario cuando hizo uso del servicio, no su edad actual. Por ello, para poder analizar la variable “birth_date” y tomar una decisión respecto a sus NA, primero se procesa las variables “start_date”, “end_date”, y finalmente se genera una variable con la edad a partir de “birth_date”. Asimismo, se procesan las fechas en la base del clima para extraer una fecha y hora utilizables. Todo esto con la finalidad de poder realizar un análisis exploratorio que posteriormente permita tomar una decisión.</p>
+<pre class="r"><code># Se divide start_date en fecha y hora para extraer la información
+colnames(trips)[colnames(trips) == &#39;start_date&#39;] &lt;- &#39;start_DateTime&#39;
+startDateTime &lt;- strsplit(trips$start_DateTime, &#39; &#39;)
+
+startDate &lt;- sapply(startDateTime, &quot;[&quot;, 1)
+trips$start_date &lt;- as.Date(startDate, &#39;%m/%d/%Y&#39;) %&gt;% date()
+trips$start_year &lt;- trips$start_date %&gt;% year()
+trips$start_month &lt;- trips$start_date %&gt;% month()
+trips$start_weekday &lt;- weekdays(trips$start_date)
+
+startTime &lt;- sapply(startDateTime, &quot;[&quot;, 2)
+trips$start_hour &lt;- as.POSIXct(startTime,format=&quot;%H:%M:%S&quot;) %&gt;%
+  hour()
+trips$start_minute &lt;- format(as.POSIXct(startTime,format=&quot;%H:%M:%S&quot;),&quot;%M&quot;)
+
+
+# Se divide end_date en fecha y hora para extraer la información (poder utilizarla posteriormente)
+colnames(trips)[colnames(trips) == &#39;end_date&#39;] &lt;- &#39;end_DateTime&#39;
+endDateTime &lt;- strsplit(trips$end_DateTime, &#39; &#39;)
+
+endDate &lt;- sapply(endDateTime, &quot;[&quot;, 1)
+trips$end_date &lt;- as.Date(endDate, &#39;%m/%d/%Y&#39;)
+trips$end_year &lt;- format(trips$end_date, &#39;%Y&#39;)
+trips$end_month &lt;- format(trips$end_date, &#39;%m&#39;)
+trips$end_weekday &lt;- weekdays(trips$end_date)
+
+endTime &lt;- sapply(endDateTime, &quot;[&quot;, 2)
+trips$end_hour &lt;- format(as.POSIXct(endTime,format=&quot;%H:%M:%S&quot;),&quot;%H&quot;)
+trips$end_minute &lt;- format(as.POSIXct(endTime,format=&quot;%H:%M:%S&quot;),&quot;%M&quot;)
+
+# Se genera la edad del usuario al empezar con el servicio
+trips$age &lt;- as.integer(trips$start_year) - trips$birth_date
+
+# se hace lo mismo para sacar fecha y hora en la base de clima
+weather$start_date &lt;- weather$DATE %&gt;% strsplit(&#39; &#39;) %&gt;%
+  sapply(&quot;[&quot;, 1) %&gt;% as.Date(&#39;%Y%m%d&#39;) %&gt;% date()
+
+weather$start_hour &lt;- weather$DATE %&gt;% strsplit(&#39; &#39;) %&gt;%
+  sapply(&quot;[&quot;, 2) %&gt;% as.POSIXct(format=&quot;%H:%M&quot;) %&gt;%
+  hour()
+
+# remover objetos grandes
+rm(endDateTime,startDateTime,endDate,endTime,startDate,startTime)</code></pre>
+</div>
+<div id="unión-de-base-de-clima-con-viajes" class="section level4">
+<h4>Unión de base de clima con viajes</h4>
+<p>Ahora, se procede a unir la base que contiene la información sobre los viajes con las columnas relevantes de las otras bases. Esto se hace primero con la información sobre el clima a la hora que inicia y termina el viaje. Naturalmente, sería ideal tener información sobre el nivel de precipitación registrada durante cada minuto de los viajes de los usuarios. Sin embargo, este no es el caso. En nuestra base principal tenemos <code>length(unique(trips$start_date))</code> días para los cuales se registró al menos un viaje, pero únicamente contamos con <code>length(unique(weather$start_date))</code> días que sí tienen mediciones. Más aún, si fuésemos a asignar valores a cada viaje para el nivel de precipitación con base en un match estricto con la fecha y hora de la medición, tendríamos que el <code>HPCP_NAs_prcnt</code>% de esta nueva columna serían NAs. Consideramos que esta variable podría tener mucha información importante como para eliminarla, y que las mediciones con las que contamos aún pueden decirnos mucho más: cuando llueve, las afectaciones de dicho fenómeno son persistentes temporalmente, pues el hecho de que no se tenga medición para una hora después de un registro, esto no implica que ya no esté lloviendo, o que el clima ha mejorado. Del mismo modo, las calles suelen continuar mojadas una o varias horas después. Por otra parte, cuando llueve, esto no sucede sin previo aviso, de un minuto a otro. Con base en este razonamiento, se decide utilizar las pocas observaciones que sí se tienen para crear un índice alrededor de la hora sobre la cual sí se tien registro de la siguiente manera: para cada día y hora en que se registró un viaje, si existe un registro para el clima este se deja intacto. Cuando no, se utiliza un promedio de la lluvia registrada en el intervalo que comprende desde tres horas antes (efectos persistentes del clima del pasado) y hasta una hora después (previsión del clima futuro dado el presente). Nótese que los registros del nivel de precipitación en esta nueva variable únicamente toman <code>length(unique(trips$HPCP))-1</code> valores posibles. Como los NA aún persisten, a estos se les asigna el valor “SR” (Sin Registro), y se trata a toda la variable como un factor por intervalos.</p>
+<p>Usando un razonamiento similar, se considera que, en general, el hecho de que haya llovido durante el día puede también decirnos algo de información relativamente distinta. Por un lado, si había llovido antes de tomar una bicicleta, esto podría tener un efecto en las decisiones de los usuarios a través de sus ánimos y la expectativa del clima para el resto del día. Por otro, si aún no había llovido, es altamente probable que los usuarios hayan elegido iniciar un viaje con base en sus propias predicciones respecto al clima para el resto del día con base en factores que, para efectos de nuestros datos, no son observables. Es por ello que también se crea una variable que nos informa si llovió o no en un determinado día.</p>
+<pre class="r"><code># Imputación a los NA para HPCP en la base trips
+weather$start_hour &lt;- as.integer(weather$start_hour)
+unique_dates &lt;- unique(trips$start_date)
+weather_calendar &lt;- as.data.frame(matrix(NA, nrow = length(unique_dates), ncol = 25))
+colnames(weather_calendar) &lt;- c(&#39;start_date&#39;, 0:23)
+weather_calendar$start_date &lt;- unique_dates
+for ( i in 1:nrow(weather_calendar) ) {
+  curr_date &lt;- weather_calendar$start_date[i]
+  ss_by_date &lt;- weather[weather$start_date == curr_date, c(&#39;start_hour&#39;, &#39;HPCP&#39;)]
+  if (nrow(ss_by_date) &gt; 0) {
+    aux &lt;- 3
+    for ( j in 0:22 ) {
+      ss_by_hr &lt;- ss_by_date[ss_by_date$start_hour &gt;= (j-3+aux) &amp; ss_by_date$start_hour &lt;= (j+1),
+                             c(&#39;start_hour&#39;, &#39;HPCP&#39;)]
+      est_weather &lt;- sum(ss_by_hr$HPCP, na.rm=T) / 5
+      if (nrow(ss_by_hr) &gt; 0) {
+        weather_calendar[i, j+2] &lt;- est_weather
+      }
+      true_weather &lt;- ss_by_date[ss_by_date$start_hour == j, c(&#39;start_hour&#39;, &#39;HPCP&#39;)]
+      if (nrow(true_weather) &gt; 0) {
+        weather_calendar[i, j+2] &lt;- max(true_weather$HPCP[1], est_weather)
+      }
+      aux &lt;- max(aux - 1,0)
+    }
+    # La hora 23, inalcanzable en el loop anterior
+    ss_by_hr &lt;- ss_by_date[ss_by_date$start_hour &gt;= (23-3) &amp; ss_by_date$start_hour &lt;= (23),
+                           c(&#39;start_hour&#39;, &#39;HPCP&#39;)]
+    est_weather &lt;- sum(ss_by_hr$HPCP, na.rm=T) / 5
+    if (nrow(ss_by_hr) &gt; 0) {
+        weather_calendar[i, 23+2] &lt;- est_weather
+    }
+    true_weather &lt;- ss_by_date[ss_by_date$start_hour == 23, c(&#39;start_hour&#39;, &#39;HPCP&#39;)]
+    if (nrow(true_weather) &gt; 0) {
+      weather_calendar[i, 23+2] &lt;- max(true_weather$HPCP[1], est_weather)
+      }
+  }
+}
+
+date_matcher &lt;- melt(weather_calendar, id.var = &#39;start_date&#39;, variable.name = &#39;start_hour&#39;)
+date_matcher$start_hour &lt;- as.integer(date_matcher$start_hour)
+colnames(date_matcher)[3] &lt;- &#39;HPCP&#39;
+trips &lt;- merge(trips, date_matcher, by=c(&quot;start_date&quot;, &quot;start_hour&quot;), all.x=T)
+
+
+# Creación de la variable indicadora de día lluvioso
+rained_matcher &lt;- aggregate(HPCP~start_date, data=weather, FUN=sum, na.action = na.omit)
+rained_matcher$rained &lt;- ifelse(rained_matcher$HPCP&gt;0, 1, 0)
+trips &lt;- merge(trips, rained_matcher[,c(&#39;start_date&#39;, &#39;rained&#39;)], by=&#39;start_date&#39;, all.x=T)
+
+HPCP_NAs_prcnt &lt;- trunc(mean(is.na(trips$HPCP))*100*100)/100 
+# Porcentaje de NAs en HPCP
+
+rained_NAs_prcnt &lt;- trunc(mean(is.na(trips$rained))*100*100)/100 
+# Porcentaje de NAs en rained
+
+# Se forman intervalos para el nivel de lluvia
+trips$HPCP &lt;- cut(trips$HPCP,
+                  breaks=c(-0.001, seq(0,0.09,.015), seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5),
+                  labels=c(0, seq(0,0.09,.015)[-1], seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5))
+
+
+# Se asigna SR a las NA para poder trabajar como factor
+trips[is.na(trips$rained), &#39;rained&#39;] &lt;- &#39;SR&#39;
+trips$HPCP = factor(trips$HPCP, levels=c(levels(trips$HPCP), &#39;SR&#39;))
+trips$HPCP[is.na(trips$HPCP)] = &#39;SR&#39;
+
+
+# Transformamos a numéricas la variable de lluvia
+#HPCP 2
+trips$hpcp2 &lt;- 0
+trips$hpcp2[trips$HPCP==&quot;SR&quot;] &lt;- 1
+summary(trips$hpcp2)</code></pre>
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  1.0000  1.0000  0.8881  1.0000  1.0000 </code></pre>
+<pre class="r"><code># HPCP numerica
+trips$HPCP[trips$HPCP==&quot;SR&quot;] &lt;- 0
+trips$HPCP &lt;- trips$HPCP %&gt;% as.character %&gt;% as.numeric
+
+# Se transforman a factor
+trips$rained &lt;- trips$rained %&gt;% as.factor</code></pre>
+<p>Con lo anterior, se disminuyó el número de NAs en “HPCP” a <code>HPCP_NAs_prcnt</code>, y además tenemos información meteorológica útil para el <code>1-rained_NAs_prcnt</code> de las observaciones, que dado el tamaño de la base, es una buena cantidad.</p>
+<p>También se asigna <code>Measurement_Flag</code>.</p>
+<pre class="r"><code>trips &lt;- merge(trips, weather[,c(&#39;start_date&#39;,&#39;start_hour&#39;, &#39;Measurement_Flag&#39;)],
+               by = c(&#39;start_date&#39;,&#39;start_hour&#39;), all.x = T)
+
+trips$Measurement_Flag[is.na(trips$Measurement_Flag)] &lt;- &quot;unknown&quot;</code></pre>
+<p>Para concluir el análisis inicial, transformamos las variables.</p>
+<pre class="r"><code># categóricas
+trips$subsc_type &lt;- trips$subsc_type %&gt;% as.factor
+trips$gender &lt;- trips$gender %&gt;% as.factor
+trips$status &lt;- trips$status %&gt;% as.factor
+trips$bike_nr &lt;- trips$bike_nr %&gt;% as.factor
+trips$zip_code &lt;- trips$zip_code %&gt;% as.factor
+trips$Measurement_Flag &lt;- trips$Measurement_Flag %&gt;% as.factor
+
+trips$start_year &lt;- trips$start_year %&gt;% as.factor
+trips$end_year &lt;- trips$end_year %&gt;% as.factor
+trips$start_month &lt;- trips$start_month %&gt;% as.factor
+trips$end_month &lt;- trips$end_month %&gt;% as.factor
+trips$start_weekday &lt;- trips$start_weekday %&gt;% as.factor
+trips$end_weekday &lt;- trips$end_weekday %&gt;% as.factor
+
+trips$strt_statn &lt;- trips$strt_statn %&gt;% as.factor
+trips$end_statn &lt;- trips$end_statn %&gt;% as.factor
+
+# numéricas
+trips$start_hour &lt;- trips$start_hour %&gt;% as.integer
+trips$end_hour &lt;- trips$end_hour %&gt;% as.integer
+trips$start_minute &lt;- trips$start_minute %&gt;% as.integer
+trips$end_minute &lt;- trips$end_minute %&gt;% as.integer
+
+summary(trips)</code></pre>
+<pre><code>   start_date           start_hour        seq_id          hubway_id      
+ Min.   :2011-07-28   Min.   : 0.00   Min.   :      1   Min.   :      8  
+ 1st Qu.:2012-08-07   1st Qu.:10.00   1st Qu.: 394767   1st Qu.: 446536  
+ Median :2013-05-16   Median :15.00   Median : 789539   Median : 895070  
+ Mean   :2013-02-02   Mean   :13.87   Mean   : 789529   Mean   : 886549  
+ 3rd Qu.:2013-08-22   3rd Qu.:18.00   3rd Qu.:1184282   3rd Qu.:1328096  
+ Max.   :2013-11-30   Max.   :23.00   Max.   :1579025   Max.   :1748022  
+                                                                         
+    status           duration        start_DateTime       strt_statn     
+ Closed:1578973   Min.   :   -6900   Length:1578973     22     :  56442  
+                  1st Qu.:     412   Class :character   36     :  42568  
+                  Median :     660   Mode  :character   53     :  35438  
+                  Mean   :    1150                      67     :  33685  
+                  3rd Qu.:    1082                      16     :  32859  
+                  Max.   :11994458                      42     :  32795  
+                                                        (Other):1345186  
+ end_DateTime         end_statn          bike_nr             subsc_type     
+ Length:1578973     22     :  56280   B00490 :   2138   Casual    : 472592  
+ Class :character   36     :  43387   B00268 :   2124   Registered:1106381  
+ Mode  :character   42     :  34916   B00548 :   2112                       
+                    67     :  34580   B00559 :   2091                       
+                    53     :  33369   B00563 :   2080                       
+                    33     :  32246   B00391 :   2072                       
+                    (Other):1344195   (Other):1566356                       
+    zip_code        birth_date         gender       start_year   
+        :472747   Min.   :1932            :472592   2011:140505  
+ &#39;02118 :121748   1st Qu.:1969      Female:271693   2012:533793  
+ &#39;02139 : 89437   Median :1979      Male  :834688   2013:904675  
+ &#39;02215 : 86757   Mean   :1976                                   
+ &#39;02116 : 77279   3rd Qu.:1985                                   
+ &#39;02115 : 57522   Max.   :1995                                   
+ (Other):673483   NA&#39;s   :1228358                                
+  start_month       start_weekday     start_minute      end_date         
+ 8      :270602   domingo  :196016   Min.   : 0.00   Min.   :2011-07-28  
+ 9      :263700   jueves   :234831   1st Qu.:14.00   1st Qu.:2012-08-07  
+ 10     :253156   lunes    :230405   Median :29.00   Median :2013-05-16  
+ 7      :205296   martes   :231813   Mean   :29.46   Mean   :2013-02-02  
+ 6      :165366   miércoles:238791   3rd Qu.:44.00   3rd Qu.:2013-08-22  
+ 5      :152138   sábado   :215784   Max.   :59.00   Max.   :2013-12-01  
+ (Other):268715   viernes  :231333                                       
+ end_year        end_month         end_weekday        end_hour    
+ 2011:140504   08     :270562   domingo  :196704   Min.   : 0.00  
+ 2012:533794   09     :263746   jueves   :234851   1st Qu.:10.00  
+ 2013:904675   10     :253180   lunes    :230543   Median :15.00  
+               07     :205257   martes   :231780   Mean   :14.04  
+               06     :165387   miércoles:238609   3rd Qu.:18.00  
+               05     :152113   sábado   :215587   Max.   :23.00  
+               (Other):268728   viernes  :230899                  
+   end_minute         age               HPCP          rained      
+ Min.   : 0.00   Min.   :17.0      Min.   :0.000000   0 : 159616  
+ 1st Qu.:15.00   1st Qu.:27.0      1st Qu.:0.000000   1 : 315362  
+ Median :30.00   Median :32.0      Median :0.000000   SR:1103995  
+ Mean   :29.72   Mean   :35.5      Mean   :0.002609               
+ 3rd Qu.:45.00   3rd Qu.:43.0      3rd Qu.:0.000000               
+ Max.   :59.00   Max.   :79.0      Max.   :1.500000               
+                 NA&#39;s   :1228358                                  
+     hpcp2        Measurement_Flag 
+ Min.   :0.0000   g      :    219  
+ 1st Qu.:1.0000   T      :  56199  
+ Median :1.0000   unknown:1522555  
+ Mean   :0.8881                    
+ 3rd Qu.:1.0000                    
+ Max.   :1.0000                    
+                                   </code></pre>
+</div>
+</div>
+<div id="eda" class="section level2">
+<h2>EDA</h2>
+<div id="exploración-georreferenciada" class="section level3">
+<h3>Exploración georreferenciada</h3>
+<p>Antes de realizar un análisis estadístico, para poder desarrollar una mejor intuición visual sobre las rutas más frecuentes hemos creado un dashboard donde se grafican georrefernciadamente 1000 viajes aleatorios de la base de datos. En el dashboard se dimensiona la importancia de cada estación. Además, se puede explorar con grado de detalle cada estación y obtener información sobre sus rutas más frecuentes y menos frecuentes.</p>
+<div class="figure">
+<img src="mapa.png" alt="" />
+<p class="caption">Mapa del centro de Boston.</p>
+</div>
+<div class="figure">
+<img src="id.png" style="width:50.0%" alt="" />
+<p class="caption">Leyenda para el dashboard.</p>
+</div>
+<p>Podemos notar que el centro-este de la ciudad muestra mayor flujo, y las estaciones en la periferia son las de menor flujo. Esta visualización es mucho más completa en el archivo “visualizacion_datos”.</p>
+</div>
+<div id="análisis-estadístico" class="section level3">
+<h3>Análisis estadístico</h3>
+<p>Una vez construidas las variables temporales, procedemos a hacer el análisis exploratorio de los datos, teniendo en mente que la variable objetivo es la duración de los viajes.</p>
+<div id="análisis-univariado" class="section level4">
+<h4>Análisis univariado</h4>
+<p>Primero, revisamos la distribución de las variables. Graficamos histogramas para las variables continuas y gráficas de barras para las categóricas.</p>
+<pre class="r"><code># histograma para variables continuas
+myhist &lt;- function(yvar){
+  ggplot(trips, aes_(x=as.name(yvar), fill=as.name(yvar)))+
+    geom_histogram()+
+    ggtitle(paste0(as.name(yvar)))+
+    xlab(&quot;&quot;)+
+    ylab(&quot;&quot;)+ geom_rangeframe()+
+    theme_bw()+
+    theme(axis.line = element_line(colour = &quot;black&quot;),
+          axis.text.y = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          legend.position = &#39;none&#39;)
+}
+
+hists&lt;- trips %&gt;%
+  select(
+    duration,
+    start_hour,
+    age
+  ) %&gt;%
+  names() %&gt;%
+  lapply(myhist)
+
+# grafico las variables
+grid.arrange(grobs=hists,ncol=3,
+             top=textGrob(&quot;Distribución de las variables&quot;))</code></pre>
+<p><img src="comprension_datos-negocio_files/figure-html/unnamed-chunk-11-1.png" width="672" style="display: block; margin: auto 0 auto auto;" /></p>
+<p>En esta gráfica es claro que hay presencia de outliers en la variable de duración. Esto podría deberse a errores en el registro, y podría afectar nuestras predicciones. Más adelante se toma una decisión al respecto.</p>
+<pre class="r"><code># barras para las categóricas
+# histograma para variables continuas
+mybar &lt;- function(yvar){
+  ggplot(trips, aes_(x=as.name(yvar), fill=as.name(yvar)))+
+    geom_bar()+
+    ggtitle(paste0(as.name(yvar)))+
+    xlab(&quot;&quot;)+
+    ylab(&quot;&quot;)+ geom_rangeframe()+
+    theme_bw()+
+    theme(axis.line = element_line(colour = &quot;black&quot;),
+          axis.text.y = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          legend.position = &#39;none&#39;)
+}
+
+bars &lt;- trips %&gt;%
+  select(
+    start_year,
+    start_month,
+    strt_statn,
+    end_statn,
+    start_weekday,
+    subsc_type,
+    gender,
+    rained,
+    HPCP,
+    hpcp2,
+    Measurement_Flag
+  ) %&gt;%
+  names() %&gt;%
+  lapply(mybar)
+
+# grafico las variables
+grid.arrange(grobs=bars,ncol=4,
+             top=textGrob(&quot;Distribución de las variables&quot;))</code></pre>
+<p><img src="comprension_datos-negocio_files/figure-html/unnamed-chunk-12-1.png" width="672" style="display: block; margin: auto 0 auto auto;" /></p>
+<p>Aquí podemos notar que los viajes están uniformemente distribuidos a lo largo de los días de la semana, aunque dominan los viajes del 2013 y del mes de agosto, sin haber observaciones en los meses de invierno. Por otra parte, la varianza entre uso de estaciones es notable.</p>
+</div>
+</div>
+</div>
+<div id="análisis-bivariado" class="section level2">
+<h2>Análisis bivariado</h2>
+<p>Ahora procedemos a explorar relaciones entre los usuarios y la duración, en particular la edad y el género.</p>
+<pre class="r"><code># Se muestra la relación entre edad y duración (acotada superiormente por su percentil 99%)
+ggplot(trips, aes(age, duration)) +
+  geom_point(alpha=0.3) +
+  geom_smooth() +
+  ylim(0, quantile(trips$duration, probs=0.99))</code></pre>
+<p><img src="comprension_datos-negocio_files/figure-html/unnamed-chunk-14-1.png" width="672" style="display: block; margin: auto 0 auto auto;" /></p>
+<pre class="r"><code>corr_age_duration &lt;- cor(trips$age, trips$duration, use = &quot;complete.obs&quot;)</code></pre>
+<p>Podemos notar que predominan los usuarios hombres, sobre todo a partir de los 30, donde la frecuencia de uso de las mujeres cae abruptamente. En general, puede verse que el grueso de los usuarios son jóvenes.</p>
+<pre class="r"><code># Histograma de la edad por género
+ggplot(data=subset(trips, !is.na(age)), aes(x=age, color=gender, fill=gender)) +
+  geom_histogram(alpha=0.2, position=&quot;identity&quot;) +
+  geom_vline(aes(xintercept=mean(age, na.rm=T)), color=&quot;orange&quot;, size=1) +
+  geom_vline(aes(xintercept=median(age, na.rm=T)), color=&quot;black&quot;, linetype=&quot;dashed&quot;, size=1) +
+  annotate(&quot;text&quot;,                        # Add text for mean
+           x = 25,
+           y = 30000,
+           label = paste(&quot;Median =&quot;, median(trips$age, na.rm=T)),
+           col = &quot;black&quot;,
+           size = 4) +
+  annotate(&quot;text&quot;,                        # Add text for mean
+           x = 42,
+           y = 30000,
+           label = paste(&quot;Mean =&quot;, trunc(mean(trips$age, na.rm=T)*100)/100),
+           col = &quot;orange&quot;,
+           size = 4)</code></pre>
+<p><img src="comprension_datos-negocio_files/figure-html/unnamed-chunk-16-1.png" width="672" style="display: block; margin: auto 0 auto auto;" /></p>
+<p>Dada la distribución que sigue la edad, observada en los histogramas, se imputa la mediana a las edades.</p>
+<pre class="r"><code>trips[is.na(trips$age), &#39;age&#39;] &lt;- median(trips$age, na.rm = T)</code></pre>
+<p>Pasando ahora la atención a las variables de “gender” y de “zip_code”, es posible notar que valores vacíos de “gender” corresponden en su totalidad a los usuarios no registrados, y sólo unos pocos adicionales (155) son usuarios registradas pero sin reportar su “zip_code”. A estos se les imputa “Unknown” y se les trata como factor.</p>
+<pre class="r"><code>empty_gender &lt;- sum(trips$gender==&#39;&#39;)
+empty_zipcode &lt;- sum(trips$zip_code==&#39;&#39;)
+unregistered &lt;- sum(trips$subsc_type!=&#39;Registered&#39;)
+aux &lt;- t(cbind(unregistered, empty_gender, empty_zipcode))
+aux &lt;- cbind(c(&#39;subsc_type&#39;,&#39;gender&#39;,&#39;zip_code&#39;), aux, aux)
+aux[,3] &lt;- trunc(as.numeric(aux[,2])/nrow(trips)*1000000)/1000000*100
+rownames(aux) &lt;- NULL
+kable(aux, col.names = c(&quot;Variable&quot;,&quot;Número de valores vacíos&quot;, &quot;%&quot;), align = &quot;lrr&quot;, booktabs=T) %&gt;%
+  kable_styling(position = &quot;center&quot;, latex_options=&quot;HOLD_position&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Variable
+</th>
+<th style="text-align:right;">
+Número de valores vacíos
+</th>
+<th style="text-align:right;">
+%
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+subsc_type
+</td>
+<td style="text-align:right;">
+472592
+</td>
+<td style="text-align:right;">
+29.9303
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+gender
+</td>
+<td style="text-align:right;">
+472592
+</td>
+<td style="text-align:right;">
+29.9303
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+zip_code
+</td>
+<td style="text-align:right;">
+472747
+</td>
+<td style="text-align:right;">
+29.9401
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># Asigna un valor a los valores vacíos del género y zip_code.
+trips$gender &lt;- factor(trips$gender, levels=c(levels(trips$gender), &#39;Unknown&#39;))
+trips$gender[is.na(trips$gender)] &lt;- &#39;Unknown&#39;
+trips$gender &lt;- droplevels(trips$gender)
+
+trips$zip_code &lt;- factor(trips$zip_code, levels=c(levels(trips$zip_code), &#39;Unknown&#39;))
+trips$zip_code[is.na(trips$zip_code)] &lt;- &#39;Unknown&#39;</code></pre>
+</div>
+<div id="preparación-de-los-datos" class="section level2">
+<h2>Preparación de los Datos</h2>
+<p>Eliminamos también <code>sum(trips$duration &lt; 0)</code> observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen <code>sum(trips$duration == 0)</code> observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante.</p>
+<pre class="r"><code>trips &lt;- trips[trips$duration&gt;0, ]</code></pre>
+<p>Ahora buscamos columnas con el mismo valor para todas las observaciones, pues de ser el caso no serían útiles para el modelo.</p>
+<pre class="r"><code># trips
+uselessCols_trips &lt;- c()
+for (i in colnames(trips)) {
+  if ( length(unique(trips[[i]]))==1 ) {
+    uselessCols_trips &lt;- c(uselessCols_trips, i)
+  }
+}
+
+# stations
+uselessCols_stations &lt;- c()
+for (i in colnames(stations)) {
+  if ( length(unique(stations[[i]]))==1 ) {
+    uselessCols_stations &lt;- c(uselessCols_stations, i)
+  }
+}
+
+# weather
+uselessCols_weather &lt;- c()
+for (i in colnames(weather)) {
+  if ( length(unique(weather[[i]]))==1 ) {
+    uselessCols_weather &lt;- c(uselessCols_weather, i)
+  }
+}</code></pre>
+<p>Notamos que la variables “status” en la base con información de los viajes contiene un único valor presente en todas las observaciones. Lo mismo sucede con “STATION”, “STATION_NAME”, “ELEVATION”, “LATITUDE” y “LONGITUDE” en la base con datos del clima. Se presentan los valores de las variables mencionadas para evaluar su utilidad.</p>
+<pre class="r"><code>uselessCols &lt;- c(uselessCols_trips, uselessCols_weather)
+uValues &lt;- c(unique(trips[,uselessCols_trips]), unique(weather[,uselessCols_weather]))
+names(uValues) &lt;- NULL
+kable(cbind(uselessCols, uValues),
+      col.names = c(&quot;Nombre de la variable&quot;,&quot;Valor único&quot;), align = &quot;lr&quot;, booktabs=T) %&gt;%
+  kable_styling(position = &quot;center&quot;, latex_options=&quot;HOLD_position&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Nombre de la variable
+</th>
+<th style="text-align:right;">
+Valor único
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+status
+</td>
+<td style="text-align:right;">
+1
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+STATION
+</td>
+<td style="text-align:right;">
+COOP:190770
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+STATION_NAME
+</td>
+<td style="text-align:right;">
+BOSTON MA US
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ELEVATION
+</td>
+<td style="text-align:right;">
+3.7
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LATITUDE
+</td>
+<td style="text-align:right;">
+42.3606
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LONGITUDE
+</td>
+<td style="text-align:right;">
+-71.0106
+</td>
+</tr>
+</tbody>
+</table>
+<p>Se elimina, entonces, la variable “status”, pues esta no contiene información útil.</p>
+<pre class="r"><code>trips$status &lt;- NULL
+
+n_obs &lt;- c()
+for (i in unique(stations$municipal)) {
+  n_obs &lt;- c(n_obs, nrow(stations[stations$municipal==i,]))
+}
+
+kable(cbind(unique(stations$municipal), n_obs),
+      col.names = c(&quot;Municipalidad&quot;,&quot;Número de estaciones&quot;), align = &quot;lr&quot;, booktabs=T) %&gt;%
+  kable_styling(position = &quot;center&quot;, latex_options=&quot;HOLD_position&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Municipalidad
+</th>
+<th style="text-align:right;">
+Número de estaciones
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Boston
+</td>
+<td style="text-align:right;">
+97
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Cambridge
+</td>
+<td style="text-align:right;">
+28
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Brookline
+</td>
+<td style="text-align:right;">
+5
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Somerville
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+</tbody>
+</table>
+<p>Se presentan finalmente algunos estadísticos relevantes sobre las variables numéricas de los viajes.</p>
+<pre class="r"><code># No muestro las variables de id de la estación y viaje, ni el año de nacimiento 
+tdf &lt;- select_if(trips, is.numeric)
+tdf &lt;- subset(tdf, select = -c(seq_id,hubway_id))
+aux &lt;- matrix(NA, ncol = 8, nrow = 9) # Si no corre, cambiar 7 por 9
+k &lt;- 1
+for (i in colnames(tdf)) {
+  qu &lt;- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
+  n &lt;- length(which(!is.na(trips[[i]])))
+  NAs &lt;- nrow(trips)-n
+  mean &lt;- format(round(mean(trips[[i]], na.rm = TRUE), digits = 4), scientific = FALSE)
+  min &lt;- min(trips[[i]],na.rm = TRUE)
+  max &lt;- max(trips[[i]], na.rm = TRUE)
+  aux[k,] &lt;- c(mean, min, qu, max)
+  k &lt;- k + 1
+}
+colnames(aux) &lt;- c(&quot;Media&quot;, &quot;Mín.&quot;, &quot;p05&quot;, &quot;p25&quot;, &quot;p50&quot;, &quot;p75&quot;, &quot;p95&quot;, &quot;Máx.&quot;)
+rownames(aux) &lt;- colnames(tdf)
+kable(aux, booktabs=T) %&gt;% kable_styling(position = &quot;center&quot;, latex_options=&quot;HOLD_position&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+Media
+</th>
+<th style="text-align:left;">
+Mín.
+</th>
+<th style="text-align:left;">
+p05
+</th>
+<th style="text-align:left;">
+p25
+</th>
+<th style="text-align:left;">
+p50
+</th>
+<th style="text-align:left;">
+p75
+</th>
+<th style="text-align:left;">
+p95
+</th>
+<th style="text-align:left;">
+Máx.
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+start_hour
+</td>
+<td style="text-align:left;">
+13.8683
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+6
+</td>
+<td style="text-align:left;">
+10
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+18
+</td>
+<td style="text-align:left;">
+21
+</td>
+<td style="text-align:left;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+duration
+</td>
+<td style="text-align:left;">
+1153.173
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+188
+</td>
+<td style="text-align:left;">
+418
+</td>
+<td style="text-align:left;">
+660
+</td>
+<td style="text-align:left;">
+1087
+</td>
+<td style="text-align:left;">
+2524
+</td>
+<td style="text-align:left;">
+11994458
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+birth_date
+</td>
+<td style="text-align:left;">
+1976.295
+</td>
+<td style="text-align:left;">
+1932
+</td>
+<td style="text-align:left;">
+1955
+</td>
+<td style="text-align:left;">
+1969
+</td>
+<td style="text-align:left;">
+1979
+</td>
+<td style="text-align:left;">
+1985
+</td>
+<td style="text-align:left;">
+1990
+</td>
+<td style="text-align:left;">
+1995
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+start_minute
+</td>
+<td style="text-align:left;">
+29.4607
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+14
+</td>
+<td style="text-align:left;">
+29
+</td>
+<td style="text-align:left;">
+44
+</td>
+<td style="text-align:left;">
+56
+</td>
+<td style="text-align:left;">
+59
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+end_hour
+</td>
+<td style="text-align:left;">
+14.042
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+6
+</td>
+<td style="text-align:left;">
+10
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+18
+</td>
+<td style="text-align:left;">
+21
+</td>
+<td style="text-align:left;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+end_minute
+</td>
+<td style="text-align:left;">
+29.7205
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+15
+</td>
+<td style="text-align:left;">
+30
+</td>
+<td style="text-align:left;">
+45
+</td>
+<td style="text-align:left;">
+57
+</td>
+<td style="text-align:left;">
+59
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+age
+</td>
+<td style="text-align:left;">
+32.775
+</td>
+<td style="text-align:left;">
+17
+</td>
+<td style="text-align:left;">
+26
+</td>
+<td style="text-align:left;">
+32
+</td>
+<td style="text-align:left;">
+32
+</td>
+<td style="text-align:left;">
+32
+</td>
+<td style="text-align:left;">
+44
+</td>
+<td style="text-align:left;">
+79
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HPCP
+</td>
+<td style="text-align:left;">
+0.0026
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+0.015
+</td>
+<td style="text-align:left;">
+1.5
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+hpcp2
+</td>
+<td style="text-align:left;">
+0.8881
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+1
+</td>
+<td style="text-align:left;">
+1
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>rm(tdf, hists, ss_by_date, ss_by_hr)</code></pre>
+<p>Se asignan las coordenadas de cada estación por cada arrivo y salida. Asimismo, se utilizan para calcular las distancias entre ellas.</p>
+<pre class="r"><code># Coordenadas
+stations$strt_statn &lt;- stations$id
+stations$end_statn &lt;- stations$id
+trips &lt;- merge(trips, stations[, c(&#39;strt_statn&#39;, &#39;lat&#39;,&#39;lng&#39;)], by=&#39;strt_statn&#39;, all.x=T)
+colnames(trips)[colnames(trips) == &#39;lat&#39;] &lt;- &#39;start_lat&#39;
+colnames(trips)[colnames(trips) == &#39;lng&#39;] &lt;- &#39;start_lng&#39;
+trips &lt;- merge(trips, stations[, c(&#39;end_statn&#39;, &#39;lat&#39;,&#39;lng&#39;)], by=&#39;end_statn&#39;, all.x=T)
+colnames(trips)[colnames(trips) == &#39;lat&#39;] &lt;- &#39;end_lat&#39;
+colnames(trips)[colnames(trips) == &#39;lng&#39;] &lt;- &#39;end_lng&#39;
+
+# Distancias en metros
+trips$distance &lt;- distGeo(as.matrix(cbind(trips$start_lng,
+                                          trips$start_lat)),
+                          as.matrix(cbind(trips$end_lng, trips$end_lat)))</code></pre>
+<p>Por último, en lugar de usar el ID de la bici como una variable categórica, lo cual sería computacionalmente muy pesado ya que hay más de 1100 bicis, decidimos tomar la letra del ID como la familia de la bicicleta, o su generación, y el número de serie como proxy de la antigüedad de la bici, donde números más pequeños son bicicletas más viejas.</p>
+<pre class="r"><code># nuevas variables para bike nr
+
+# numero de bicis en los datos
+unique(trips$bike_nr)</code></pre>
+<pre><code>   [1] T01053 B00526 B00616 B00099 B00469 T01429 B00512 B00506 B00548 B00564
+  [11] B00331 B00324 B00091 B00298 T01242 T01355 T01439 B00503 T01213 T01328
+  [21] B00523 B00023 T01353 B00097 B00446 T01118 B00303 B00555 B00186 T01409
+  [31] B00514 T01324 T01317 B00535 B00440 T01225 B00605 B00411 B00118 B00017
+  [41] B00082 T01110 B00449 B00360 B00618 B00365 T01143 T01306 B00059 T01019
+  [51] B00635 T01354 T01199 B00249 B00435 B00049 B00063 B00149 B00236 B00038
+  [61] B00477 B00086 T01246 B00226 B00015 B00195 B00448 B00007 B00070 B00019
+  [71] B00056 B00101 T01450 B00053 T01009 B00499 T01311 B00014 B00461 B00587
+  [81] B00551 B00610 B00286 B00557 B00083 T01368 T01075 B00161 B00308 B00538
+  [91] B00333 B00602 T01334 T01091 T01229 T01434 B00599 T01133 B00109 B00430
+ [101] B00200 B00071 B00185 T01307 B00513 B00565 B00284 B00580 B00586 B00532
+ [111] T01437 T01169 B00554 B00311 B00165 B00229 B00369 B00130 B00547 B00035
+ [121] B00132 T01370 B00145 B00241 B00156 T01114 B00649 T01224 B00193 T01070
+ [131] B00047 T01189 B00255 B00254 B00054 T01172 B00571 B00536 B00492 B00539
+ [141] B00190 B00061 B00575 T01359 B00155 T01069 T01327 T01144 B00310 B00517
+ [151] B00577 T01111 T01221 B00016 B00018 B00570 B00093 T01237 B00525 B00319
+ [161] T01104 B00487 B00494 B00037 B00455 B00559 T01298 T01113 B00606 B00030
+ [171] B00391 T01168 B00358 T01128 B00002 B00003 T01449 B00044 B00600 B00459
+ [181] B00168 B00217 T01318 B00443 T01263 T01233 B00347 B00012 B00644 B00199
+ [191] B00444 T01124 B00540 T01125 B00279 T01330 B00601 B00110 B00579 T01226
+ [201] T01211 T01195 B00491 B00207 B00573 T01102 T01417 B00578 T01097 T01369
+ [211] T01089 B00117 B00368 T01350 B00424 B00143 B00426 B00507 T01065 B00389
+ [221] B00412 T01045 T01139 B00147 T01284 T01396 T01335 B00011 B00239 B00352
+ [231] B00204 T01041 T01269 T01194 T01314 B00251 B00669 B00096 B00366 T01259
+ [241] B00219 T01235 B00527 B00396 T01170 T01006 B00282 T01162 B00243 B00340
+ [251] B00355 B00490 B00126 B00318 B00167 B00537 B00094 B00248 B00198 T01438
+ [261] T01390 B00445 B00230 B00325 B00428 B00128 B00304 B00466 T01403 B00627
+ [271] B00330 B00036 T01326 B00583 T01380 B00463 B00271 T01238 B00250 B00501
+ [281] T01281 B00025 B00397 B00259 B00359 B00042 B00252 B00150 B00222 B00549
+ [291] B00433 T01054 B00111 T01244 B00388 B00300 B00438 B00402 T01316 B00283
+ [301] B00089 B00153 B00088 B00633 T01448 B00662 T01252 B00140 B00320 B00125
+ [311] B00589 B00481 T01276 B00085 T01074 B00534 B00237 B00033 T01008 B00177
+ [321] B00114 B00660 B00390 B00329 B00144 T01228 B00141 B00287 B00493 B00133
+ [331] T01059 B00257 B00403 B00543 B00057 T01101 B00515 T01205 B00546 B00376
+ [341] T01149 B00031 T01159 B00055 B00457 B00306 B00187 T01393 B00314 B00176
+ [351] B00066 B00425 B00474 B00350 T01103 B00622 B00544 B00361 B00377 B00533
+ [361] B00531 B00280 B00103 T01176 B00278 T01212 B00074 B00592 B00348 T01002
+ [371] B00157 B00211 B00393 T01184 B00323 B00485 T01152 T01291 B00294 B00166
+ [381] B00095 B00209 B00158 B00028 T01408 T01260 B00131 B00196 T01030 B00008
+ [391] T01032 B00451 B00022 B00216 T01411 T01351 T01071 B00079 B00098 T01419
+ [401] T01085 B00585 T01079 B00184 B00419 B00087 T01361 B00524 B00423 B00452
+ [411] T01063 B00386 B00417 B00441 T01329 T01407 T01142 B00020 T01038 B00220
+ [421] B00039 B00265 B00065 B00341 B00107 B00322 T01381 B00384 B01472 B00478
+ [431] T01340 B00495 T01257 B01471 B00473 B00529 B00628 B00374 T01060 B00169
+ [441] B00296 T01435 B00285 T01315 B00269 T01421 A07813 T01333 B00223 T01442
+ [451] T01415 T01287 B00383 B00631 T01436 B00482 B00338 B00245 B00504 B00123
+ [461] B00363 B00152 B00414 B00427 B00335 B00151 B00291 B00520 B00458 B00337
+ [471] B00640 B00668 B00309 B00244 B00238 B00295 B00574 B00242 T01057 B00603
+ [481] B00139 B00312 T01208 T01391 B00476 B00497 T01360 B00563 T01271 B00607
+ [491] B00567 B01475 T01013 B00027 B00102 T01384 B00372 T01323 T01123 T01285
+ [501] T01052 B00560 B00550 T01424 B00432 B00509 B00408 B00275 B00420 B00202
+ [511] B00471 B00206 B00460 T01371 B00480 B00062 T01192 T01117 B00371 T01373
+ [521] T01394 T01312 B00496 B00510 B00413 T01140 T01137 B00572 A07817 T01049
+ [531] B00336 B00367 B00164 B00364 B00339 B00124 T01331 B00590 B00052 B00380
+ [541] B00398 T01131 B00203 B00262 T01336 B01468 B00468 T01029 A07808 T01299
+ [551] T01141 B00051 B00479 B00081 B00173 T01398 B00498 T01023 B00240 B00576
+ [561] B00456 B00343 B00328 T01095 T01080 B00189 T01349 T01426 T01441 T01267
+ [571] T01206 B00197 B00179 T01193 B00154 B00100 B00297 T01382 B00136 T01347
+ [581] B00591 T01182 T01294 B00598 T01198 B00188 B00326 B00274 T01109 B00519
+ [591] B00046 B00307 T01155 T01024 B00317 T01130 B00260 B00454 A07812 T01217
+ [601] T01388 T01344 B00416 T01175 T01068 B00508 T01251 B00421 B00048 B00381
+ [611] B01476 T01446 T01422 B00045 B00267 B00290 T01375 B00545 B00634 B00385
+ [621] T01338 T01035 B00378 T01027 B00604 B00597 T01084 T01119 T01427 T01234
+ [631] T01214 B00078 B00013 T01056 B00041 T01201 B00122 B00277 T01136 B00227
+ [641] B00163 B00024 B00401 T01050 B00639 T01286 B00356 T01138 B00406 T01341
+ [651] B00213 T01122 B00159 B00272 B00263 T01230 T01273 T01300 T01392 B00305
+ [661] B00029 B00643 B00614 B00212 T01425 T01219 B00595 B00484 B00462 T01058
+ [671] B00422 T01405 B00183 B00247 T01082 A07799 B00613 T01322 B00043 B00058
+ [681] B00349 T01223 T01310 T01066 B00541 T01107 T01386 B00281 B00511 B00609
+ [691] B00004 T01051 T01397 B00170 B00530 B00026 T01278 B00268 T01076 T01062
+ [701] B00142 T01379 B00594 B00253 B00437 B00612 B00005 T01431 T01216 B01469
+ [711] B00442 T01406 B00106 B00611 B00201 B00068 B00434 T01305 T01378 T01209
+ [721] B00475 B00221 B00171 T01106 T01007 T01432 T01150 B00638 B00615 T01288
+ [731] B00375 B00344 T01154 B00556 T01151 B00394 T01034 B00436 T01163 B00001
+ [741] T01339 B00050 T01046 T01083 B00010 T01319 T01304 T01256 B00472 T01164
+ [751] T01345 T01342 B00407 B00552 B00232 B00258 B00593 A07815 B00410 B00632
+ [761] B00553 B00566 B00447 T01270 T01086 T01012 B00415 B00115 T01126 B00584
+ [771] T01181 B00392 T01420 T01160 T01352 B00387 T01081 B00489 B00505 B00210
+ [781] T01004 B00502 T01036 T01153 T01313 T01303 B00180 T01440 T01185 B00120
+ [791] B00215 T01105 B00135 B00313 B00090 B00292 B00676 T01207 T01295 T01265
+ [801] B00450 T01210 T01261 B00395 B00178 B00354 T01033 B00276 T01447 B00400
+ [811] B00315 B00129 A07807 T01048 B01467 B00021 T01132 T01249 B00092 T01362
+ [821] T01188 B00353 T01061 T01021 T01445 B00084 T01055 B00467 T01127 T01197
+ [831] T01241 B00528 T01190 T01337 B01490 B01473 B00293 B00351 T01302 B01481
+ [841] T01011 T01040 B00080 B00108 T01348 B00625 B00429 T01430 B00266 B00246
+ [851] B00264 T01395 T01410 B00404 T01016 B00076 B00382 T01186 B00073 B00301
+ [861] B00104 B00409 B00453 B00588 B00558 B00465 B00521 B00116 T01157 B00146
+ [871] B00069 T01120 T01272 B00470 T01258 B00439 T01165 T01231 T01072 B00040
+ [881] T01292 T01443 B00670 B00205 B00138 T01173 T01015 B00316 B00327 T01146
+ [891] T01043 T01366 T01077 T01161 B00224 B00160 B00568 T01100 T01218 B00256
+ [901] B00653 B00032 T01401 B00172 B00228 B00582 B01470 T01240 B00656 T01460
+ [911] T01262 B00405 B00288 T01135 T01297 B00486 T01094 T01044 B00522 B00623
+ [921] B00302 T01332 B00113 T01203 B00431 B00134 T01308 T01275 B00362 T01020
+ [931] B00214 B00636 B01463 T01367 T01177 B00321 B00009 T01121 B00581 B00231
+ [941] B00270 B00370 T01428 B00191 T01423 T01416 T01096 T01325 B00671 T01088
+ [951] B00006 T01099 B00464 B00561 T01321 T01115 B00112 T01098 T01025 B00233
+ [961] T01255 B00127 T01108 B00289 T01296 T01232 B00060 T01253 T01243 B00516
+ [971] T01248 B00332 T01174 T01200 B00175 B00077 B00174 T01171 B00064 T01301
+ [981] B00399 T01254 B00121 T01266 T01283 T01167 B00034 T01356 T01037 T01093
+ [991] B00334 T01268 B00675 B00342 B00518 B00194 B01464 T01179 B00234 T01039
+[1001] T01412 B01462 T01156 T01178 B01477 B00075 T01383 B00299 T01364 T01092
+[1011] T01372 B00192 T01014 T01363 T01220 B00208 T01147 T01191 B00345 B01465
+[1021] T01017 B00655 T01250 B00000 T01145 T01358 T01001 A07816 B01487 T01402
+[1031] T01404 T01290 B00596 B01478 T01187 T01116 T01010 T01215 T01309 B00067
+[1041] B00162 B00629 T01444 T01387 T01018 b00225        T01022 T01413 B00620
+[1051] B00181 T01158 B00617 T01047 T01377 T01418 B00379 T01343 B00373 B01461
+[1061] T01236 T01374 T01293 B00637 T01078 T01279 B01112 B01479 B00357 T01227
+[1071] T01180 T01280 B00148 B00562 T01365 B01489 B01480 T01414 T01274 T01005
+[1081] T01385 T01042 B00235 T01222 B01484 B00642 T01264 T01073 T01282 B00261
+[1091] T01166 T01087 T01433 T01026 A07818 T01090 T01134 B00418 T01028 B00658
+[1101] T01320 B00626 A07814 A07810 B01486 B00621 T01389 T01399 T01067 B01466
+[1111] T01245 B01474 T01148 B00072 B01488 B00674 T01400 B00648 T01357 B00119
+[1121] T01003 T01277 B00346 T01247 B00677 T01183 B01483 B00624 B00273 T01289
+[1131] T01204 T01196 B00645 T01202 B01485 B00667 B00483 B00650 B00673 A07809
+[1141] A07811 B00664 B00647 B00630 B00652 B00672 B00663 B00659 B00641 A07800
+[1151] A07819 B00654 A07930 B00666 B01482 B01491 B00137 B00569 B00218 T01129
+[1161] B00488 T01064 T01346 B00542
+1164 Levels:  A07799 A07800 A07807 A07808 A07809 A07810 A07811 A07812 ... T01460</code></pre>
+<pre class="r"><code># familia de la bici
+trips$bike_fam &lt;- substr((trips$bike_nr) %&gt;% as.character(),1,1) %&gt;%
+  as.factor
+
+# antigüedad
+trips$bike_antiq &lt;- substr(trips$bike_nr %&gt;% as.character(),2,6) %&gt;% as.numeric()
+
+summary(trips$bike_antiq)</code></pre>
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA&#39;s 
+      0     241     474     639    1115    7930     465 </code></pre>
+<pre class="r"><code># sustituyo la mediana para la antigüedad de las bicis sin bike nr
+trips$bike_antiq[is.na(trips$bike_antiq)] &lt;- median(
+  trips$bike_antiq, na.rm=T)</code></pre>
+</div>
+<div id="base-final" class="section level1">
+<h1>Base final</h1>
+<p>Una vez hecho el análisis de los datos, guardamos la base final que usaremos para los modelos de ML.</p>
+<pre class="r"><code>#primero seleccionamos las variables
+trips_filter &lt;- trips %&gt;%
+  select(-c(&quot;hubway_id&quot;,&quot;start_DateTime&quot;,&quot;end_DateTime&quot;,
+            &quot;birth_date&quot;,&quot;end_date&quot;,&quot;end_year&quot;,
+            &quot;end_month&quot;,&quot;end_weekday&quot;,
+            &quot;bike_nr&quot;,
+            &quot;end_hour&quot;,&quot;end_minute&quot;,
+            &quot;start_lat&quot;,&quot;start_lng&quot;,&quot;end_lat&quot;,&quot;end_lng&quot;))
+
+
+summary(trips_filter)</code></pre>
+<pre><code>   end_statn         strt_statn        start_date           start_hour   
+ 22     :  56175   22     :  56337   Min.   :2011-07-28   Min.   : 0.00  
+ 36     :  43299   36     :  42481   1st Qu.:2012-08-06   1st Qu.:10.00  
+ 42     :  34884   53     :  35320   Median :2013-05-16   Median :15.00  
+ 67     :  34442   67     :  33547   Mean   :2013-02-02   Mean   :13.87  
+ 53     :  33251   16     :  32786   3rd Qu.:2013-08-22   3rd Qu.:18.00  
+ 33     :  32176   42     :  32763   Max.   :2013-11-30   Max.   :23.00  
+ (Other):1340308   (Other):1341301                                       
+     seq_id           duration             subsc_type         zip_code     
+ Min.   :      1   Min.   :       1   Casual    : 472553          :472693  
+ 1st Qu.: 393680   1st Qu.:     418   Registered:1101982   &#39;02118 :121359  
+ Median : 788518   Median :     660                        &#39;02139 : 88872  
+ Mean   : 788807   Mean   :    1153                        &#39;02215 : 86448  
+ 3rd Qu.:1183738   3rd Qu.:    1087                        &#39;02116 : 77035  
+ Max.   :1579025   Max.   :11994458                        &#39;02115 : 57299  
+                                                           (Other):670829  
+    gender       start_year     start_month       start_weekday   
+       :472553   2011:140494   8      :270060   domingo  :195434  
+ Female:270546   2012:533279   9      :263111   jueves   :234200  
+ Male  :831436   2013:900762   10     :252290   lunes    :229782  
+                               7      :204765   martes   :231190  
+                               6      :164884   miércoles:238123  
+                               5      :151714   sábado   :215162  
+                               (Other):267711   viernes  :230644  
+  start_minute        age             HPCP         rained      
+ Min.   : 0.00   Min.   :17.00   Min.   :0.00000   0 : 159244  
+ 1st Qu.:14.00   1st Qu.:32.00   1st Qu.:0.00000   1 : 314521  
+ Median :29.00   Median :32.00   Median :0.00000   SR:1100770  
+ Mean   :29.46   Mean   :32.77   Mean   :0.00261               
+ 3rd Qu.:44.00   3rd Qu.:32.00   3rd Qu.:0.00000               
+ Max.   :59.00   Max.   :79.00   Max.   :1.50000               
+                                                               
+     hpcp2        Measurement_Flag     distance       bike_fam   
+ Min.   :0.0000   g      :    219   Min.   :    0.0    :    465  
+ 1st Qu.:1.0000   T      :  56064   1st Qu.:  910.4   A:   4235  
+ Median :1.0000   unknown:1518252   Median : 1496.9   b:   1551  
+ Mean   :0.8881                     Mean   : 1757.8   B:1070486  
+ 3rd Qu.:1.0000                     3rd Qu.: 2357.5   T: 497798  
+ Max.   :1.0000                     Max.   :10356.2              
+                                                                 
+   bike_antiq  
+ Min.   :   0  
+ 1st Qu.: 241  
+ Median : 474  
+ Mean   : 639  
+ 3rd Qu.:1115  
+ Max.   :7930  
+               </code></pre>
+<pre class="r"><code># guardo bases
+save(trips_filter,file=&quot;base_modelo.RData&quot;)
+# tambien guardamos la base completa
+save(trips, file=&quot;base_trips.RData&quot;)</code></pre>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -527,6 +527,123 @@ datatable(bici_error,options = list(
 ```
 
 
+
+
+# Predicción de bicicletas por estación con otro acercamiento 
+
+Una vez cubiertos los primeros dos objetivos del trabajo, tuvimos que decidir cómo resolver el tercero: hacer una predicción en ventanas de 10 minutos de cuántas bicis habría en cada estación. Para hacer esto con nuestra predicción de duraciones, se nos ocurrían dos opciones.
+
+1) Simular datos de días no observados para, en tiempo real y dado un número de bicicletas en cada estación y los viajes activos, predecir cuáles terminarían su viaje en ese lapso así como el destino. Si bien esta opción nos parecía útil desde el punto de vista de las necesidades del negocio, creímos que implicaba otra naturaleza de análisis independiente del realizado hasta ahora.
+
+2) DESCRIBIR LA OPCIÓN TOMADA
+
+En esta sección se presenta un modelo distinto para predecir la disponibilidad de bicicletas por fecha y hora. Para ello, se aplica una transformación a los datos de manera que estos reflejen el flujo de entradas y salidas por cada intervalo de diez minutos. La idea es que la predicción de dichos flujos a futuro pueden ayudar a notar, por ejemplo, en qué estación han salido más bicicletas de las que han entrado, indicando una baja disponibilidad. Para ello, las observaciones se agregan por coincidencia de fecha, día, hora y estación. Naturalmente, una estación que no registra un flujo no tuvo entradas ni salidas de bicicletas para ese grupo horario. Con esto obtenemos una base de datos reales que cuenta con una observación para cada intervalo del día, y para todos los días de los que se tiene registro. Con esto se intenta predecir los flujos a futuro posteriormente.
+
+
+```{r eval = FALSE}
+# Reestructuración de la base de datos
+load('flux_df.RData')
+flux_df <- flux_df %>%
+  select(c('start_date', 'end_date', 
+           'strt_statn', 'start_month', 'start_weekday', 'start_hour', 'start_minute', 
+           'end_statn', 'end_month', 'end_weekday', 'end_hour', 'end_minute'))
+
+# Se transforma a los minutos por intervalos de 10 minutos
+flux_df$start_minute <- cut(flux_df$start_minute,
+                            breaks = seq(0, 60, 10),
+                            labels= seq(1:6),
+                            right = F)
+flux_df$end_minute <- cut(flux_df$end_minute,
+                          breaks = seq(0, 60, 10),
+                          labels= seq(1:6),
+                          right = F)
+# Columnas auxiliares para medir el flujo
+flux_df$arrival <- 1
+flux_df$departure <- 1
+
+# Se agrega todo movimiento de entrada y salida por estación, fecha y hora
+outflux <- aggregate(departure ~ start_date + strt_statn + start_hour + start_minute, 
+                     FUN = sum, drop = F, data=flux_df)
+influx <- aggregate(arrival ~ end_date + end_statn + end_hour + end_minute, 
+                    FUN = sum, drop = F, data=flux_df)
+rm(flux_df)
+
+outflux[is.na(outflux$departure), 'departure'] <- 0
+influx[is.na(influx$arrival), 'arrival'] <- 0
+
+colnames(outflux) <- c('date','station','hour','minute','outflux')
+colnames(influx) <- c('date','station','hour','minute','influx')
+# Indicadoras para la unión
+outflux$ID <- with(outflux, paste0(date,' ',station,'-',hour,'-',minute))
+influx$ID <- with(influx, paste0(date,' ',station,'-',hour,'-',minute))
+
+# Base con los movimientos de entrada y salida para cada grupo horario de cada día
+flux <- merge(outflux, influx[, c('ID','influx')], by = 'ID', 
+              all.x = T, all.y = F)
+rm(outflux, influx)
+
+# Resultado neto
+flux$netRes <- flux$influx - flux$outflux 
+flux$weekday <- weekdays(flux$date)
+
+flux <- flux %>%
+  select(-c('date','outflux','influx'))
+
+# Preparación de variables
+flux$station <- flux$station %>% as.factor
+flux$hour <- flux$hour %>% as.factor
+flux$minute <- flux$minute %>% as.factor
+flux$netRes <- flux$netRes %>% as.numeric
+flux$weekday <- flux$weekday %>% as.factor
+
+# Se guarda la base
+# save(flux, file="flux.RData")
+
+```
+
+
+```{r eval = FALSE}
+# Separación en test-train, y entrenamiento del modelo
+
+#load('flux.RData')   # Para cargar poder correr la generación de datos por separado.
+flux$ID <- NULL
+set.seed(2020) 
+sample <- sample.split(flux$weekday, SplitRatio = .75)
+train_f <- subset(flux, sample == TRUE) # Train 
+test_f <- subset(flux, sample == FALSE) # Test
+test_target <- select(test_f, 'netRes')
+test_f$netRes <- NULL
+
+# Modelo: Random Forest
+cores <- detectCores() # Paralelización
+cl <- makeCluster(cores)
+inicio <- Sys.time()
+flux_forest <- ranger(netRes ~ ., 
+                      #data = train_f, 
+                      data = under,
+                      num.trees = 300,
+                      classification = T,
+                      verbose = T, 
+                      oob.error = F,
+                      write.forest = T)
+tiempo <- Sys.time() - inicio
+stopCluster(cl)
+
+# Se guarda el modelo
+save(flux_forest, file = "flux_forest.RData")
+
+# Evaluación  
+flux_preds <- predict(flux_forest, 
+                      data = test_f, 
+                      type = "response",
+                      verbose = T)
+comparativa <- data.frame(test_target, flux_preds$predictions)
+
+```
+
+
+
+
 #Conclusiones
 
 

@@ -5,6 +5,7 @@ author: "Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval
 date: "2021"
 output:
   html_document:
+    self_contained: false
     graphics: yes
     urlcolor: blue
     theme: spacelab
@@ -34,8 +35,6 @@ packages <- c(
   "reshape2","ggthemes","grid","heatmaply",
   "ggraph","GGally"
   )
-
-#   "networkD3","visNetwork",
 
 # instala los paquetes que no se tengan
 installed_packages <- packages %in% rownames(installed.packages())
@@ -78,16 +77,19 @@ a. Poder pronosticar la duración de los viajes.
 b. Entender los factores que tienen un impacto en la duración de los viajes e identificar patrones geográficos en los datos.
 c. Estimar el número de bicicletas por estación en ventanas de 10 minutos.
 
-El estudio comienza con la creación y transformación de variables, así como con la limpieza y unión de las bases de datos de las estaciones “Hubway Station”, de los viajes “Hubway trips”, y de datos climatológicos para 2011, 2012 y 2013. Después se llevó a cabo el análisis exploratorio de los datos que se consideraron relevantes para identificar los patrones de viajes de los pasajeros y se probaron dos modelos -LASSO y Random Forest- para la predicción de la duración de los viajes e identificación de los factores que tienen un impacto en ésta; posteriormente se modelaron los flujos para determinar la disponibilidad de las bicicletas en cada estación y se comparó el desempeño de ambos modelos.
+Estos tres puntos se verán reflejados en nuestro entregable final, el producto para los clientes: un dashboard que modele el flujo de bicicletas en las estaciones para un día de la semana dado, en intervalos de 10 minutos.
+
+El estudio comienza con la creación y transformación de variables, así como con la limpieza y unión de las bases de datos de las estaciones “Hubway Station”, de los viajes “Hubway trips”, y de datos climatológicos para 2011, 2012 y 2013. Después se llevó a cabo el análisis exploratorio de los datos que se consideraron relevantes para identificar los patrones de viajes de los pasajeros y se probaron dos modelos -LASSO, Random Forest y XGB- para la predicción de la duración de los viajes e identificación de los factores que tienen un impacto en ésta; posteriormente se modelaron los flujos para determinar la disponibilidad de las bicicletas en cada estación y se comparó el desempeño de ambos modelos.
+
+Consideraremos nuestras predicciones como buenas a partir de que generen valor para la empresa. Esto es, la predicción debe ser útil al usuario para tomar sus decisiones de transporte casi en tiempo real, y también debe permitir al negocio monitorear de manera realista los flujos de bicicletas en Boston y las cicloestaciones.
 
 
+## Comprensión de los Datos
 
-(Establecer medidas de éxito del proyecto de datos)
+En lo que resta de este documento analizamos los datos, y los preparamos para el modelado. Primero hacemos una exploración inicial de las bases y de valores faltantes. Asimismo, generamos variables útiles a partir de las ya existentes. Una vez hecho esto, mostramos nuestros principales hallazgos del análisis exploratorio de los datos. Por último, realizamos transformaciones finales e integramos una base final para pasar a los modelos.
 
+Empezamos por cargar los datos.
 
-## Datos
-
-Cargamos los datos
 ```{r, include=FALSE}
 trips <- read.csv("hubway_trips.csv", header = TRUE)
 stations <- read.csv("hubway_stations.csv", header = TRUE)
@@ -120,8 +122,9 @@ kable(check_nas(weather), booktabs=T, align = 'c',
 
 ````
 
+
+#### Análisis para imputación de estaciones
 ```{r}
-# Análisis para imputación de estaciones
 prcnt_sameStation <- trunc(sum(trips$strt_statn == trips$end_statn,
                                na.rm = T) / nrow(trips) * 100 * 100)/100
 NA_either <- sum(is.na(trips$strt_statn) | is.na(trips$end_statn))
@@ -186,7 +189,10 @@ rm(endDateTime,startDateTime,endDate,endTime,startDate,startTime)
 
 ```
 
-```{r}
+#### Unión de base de clima con viajes
+
+
+```{r, include=FALSE, echo=FALSE}
 # Para analizar problemas con unir trips y weather
 naive_merge <- merge(trips[, c('start_date', 'start_hour')],
                      weather[, c('start_date', 'start_hour', 'HPCP')],
@@ -245,23 +251,29 @@ date_matcher$start_hour <- as.integer(date_matcher$start_hour)
 colnames(date_matcher)[3] <- 'HPCP'
 trips <- merge(trips, date_matcher, by=c("start_date", "start_hour"), all.x=T)
 
+
 # Creación de la variable indicadora de día lluvioso
 rained_matcher <- aggregate(HPCP~start_date, data=weather, FUN=sum, na.action = na.omit)
 rained_matcher$rained <- ifelse(rained_matcher$HPCP>0, 1, 0)
 trips <- merge(trips, rained_matcher[,c('start_date', 'rained')], by='start_date', all.x=T)
 
-HPCP_NAs_prcnt <- trunc(mean(is.na(trips$HPCP))*100*100)/100 # Porcentaje de NAs en HPCP
-rained_NAs_prcnt <- trunc(mean(is.na(trips$rained))*100*100)/100 # Porcentaje de NAs en rained
+HPCP_NAs_prcnt <- trunc(mean(is.na(trips$HPCP))*100*100)/100 
+# Porcentaje de NAs en HPCP
+
+rained_NAs_prcnt <- trunc(mean(is.na(trips$rained))*100*100)/100 
+# Porcentaje de NAs en rained
 
 # Se forman intervalos para el nivel de lluvia
 trips$HPCP <- cut(trips$HPCP,
                   breaks=c(-0.001, seq(0,0.09,.015), seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5),
                   labels=c(0, seq(0,0.09,.015)[-1], seq(0.1,0.25,0.025),0.35,0.5,0.7,1.5))
 
+
 # Se asigna SR a las NA para poder trabajar como factor
 trips[is.na(trips$rained), 'rained'] <- 'SR'
 trips$HPCP = factor(trips$HPCP, levels=c(levels(trips$HPCP), 'SR'))
 trips$HPCP[is.na(trips$HPCP)] = 'SR'
+
 
 # Transformamos a numéricas la variable de lluvia
 #HPCP 2
@@ -275,8 +287,13 @@ trips$HPCP <- trips$HPCP %>% as.character %>% as.numeric
 
 # Se transforman a factor
 trips$rained <- trips$rained %>% as.factor
+```
 
-# Se asigna también Measurement_Flag
+Con lo anterior, se disminuyó el número de NAs en "HPCP" a `HPCP_NAs_prcnt`, y además tenemos información meteorológica útil para el `1-rained_NAs_prcnt` de las observaciones, que dado el tamaño de la base, es una buena cantidad.
+
+También se asigna `Measurement_Flag`.
+
+```{r}
 trips <- merge(trips, weather[,c('start_date','start_hour', 'Measurement_Flag')],
                by = c('start_date','start_hour'), all.x = T)
 
@@ -284,11 +301,9 @@ trips$Measurement_Flag[is.na(trips$Measurement_Flag)] <- "unknown"
 
 ```
 
-Con lo anterior, se disminuyó el número de NAs en "HPCP" a `HPCP_NAs_prcnt`, y además tenemos información meteorológica útil para el `1-rained_NAs_prcnt` de las observaciones, que dado el tamaño de la base, es una buena cantidad.
+Para concluir el análisis inicial, transformamos las variables.
 
 ```{r}
-# Transformación de variables
-
 # categóricas
 trips$subsc_type <- trips$subsc_type %>% as.factor
 trips$gender <- trips$gender %>% as.factor
@@ -320,27 +335,22 @@ summary(trips)
 ## EDA
 
 
-# Exploración visual
-Ants de realizar un análisis estadístico, para poder desarrollar una mejor intuición visual sobre las rutas más frecuentes hemos creado un dashboard donde se grafican georrefernciadamente 1000 viajes aleatorios de la base de datos. En el dashboard se dimensiona la importancia de cada estación. Además, se puede explorar con grado de detalle cada estación y obtener información sobre sus rutas más frecuentes y menos frecuentes.
+### Exploración georreferenciada
+Antes de realizar un análisis estadístico, para poder desarrollar una mejor intuición visual sobre las rutas más frecuentes hemos creado un dashboard donde se grafican georrefernciadamente 1000 viajes aleatorios de la base de datos. En el dashboard se dimensiona la importancia de cada estación. Además, se puede explorar con grado de detalle cada estación y obtener información sobre sus rutas más frecuentes y menos frecuentes.
 
 ![Mapa del centro de Boston.](mapa.png)
 
 ![Leyenda para el dashboard.](id.png){width=50%}
 
-```{r, out.width="100%",results='asis'}
-knitr::include_app("https://marcoyel21.github.io/gephi_vis/network/", height="1080px")
-```
+Podemos notar que el centro-este de la ciudad muestra mayor flujo, y las estaciones en la periferia son las de menor flujo. Esta visualización es mucho más completa en el archivo "visualizacion_datos".
 
 
-# Análisis estadístico
+### Análisis estadístico
 
 Una vez construidas las variables temporales, procedemos a hacer el análisis exploratorio de los datos, teniendo en mente que la variable objetivo es la duración de los viajes.
 
 
-
-#Una vez construidas las variables temporales, procedemos a hacer el análisis exploratorio de los datos, teniendo en mente que la variable objetivo es la duración de los viajes.
-
-### Análisis univariado
+#### Análisis univariado
 
 Primero, revisamos la distribución de las variables. Graficamos histogramas para las variables continuas y gráficas de barras para las categóricas.
 
@@ -348,7 +358,7 @@ Primero, revisamos la distribución de las variables. Graficamos histogramas par
 ```{r}
 # histograma para variables continuas
 myhist <- function(yvar){
-  ggplot(trips, aes_(x=as.name(yvar)))+
+  ggplot(trips, aes_(x=as.name(yvar), fill=as.name(yvar)))+
     geom_histogram()+
     ggtitle(paste0(as.name(yvar)))+
     xlab("")+
@@ -358,7 +368,8 @@ myhist <- function(yvar){
           axis.text.y = element_blank(),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          panel.background = element_blank())
+          panel.background = element_blank(),
+          legend.position = 'none')
 }
 
 hists<- trips %>%
@@ -373,12 +384,16 @@ hists<- trips %>%
 # grafico las variables
 grid.arrange(grobs=hists,ncol=3,
              top=textGrob("Distribución de las variables"))
+```
+
+En esta gráfica es claro que hay presencia de outliers en la variable de duración. Esto podría deberse a errores en el registro, y podría afectar nuestras predicciones. Más adelante se toma una decisión al respecto.
 
 
+```{r}
 # barras para las categóricas
 # histograma para variables continuas
 mybar <- function(yvar){
-  ggplot(trips, aes_(x=as.name(yvar)))+
+  ggplot(trips, aes_(x=as.name(yvar), fill=as.name(yvar)))+
     geom_bar()+
     ggtitle(paste0(as.name(yvar)))+
     xlab("")+
@@ -388,7 +403,8 @@ mybar <- function(yvar){
           axis.text.y = element_blank(),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          panel.background = element_blank())
+          panel.background = element_blank(),
+          legend.position = 'none')
 }
 
 bars <- trips %>%
@@ -400,7 +416,9 @@ bars <- trips %>%
     start_weekday,
     subsc_type,
     gender,
+    rained,
     HPCP,
+    hpcp2,
     Measurement_Flag
   ) %>%
   names() %>%
@@ -411,13 +429,12 @@ grid.arrange(grobs=bars,ncol=4,
              top=textGrob("Distribución de las variables"))
 ```
 
+Aquí podemos notar que los viajes están uniformemente distribuidos a lo largo de los días de la semana, aunque dominan los viajes del 2013 y del mes de agosto, sin haber observaciones en los meses de invierno. Por otra parte, la varianza entre uso de estaciones es notable.
 
 
 ## Análisis bivariado
 
-Un punto muy evidente de la exploración visual es que unas estaciones tienen mayor tráfico que otras. Para identificar a estas estaciones, hacemos un mapa de calor de la frecuencia de viajes por estaciones de origen y destino.
-
-```{r}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 # Mapa de calor start y end station
 x <- trips %>% count(strt_statn, end_statn)
 summary(x)
@@ -445,6 +462,7 @@ heatmaply(y,
 ```
 
 Ahora procedemos a explorar relaciones entre los usuarios y la duración, en particular la edad y el género.
+
 ```{r}
 # Se muestra la relación entre edad y duración (acotada superiormente por su percentil 99%)
 ggplot(trips, aes(age, duration)) +
@@ -453,9 +471,11 @@ ggplot(trips, aes(age, duration)) +
   ylim(0, quantile(trips$duration, probs=0.99))
 
 corr_age_duration <- cor(trips$age, trips$duration, use = "complete.obs")
+```
 
+A pesar de una gran variación tanto en duración como edad, la correlación entre éstas es prácticamente nula.
 
-
+```{r, eval=FALSE, echo=FALSE}
 # Histograma de la edad para todas las observaciones
 ggplot(data=subset(trips, !is.na(age)), aes(x=age)) +
   geom_histogram() +
@@ -464,6 +484,7 @@ ggplot(data=subset(trips, !is.na(age)), aes(x=age)) +
 
 ```
 
+Podemos notar que predominan los usuarios hombres, sobre todo a partir de los 30, donde la frecuencia de uso de las mujeres cae abruptamente. En general, puede verse que el grueso de los usuarios son jóvenes.
 
 ```{r}
 # Histograma de la edad por género
@@ -514,6 +535,8 @@ trips$zip_code[is.na(trips$zip_code)] <- 'Unknown'
 
 ```
 
+## Preparación de los Datos
+
 Eliminamos también `sum(trips$duration < 0)` observaciones que registran una duración negativa, pues es evidente que hubo un error en el registro que vuelve las observaciones inútiles. Al ser un número tan pequeño, esta acción no nos genera preocupación. Asimismo, existen `sum(trips$duration == 0)` observaciones con una duración de cero, y se decide también eliminarlas, pues podrían representar movimientos accidentales o reacomodos ocasionados por los usuarios y no una salida de una bicicleta. Cabe destacar que sí existen diez observaciones que tienen una duración de cero, pero que registran distintas estaciones en el comienzo y final del viaje. Al ser un número tan pequeño, eliminarlas es nuevamente prácticamente insignificante.
 
 ```{r}
@@ -549,6 +572,7 @@ for (i in colnames(weather)) {
 }
 
 ```
+
 Notamos que la variables "status" en la base con información de los viajes contiene un único valor presente en todas las observaciones. Lo mismo sucede con "STATION", "STATION_NAME", "ELEVATION", "LATITUDE" y "LONGITUDE" en la base con datos del clima. Se presentan los valores de las variables mencionadas para evaluar su utilidad.
 
 ```{r}
@@ -576,13 +600,14 @@ kable(cbind(unique(stations$municipal), n_obs),
   kable_styling(position = "center", latex_options="HOLD_position")
 
 ```
+
 Se presentan finalmente  algunos estadísticos relevantes sobre las variables numéricas de los viajes.
 
 ```{r}
 # No muestro las variables de id de la estación y viaje, ni el año de nacimiento 
 tdf <- select_if(trips, is.numeric)
 tdf <- subset(tdf, select = -c(seq_id,hubway_id))
-aux <- matrix(NA, ncol = 8, nrow = 7) # Si no corre, cambiar 7 por 9
+aux <- matrix(NA, ncol = 8, nrow = 9) # Si no corre, cambiar 7 por 9
 k <- 1
 for (i in colnames(tdf)) {
   qu <- quantile(trips[[i]], probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
@@ -620,29 +645,13 @@ trips$distance <- distGeo(as.matrix(cbind(trips$start_lng,
                           as.matrix(cbind(trips$end_lng, trips$end_lat)))
 ```
 
-En lugar de usar el ID de la bici como una variable categórica, lo cual sería computacionalmente muy pesado ya que hay más de 1100 bicis, decidimos tomar la letra del ID como la familia de la bicicleta, o su generación, y el número de serie como proxy de la antigüedad de la bici, donde números más pequeños son bicicletas más viejas.
-
-# Base final
-
-Una vez hecho el análisis de los datos, guardamos la base final que usaremos para los modelos de ML.
-
-```{r}
-#primero seleccionamos las variables
-trips_filter <- trips %>%
-  select(-c("hubway_id","start_DateTime","end_DateTime",
-            "birth_date","end_date","end_year",
-            "end_month","end_weekday",
-            "end_hour","end_minute",
-            "start_lat","start_lng","end_lat","end_lng"))
-
-```
-
+Por último, en lugar de usar el ID de la bici como una variable categórica, lo cual sería computacionalmente muy pesado ya que hay más de 1100 bicis, decidimos tomar la letra del ID como la familia de la bicicleta, o su generación, y el número de serie como proxy de la antigüedad de la bici, donde números más pequeños son bicicletas más viejas.
 
 ```{r}
 # nuevas variables para bike nr
 
 # numero de bicis en los datos
-unique(trips$bike_nr)
+unique(trips$bike_nr) %>% length
 
 # familia de la bici
 trips$bike_fam <- substr((trips$bike_nr) %>% as.character(),1,1) %>%
@@ -682,117 +691,6 @@ save(trips_filter,file="base_modelo.RData")
 # tambien guardamos la base completa
 save(trips, file="base_trips.RData")
 ```
-
-
-
-# Predicción de bicicletas por estación con otro acercamiento 
-
-POR FAVOR ALGUIEN ESCRIBA SOBRE EL DILEMA DE LAS BASES; ie POR QUÉ ERA PROBLEMÁTICO EL PUNTO 3.
-
-En esta sección se presenta un modelo distinto para predecir la disponibilidad de bicicletas por fecha y hora. Para ello, se aplica una transformación a los datos de manera que estos reflejen el flujo de entradas y salidas por cada intervalo de diez minutos. La idea es que la predicción de dichos flujos a futuro pueden ayudar a notar, por ejemplo, en qué estación han salido más bicicletas de las que han entrado, indicando una baja disponibilidad. Para ello, las observaciones se agregan por coincidencia de fecha, día, hora y estación. Naturalmente, una estación que no registra un flujo no tuvo entradas ni salidas de bicicletas para ese grupo horario. Con esto obtenemos una base de datos reales que cuenta con una observación para cada intervalo del día, y para todos los días de los que se tiene registro. Con esto se intenta predecir los flujos a futuro posteriormente.
-
-
-```{r eval = FALSE}
-# Reestructuración de la base de datos
-load('flux_df.RData')
-flux_df <- flux_df %>%
-  select(c('start_date', 'end_date', 
-           'strt_statn', 'start_month', 'start_weekday', 'start_hour', 'start_minute', 
-           'end_statn', 'end_month', 'end_weekday', 'end_hour', 'end_minute'))
-
-# Se transforma a los minutos por intervalos de 10 minutos
-flux_df$start_minute <- cut(flux_df$start_minute,
-                            breaks = seq(0, 60, 10),
-                            labels= seq(1:6),
-                            right = F)
-flux_df$end_minute <- cut(flux_df$end_minute,
-                          breaks = seq(0, 60, 10),
-                          labels= seq(1:6),
-                          right = F)
-# Columnas auxiliares para medir el flujo
-flux_df$arrival <- 1
-flux_df$departure <- 1
-
-# Se agrega todo movimiento de entrada y salida por estación, fecha y hora
-outflux <- aggregate(departure ~ start_date + strt_statn + start_hour + start_minute, 
-                     FUN = sum, drop = F, data=flux_df)
-influx <- aggregate(arrival ~ end_date + end_statn + end_hour + end_minute, 
-                    FUN = sum, drop = F, data=flux_df)
-rm(flux_df)
-
-outflux[is.na(outflux$departure), 'departure'] <- 0
-influx[is.na(influx$arrival), 'arrival'] <- 0
-
-colnames(outflux) <- c('date','station','hour','minute','outflux')
-colnames(influx) <- c('date','station','hour','minute','influx')
-# Indicadoras para la unión
-outflux$ID <- with(outflux, paste0(date,' ',station,'-',hour,'-',minute))
-influx$ID <- with(influx, paste0(date,' ',station,'-',hour,'-',minute))
-
-# Base con los movimientos de entrada y salida para cada grupo horario de cada día
-flux <- merge(outflux, influx[, c('ID','influx')], by = 'ID', 
-              all.x = T, all.y = F)
-rm(outflux, influx)
-
-# Resultado neto
-flux$netRes <- flux$influx - flux$outflux 
-flux$weekday <- weekdays(flux$date)
-
-flux <- flux %>%
-  select(-c('date','outflux','influx'))
-
-# Preparación de variables
-flux$station <- flux$station %>% as.factor
-flux$hour <- flux$hour %>% as.factor
-flux$minute <- flux$minute %>% as.factor
-flux$netRes <- flux$netRes %>% as.numeric
-flux$weekday <- flux$weekday %>% as.factor
-
-# Se guarda la base
-# save(flux, file="flux.RData")
-
-```
-
-
-```{r eval = FALSE}
-# Separación en test-train, y entrenamiento del modelo
-
-#load('flux.RData')   # Para cargar poder correr la generación de datos por separado.
-flux$ID <- NULL
-set.seed(2020) 
-sample <- sample.split(flux$weekday, SplitRatio = .75)
-train_f <- subset(flux, sample == TRUE) # Train 
-test_f <- subset(flux, sample == FALSE) # Test
-test_target <- select(test_f, 'netRes')
-test_f$netRes <- NULL
-
-# Modelo: Random Forest
-cores <- detectCores() # Paralelización
-cl <- makeCluster(cores)
-inicio <- Sys.time()
-flux_forest <- ranger(netRes ~ ., 
-                      #data = train_f, 
-                      data = under,
-                      num.trees = 300,
-                      classification = T,
-                      verbose = T, 
-                      oob.error = F,
-                      write.forest = T)
-tiempo <- Sys.time() - inicio
-stopCluster(cl)
-
-# Se guarda el modelo
-save(flux_forest, file = "flux_forest.RData")
-
-# Evaluación  
-flux_preds <- predict(flux_forest, 
-                      data = test_f, 
-                      type = "response",
-                      verbose = T)
-comparativa <- data.frame(test_target, flux_preds$predictions)
-
-```
-
 
 
 
