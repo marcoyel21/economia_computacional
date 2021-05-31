@@ -570,7 +570,7 @@ En la siguiente tabla se muestran los flujos acumulados de bicicletas que salen 
 ```{r, echo==FALSE}
 #Deployment de las bases de datos en una app (selecciono de manera aleatoria algunas debido al peso computacional)
 
-random_stations<-sample(3:133, 10, replace=FALSE)
+random_stations<-sample(3:133, 5, replace=FALSE)
 
 output<-plantilla_llena%>% filter(strt_statn%in%random_stations )
 #output<-sample_n(plantilla_llena, 1000)
@@ -618,7 +618,7 @@ Una vez cubiertos los primeros dos objetivos del trabajo, tuvimos que decidir c�
 En esta sección se presenta un modelo distinto para predecir la disponibilidad de bicicletas por fecha y hora. Para ello, se aplica una transformación a los datos de manera que estos reflejen el flujo de entradas y salidas por cada intervalo de diez minutos. La idea es que la predicción de dichos flujos a futuro pueden ayudar a notar, por ejemplo, en qué estación han salido más bicicletas de las que han entrado, indicando una baja disponibilidad. Para ello, las observaciones se agregan por coincidencia de fecha, día, hora y estación. Naturalmente, una estación que no registra un flujo no tuvo entradas ni salidas de bicicletas para ese grupo horario. Con esto obtenemos una base de datos reales que cuenta con una observación para cada intervalo del día, y para todos los días de los que se tiene registro. Con esto se intenta predecir los flujos a futuro posteriormente.
 
 
-```{r eval = FALSE}
+```{r, eval=FALSE}
 # Reestructuración de la base de datos
 load('flux_df.RData')
 flux_df <- flux_df %>%
@@ -680,7 +680,7 @@ flux$weekday <- flux$weekday %>% as.factor
 ```
 
 
-```{r eval = FALSE}
+```{r,eval=FALSE}
 # Separación en test-train, y entrenamiento del modelo
 
 #load('flux.RData')   # Para cargar poder correr la generación de datos por separado.
@@ -719,10 +719,12 @@ comparativa <- data.frame(test_target, flux_preds$predictions)
 
 ```
 
+Finalmente, los resultados de este último modelo se muestras a continuación: 
+
+[LINK DEL DASHBORD](http://18.222.148.37:3838/wheelie-wonka-dashboard/)
 
 
-
-#Conclusiones
+# Conclusiones
 
 
 Con estos resultados es posible optimizar la gestión del servicio de bicicletas otorgado por la empresa Wheelie Wonka. Este pronóstico preciso sirve de guía para que los pasajeros puedan organizar mejor su hora de salida y las rutas de desplazamiento. Además, es beneficioso para el proveedor de servicios de bicicletas compartidas Wheelie Wonka en términos de mejorar la satisfacción de sus clientes y organizar con efectividad el horario de entrega y distribución de bicicletas y así eficientar sus recursos y disminuir pérdidas.
