@@ -1,0 +1,1037 @@
+---
+output:
+  pdf_document: null
+  geometry: margin=1in
+  html_document:
+    df_print: paged
+fontsize: 11pt
+header-includes: \usepackage{geometry} \usepackage{graphicx} \tolerance=1 \hyphenpenalty=10000
+  \hbadness=10000 \linespread{1.2} \usepackage[justification=centering, font=bf, labelsep=period,
+  skip=5pt]{caption}
+  \usepackage{babel} \usepackage{fancyhdr}
+  \pagestyle{fancy} \fancyhead[L]{Maestría en Economía Aplicada} \fancyhead[R]{ITAM}
+---
+\begin{titlepage}
+\begin{center}
+
+\textsc{\Large Instituto Tecnológico Autónomo de México}\\[2em]
+
+\textbf{\LARGE Economía Computacional}\\[2em]
+
+
+\textsc{\LARGE }\\[1em]
+
+
+\textsc{\LARGE Experimentación: Rappi}\\[1em]
+\textsc{\large }\\[1em]
+\textsc{\large }\\[1em]
+
+\textsc{\LARGE Prof. Isidoro García Urquieta}\\[1em]
+
+\textsc{\LARGE }\\[1em]
+\textsc{\LARGE }\\[1em]
+
+\textsc{\LARGE Alfredo Lefranc Flores}\\[1em]
+
+\textsc{\large 144346}\\[1em]
+
+\textsc{\LARGE Cynthia Raquel Valdivia Tirado }\\[1em]
+
+\textsc{\large 81358}\\[1em]
+
+\textsc{\LARGE Rafael Sandoval Fernández}\\[1em]
+
+\textsc{\large 143689}\\[1em]
+
+\textsc{\LARGE Marco Antonio Ramos Juárez}\\[1em]
+
+\textsc{\large 142244}\\[1em]
+
+\textsc{\LARGE Francisco Velazquez Guadarrama}\\[1em]
+
+\textsc{\large 175606}\\[1em]
+
+\end{center}
+
+\vspace*{\fill}
+\textsc{Ciudad de México \hspace*{\fill} 2021}
+
+\end{titlepage}
+
+
+\newpage
+
+
+\tableofcontents
+
+\newpage
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
+                      fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r, include=FALSE}
+
+packages <- c(
+  "tidyverse",
+  "data.table",
+  "broom",
+  "knitr",
+  "lubridate",
+  "RCT",
+  "splitstackshape",
+  "truncnorm",#para hacer el muestreo estratificado
+  "magrittr",
+  "kableExtra",
+  "fastDummies",
+  "GGally",
+  "stargazer",
+  "gridExtra"
+  )
+
+# instala los paquetes que no se tengan
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# cargar paquetes
+lapply(packages,
+       library,
+       character.only = TRUE)
+
+# desactiva notación científica       
+options(scipen = 999)
+
+
+```
+
+
+
+## 1. Contexto
+
+Rappi te contrata para hacer una intervención que active a sus usuarios en la plataforma. La empresa quiere evaluar si es necesario darles cash los usuarios (y cuánto) para reactivar a los usuarios o si es suficiente con una campaña informativa.
+
+Para ello, te decides a realizar un experimento factorial donde evaluas:
+
+- El impacto de mandar un mensaje informativo donde muestres las nuevas tiendas afiliadas a Rappi, y
+
+- El impacto de dar 100 ó 200 o 300 pesos en cupones
+
+Finalmente, les gustaría entender cómo interactuar el mostrar las nuevas tiendas aunado con dar dinero en cupones.
+
+A la empresa le gustaría entender el impacto de la intervención sobre:
+
+- Las compras
+
+- La tasa de usuarios activos en la app (transaccionar: abrir app o hacer compras)
+
+\newpage
+
+## 2. Datos
+
+Carguemos los datos
+
+```{r, include=FALSE}
+load('universo.Rdata')
+
+data <- universo
+rm(universo)
+
+data$population_type <- as.numeric(factor(data$population))
+data$device_value_type <- as.numeric(factor(data$device_value))
+
+str(data)
+
+```
+
+## 3. Diseño de la intervención
+
+Definimos los grupos de control y tratamiento.
+
+- Control: Ninguna intervención
+
+- Trat 1: Sólo mensaje
+
+- Treat 2: Sólo cupón $100
+
+- Treat 3: Sólo cupón de $200
+
+- Treat 4: Sólo cupón de $300
+
+- Treat 5: Mensaje + $100
+
+- Treat 6: Mensaje + $200
+
+- Treat 7: Mensaje + $300
+
+Tenemos 2 poblaciones: Usuarios inactivos y usuarios que nunca estuvieron activos. Para ellos, supondremos que las tasas de transaccionalidad son hasta ahora 7.94% y 0%. Con esta información hacemos pruebas de poder.
+
+El efecto mínimo detectable (EMD) representa el efecto que queremos detectar en el experimento dado un nivel de significancia y un poder estadístico. Si nuestro experimento arroja un efecto que es igual o mayor al EMD, entonces tendremos significancia dado el tamaño de la muestra $N$. Si el experimento arroja un efecto menor al EMD, entonces no tendremos significancia.\\
+
+En primer lugar se define la variable de transaccionalidad, igual a cero para los usuarios que nunca estuvieron activos y una tasa distribuída normal con media de 0.0794 y desviación estándar de 0.02 para los usuarios inactivos. Esto lo hacemos para agregar variación a los datos y que el efecto mínimo detectable no se subestime.
+
+En segundo lugar se construye una tabla con el efecto mínimo detectable variando el \textit{share} de control. Para ello se usa $N=$ `r format(round(as.numeric(nrow(data)), 1), nsmall=0, big.mark=",") `, un poder estadístico de 0.8, un nivel de signifancia de 0.05 y los 7 grupos de tratamiento más 1 de control (número de grupos = 8). En segundo lugar se grafica dicha relación para encontrar el valor del  \textit{share} de control que minimice el efecto mínimo detectable.
+
+```{r}
+# =============================
+# Variable
+# =============================
+
+#Agrego una variable con distribucion normal(0.0794,.02) en caso de que sea
+# population_type==1, y 0 en otro caso.
+data_2<-data%>%filter(population_type==1) %>%
+  mutate(tasa_trans=rnorm(14084, 0.0794,.02))
+data<-merge(data,data_2, all.x = T)
+data$tasa_trans[is.na(data$tasa_trans)] <- 0
+
+
+# =============================
+# Tabla
+# =============================
+tabla_tasa_trans <- tau_min_probability(prior = mean(data$tasa_trans),
+                            N = nrow(data),
+                            power = 0.8,
+                            significance = 0.05,
+                            share_control = seq(0,1,0.1),
+                            n_groups = 8)
+
+kable(tabla_tasa_trans,booktabs=T, align = 'c',digits = 4)%>%
+  kable_styling(position = "center",
+                latex_options=c("scale_down","HOLD_position"))
+# =============================
+# Grafica
+# =============================
+
+sharecontrol = seq(0,1,0.05)
+m <- matrix(nrow=length(sharecontrol),ncol=1)
+n <- matrix(nrow=length(sharecontrol),ncol=1)
+i <- 0
+for (a in sharecontrol){
+  i <- i+1
+  taumin<- tau_min(data$tasa_trans,
+        N = nrow(data),
+        power = 0.8,
+        significance = 0.05,
+        share_control = a,
+        n_groups = 8)
+
+  m[i] <- taumin$tau_min_global
+  n[i] <- taumin$tau_min_each_treat
+}
+
+m <- cbind(sharecontrol,m,n)
+taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_treat"=V3)
+taus_noinf <- taus[-nrow(taus),]
+taus_noinf <- taus_noinf[-1,]
+share_optimo <- min(taus_noinf$sharecontrol[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+tau_optima <- min(taus_noinf$tau_min_each_treat[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+
+ggplot(data=taus,aes(x=sharecontrol))+
+  geom_line(aes(y=tau_min_each_treat*100),color='navyblue',size=1)+
+  xlab("Proporción de control")+
+  ylab("Efecto mínimo detectable (puntos porcentuales) ")+
+  labs(title="Efecto mínimo detectable* (EMD) en función de la proporción de control",
+       subtitle="EMD sobre tasa de transaccionalidad",
+       caption="*EMD entre el grupo de control y cada tratamiento")+
+  scale_x_continuous(breaks = sharecontrol,limits=c(0,1))+
+  geom_vline(xintercept= share_optimo, color='red',linetype='dashed')+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5))
+
+```
+Se puede observar que para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima*100), 4), nsmall=0, big.mark=",")` puntos porcentuales entre el grupo de control y cada tratamiento.
+
+Se repite el mismo ejercicio pero ahora para usando las compras totales como variable objetivo.
+
+```{r,results='asis'}
+
+# =============================
+# Tabla
+# =============================
+table_total_purchases <- tau_min(data$total_purchases,
+        N = nrow(data),
+        power = 0.8,
+        significance = 0.05,
+        share_control = seq(0,1,0.1),
+        n_groups = 8)
+
+kable(table_total_purchases,booktabs=T, align = 'c',digits = 4)%>%
+  kable_styling(position = "center",
+                latex_options=c("scale_down","HOLD_position"))
+
+# =============================
+# Grafica
+# =============================
+sharecontrol = seq(0,1,0.05) #muy bien
+m <- matrix(nrow=length(sharecontrol),ncol=1)
+n <- matrix(nrow=length(sharecontrol),ncol=1)
+
+i <- 0
+for (a in sharecontrol){
+  i <- i+1
+  taumin<- tau_min(data$total_purchases,
+        N = nrow(data),
+        power = 0.8,
+        significance = 0.05,
+        share_control = a,
+        n_groups = 8)
+
+  m[i] <- taumin$tau_min_global
+  n[i] <- taumin$tau_min_each_treat
+}
+m <- cbind(sharecontrol,m,n)
+taus <- as.data.frame(m) %>% dplyr::rename("tau_min_global"=V2,"tau_min_each_treat"=V3)
+taus_noinf <- taus[-nrow(taus),]
+taus_noinf <- taus_noinf[-1,]
+share_optimo <- min(taus_noinf$sharecontrol[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+tau_optima <- min(taus_noinf$tau_min_each_treat[
+  taus_noinf$tau_min_each_treat==min(taus_noinf$tau_min_each_treat)])
+
+ggplot(data=taus,aes(x=sharecontrol))+
+  geom_line(aes(y=tau_min_each_treat),color='navyblue',size=1)+
+  xlab("Proporción de control")+
+  ylab("Efecto mínimo detectable (número de compras) ")+
+  labs(title="Efecto mínimo detectable* (EMD) en función de la proporción de control",
+       subtitle="EMD sobre número de compras",
+       caption="*EMD entre el grupo de control y cada tratamiento")+
+  scale_x_continuous(breaks = sharecontrol,limits=c(0,1))+
+  geom_vline(xintercept= share_optimo, color='red',linetype='dashed')+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=90, vjust=.5))
+
+```
+
+Se puede observar que, nuevamente, para un share de control de `r format(round(as.numeric(share_optimo), 2), nsmall=0, big.mark=",") ` se obtiene el efecto mínimo detectable más pequeño. $\tau=$ `r format(round(as.numeric(tau_optima), 4), nsmall=0, big.mark=",")` compras entre el grupo de control y cada tratamiento
+
+Entonces, usaremos un \textit{share} de control de 0.25 para llevar a cabo la asignación aleatoria.
+
+
+Ahora estudiaremos relaciones de las variables con la tasa de transaccionalidad.
+
+Inicialmente se realiza un análisis para el cual es fundamental mantener en mente que su principal función es servir de apoyo, no para obtener conclusiones directas. Esto se debe a que, en realidad, lo que es de interés para la estratificación es la relación entre las variables por las cuales se estratifica y el impacto, no con la tasa de usuarios activos o las ventas. Se procede a mostrar un correlograma y una regresión lineal (que aún existiendo un problema metodológico podría ser útil para este fin).
+
+```{r}
+# =============================
+# Correlograma
+# =============================
+
+# Preparación de datos
+data$phone_verified<-as.factor(data$phone_verified)
+data$gender_F<-as.factor(data$gender_F)
+data$population_type<-as.factor(data$population_type)
+data$device_value_type<-as.factor(data$device_value_type)
+data_correctly<-data %>% select(tasa_trans, device_value, phone_verified,
+                                age,population, total_purchases, gender_F,
+                                months_since_register)
+
+# Creo dummies para hacer el calculo del coef de regresión de manera correcta
+data_correctly<-dummy_cols(data_correctly, remove_first_dummy = F,
+           select_columns = c('device_value','phone_verified','population','gender_F'),
+           remove_selected_columns = T)
+
+# imprimo el correlograma
+ggcorr(data_correctly, method = c("everything", "pearson"),
+       label = TRUE,max_size = 6,
+  size = 1.5,
+  hjust = 0.75,
+  angle = -45)+
+
+  labs(title="Correlograma de la base de datos")+
+
+  theme_bw()+
+
+  theme(axis.text.x = element_text(angle=90, vjust=.5))
+```
+
+
+```{r}
+# =============================
+# Regresiones: Table 1
+# =============================
+# Procesamiento
+# Se crean categorías para distintos rangos de edad a partir de los cuartiles
+age_quart <- quantile(data$age)
+data$age_group <- ifelse(data$age <= age_quart[2], 1,
+                         ifelse(data$age <= age_quart[3], 2,
+                                ifelse(data$age <= age_quart[4], 3,
+                                       ifelse(data$age <= age_quart[5], 4, 0))))
+data$age_group <- as.factor(data$age_group)
+```
+
+
+```{r,results='asis', message=FALSE, eval=FALSE}
+# REGRESION
+# Quito las variables colineales y las objetivo
+modelo_a<-lm(tasa_trans~.-population_type
+             -population-user_id-total_purchases-age-device_value,data)
+
+modelo_b<-lm(total_purchases~.-population_type
+             -population-user_id-tasa_trans-age-device_value,data)
+
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
+```
+
+\begin{table}[!htbp] \centering
+  \caption{}
+  \label{}
+\begin{tabular}{@{\extracolsep{5pt}}lcc}
+\\[-1.8ex]\hline
+\hline \\[-1.8ex]
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\
+\cline{2-3}
+\\[-1.8ex] & tasa\_trans & total\_purchases \\
+\\[-1.8ex] & (1) & (2)\\
+\hline \\[-1.8ex]
+ phone\_verified1 & 0.004$^{***}$ & 22.084$^{***}$ \\
+  & (0.0002) & (3.748) \\
+  & & \\
+ gender\_F1 & 0.004$^{***}$ & 39.182$^{***}$ \\
+  & (0.0002) & (4.193) \\
+  & & \\
+ months\_since\_register & 0.002$^{***}$ & 3.104$^{***}$ \\
+  & (0.00002) & (0.426) \\
+  & & \\
+ device\_value\_type2 & 0.001 & 43.122 \\
+  & (0.003) & (66.302) \\
+  & & \\
+ device\_value\_type3 & $-$0.008$^{***}$ & $-$24.085$^{***}$ \\
+  & (0.0002) & (3.664) \\
+  & & \\
+ age\_group2 & 0.004$^{***}$ & 17.226$^{***}$ \\
+  & (0.0002) & (4.969) \\
+  & & \\
+ age\_group3 & 0.006$^{***}$ & 30.945$^{***}$ \\
+  & (0.0002) & (5.333) \\
+  & & \\
+ age\_group4 & 0.010$^{***}$ & 93.189$^{***}$ \\
+  & (0.0002) & (5.192) \\
+  & & \\
+ Constant & $-$0.002$^{***}$ & $-$1.421 \\
+  & (0.0002) & (4.782) \\
+  & & \\
+\hline \\[-1.8ex]
+Observations & 104,191 & 104,191 \\
+R$^{2}$ & 0.137 & 0.007 \\
+Adjusted R$^{2}$ & 0.137 & 0.007 \\
+Residual Std. Error (df = 104182) & 0.026 & 577.544 \\
+F Statistic (df = 8; 104182) & 2,070.410$^{***}$ & 92.636$^{***}$ \\
+\hline
+\hline \\[-1.8ex]
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\
+\end{tabular}
+\end{table}
+
+Ahora, se plantean variables por las cuales se estratificará, y se comenta si existe coherencia con el análisis:
+
+* La **verificación del teléfono**, ya que probablemente los usuarios que sí llevan a cabo la verificación de sus teléfonos son los que hacen más compras en la aplicación. Si hacen pedidos con frecuencia, tiene sentido que les interese que el número de teléfono registrado sea el correcto para cualquier llamada respecto a su pedido. Notamos cómo es una variable significativa y relativamente importante en cada modelo.
+
+* La **edad** (dividida por categorías para distintos rangos), ya que probablemente usuarios más jóvenes interactúan mejor con las aplicaciones. Notamos que cumple con los mismos puntos respecto a las regresiones que la variable anterior. Nótese que posiblemente sea una buena idea formar rangos más amplios para no tener que pulverizar tanto las observaciones (en este caso se utilizan cuartiles). En este sentido, proponemos solamente agrupar la edad en dos grupos, la mitad más grande y la mitad más jóven.
+
+* Si bien no se considera la variable para los modelos anteriores por problemas de colinealidad, resulta intuitivo pensar que un usuario poco activo pueda verse incentivado a por lo menos abrir la aplicación al recibir cupones y/o notificaciones, y que este comportamiento seguramente es distinto al de un individo que jamás utiliza la aplicación. Por este motivo, **population** podría resultar también relevante.
+
+* Consideramos que si bien el género no nos dice mucho per se, puede tener un impacto combinado con las demás variables. Por ejemplo, de correr una regresión sobre nuestras Ys con los grupos de edad, notamos que si hay un comportamiento heterogéneo por **edad y por sexo**.
+
+\newpage
+
+```{r,results='asis'}
+# =============================
+# Regresion aux: Table 2
+# =============================
+modelo_a<-lm(tasa_trans~age_group+gender_F+age_group*gender_F,data)
+
+modelo_b<-lm(total_purchases~age_group+gender_F+ age_group*gender_F,data)
+
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE, no.space=TRUE)
+```
+
+
+* Ahora bien, nos hubiera gustado incluir el valor del telefono, ya que podría servir como un proxy para medir el nivel de ingresos del individuo, sin embargo, notamos que esta variable es muy ruidosa. En primer lugar aglomera las observaciones en dos grupos principales (celulares de 0 a 10,000 pesos y Sin información) y un grupo minoritario con solo 74 observaciones (celulares de un precio mayor a 10,000). Si bien podriamos agrupar esas 74 observaciones dentro de Sin información, al correr una regresión sobre nuestras Ys notamos que el grupo sin informacion en realidad tiene un impacto negativo y significativo sobre las variables, lo cual puede indicar que son personas con un celular de bajo costo que bien podría ubicarse en el grupo de 0 a 10,000 (debido a que es muy amplio). Agrupar aqui al grupo minoritario sería solo crear ruido sobre una variable que de por sí cuenta con categorias muy amplias y vagas en sí.
+
+\newpage
+
+
+```{r,results='asis', eval=FALSE}
+# =============================
+# Regresion aux: Table 3
+# =============================
+modelo_a<-lm(tasa_trans~device_value,data)
+
+modelo_b<-lm(total_purchases~device_value,data)
+
+stargazer(modelo_a,modelo_b, type="latex", header=FALSE)
+```
+\begin{table}[!htbp] \centering
+  \caption{}
+  \label{}
+\begin{tabular}{@{\extracolsep{5pt}}lcc}
+\\[-1.8ex]\hline
+\hline \\[-1.8ex]
+ & \multicolumn{2}{c}{\textit{Dependent variable:}} \\
+\cline{2-3}
+\\[-1.8ex] & tasa\_trans & total\_purchases \\
+\\[-1.8ex] & (1) & (2)\\
+\hline \\[-1.8ex]
+ 10,001+] & 0.00004 & 46.025 \\
+  & (0.003) & (66.504) \\
+ device\_valueNo info & $-$0.009$^{***}$ & $-$34.145$^{***}$ \\
+  & (0.0002) & (3.595) \\
+ Constant & 0.015$^{***}$ & 72.488$^{***}$ \\ 
+  & (0.0001) & (2.599) \\
+\hline \\[-1.8ex]
+Observations & 104,191 & 104,191 \\
+R$^{2}$ & 0.025 & 0.001 \\
+Adjusted R$^{2}$ & 0.025 & 0.001 \\
+Residual Std. Error (df = 104188) & 0.028 & 579.325 \\
+F Statistic (df = 2; 104188) & 1,325.217$^{***}$ & 45.578$^{***}$ \\
+\hline
+\hline \\[-1.8ex]
+\textit{Note:}  & \multicolumn{2}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\
+\end{tabular}
+\end{table}
+
+Luego realizamos la asignación aleatoria.
+
+```{r}
+# Agrupo la variable de edad para que sea una dummy que discrimine a la mitad más
+# jóven de la más grande.
+data<-data%>%mutate(age_dummy=ifelse(age_group==1,1,
+                              ifelse(age_group==2,1,0)))
+# =============================
+# Asignacion
+# =============================
+random_assignment <- treatment_assign(data=data,
+                 share_control = 1/4,
+                 n_t=7,
+                 strata_varlist = dplyr::vars(
+                   population_type,phone_verified,age_dummy, gender_F),
+                 missfits="global",
+                 seed=123,
+                 key="user_id")
+out <- random_assignment$data
+
+# agrego asignación en la base de datos
+data<-merge(data,out, by= "user_id")
+
+```
+Todo parece indicar que se logró una asignación aleatoria exitosa toda vez que se conoce la función de asignación la cual cumple con los 3 requisitos (asignación individual, probabilística y unconfoundness). 
+
+Si bien el número de misfits es muy bajo relativo al total de observaciones (227 solamente) y podrían eliminarse, elegimos asignar los misfits de manera global.
+
+\newpage
+
+
+Después realizamos las pruebas de balance t y F sobre todas las variables.
+
+```{r}
+
+# =============================
+# Preprocesamiento
+# =============================
+# Selecciono solo las variables que use para estratificar
+data_3<-data%>%select(population_type,phone_verified,age_dummy, gender_F,treat)
+data_4<-dummy_cols(data_3, remove_first_dummy = F,
+           select_columns = c('population_type','phone_verified','gender_F','age_dummy'),
+           remove_selected_columns = T)
+
+# =============================
+# Tablas de balance
+# =============================
+kable((balance_table(data_4,'treat')), align = 'c',
+booktabs=T,digits = 2,caption = "Tabla de balance")%>%
+  kable_styling(position = "center",latex_options="scale_down")
+# Parece haber balance debido a que ningun pvalue es estadisticamente significativo.
+# Las medias son muy similares
+```
+
+Efectivamente, parece haber balance. Esto debido a que los valores p reportados en la matriz de p-values son muy grandes, ninguno nos indica que las medias son diferentes de manera estadísticamente significativa.
+
+De manera conjunta, los estadísticos F son mayores a .1, en consecuencia, los valores p son grandes y ninguno es estadíticamente significativo. Esto implica que ninguna combinación de variables vence a la media en cuanto a asignación de las personas en un grupo de tratamiento.
+
+```{r}
+# =============================
+# Regresión de balance
+# =============================
+br<-balance_regression(data_4, 'treat')
+kable(br$F_test,
+      align = 'c',booktabs=T,digits = 2,
+      caption = "Regresión de balance")%>%
+  kable_styling(position = "center")
+```
+
+
+Parecen cumplirse los 3 supuestos de la asignación
+
+* SUTVA: en principio cada mensaje y bono va direccionado al celular de cada persona, SUTVA solo se violaría si otra persona del grupo de control o de otro tratamiento tiene acceso al celular o a la cuenta de alguien en un grupo de tratamiento distinto.  Aunque, la posibilidad de que esto ocurra es pequeña, reconocemos que es algo que no se puede controlar al 100% y por lo pronto asumieremos que se cumple SUTVA (o al menos que no hay **defiers**). Si contáramos con más información sobre la fracción de personas cuyo cuenta o celular estan en manos de otra persona o con información de las personas que de plano no checan su celular (*never takers*) podríamos diseñar un mejor experimento.
+
+* Overlap: se cumple debido a que forzamos a que cada estrato tuviera 8 grupos en la asignación con una probabilidad predefinida por nostros. Además, dicha probabilidad de que una persona perteneza a cualquiera nunca es 0 o 1, ni siquiera para los misfits.
+
+* Unconfoundness: se cumple debido a que los grupos estan balanceados (por construccion), las tablas de balance solo comprueban este supuesto. La asignación aleatoria es por definición independiente a las características de los usuarios.
+
+
+Antes de proceder con la evaluación, resta decir una breve conclusión. Para garantizar el éxito de un negocio, previo a ir en búsqueda de más clientes, es indispensable proteger a los que ya se tiene. A través de este experimento se logran detectar las características esenciales de los usuarios que han disminuido su actividad o que se registraron pero nunca han utilizado la plataforma, con el fin de encontrar la fórmula ideal de incentivos -envío de mensajes publicitarios, cupones o ambos- que generen un impacto en cada grupo de clientes para retomar su interés y actividad en la aplicación y  volverse ávidos usuarios de la plataforma, incrementar sus compras y con ello lograr aumentar las ganancias de la empresa. No más usuarios dormidos o apáticos, por el contrario, siempre interactuando y generando valor para la empresa.
+
+
+## 4. Evaluación
+
+Pasemos a la evaluación de la intervención. En este ejercicio, Rappi diseño un nuevo experimento algo distinto.
+
+Este consistió en 6 grupos de tratamiento y un control:
+
+- T1: Dar 100 pesos en cupones (con mensaje)
+
+- T2: Dar 200 pesos en cupones (con mensaje)
+
+- T3: Dar un descuento de 20% en la siguiente compra
+
+- T4: Dar un descuento de 25% en la siguiente compra
+
+- T5: Ofrecer 2% de descuento en la siguiente compra por cada usuario que refieran
+
+- T6: Ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran
+
+
+Ahora buscamos medir este experimento (estratificado por `phone_verified`, `population` y `device_value`) en la base
+`base_evaluacion.Rdata`. Las variables endogenas son `total_purchases_after` que refleja el gasto total post-tratamiento y `transacted` que refleja abrir la app o hacer compras.
+
+
+Carguemos la base
+
+```{r, include=FALSE}
+rm(list = ls())
+
+load('base_evaluacion.Rdata')
+data2 <- universo_f
+rm(universo_f)
+
+data2$population <- as.factor(data2$population)
+data2$device_value <- as.factor(data2$device_value)
+
+# bajo esta definicion, population: Inactive == 1 y never active == 2
+# device_value: 0-10mil == 1 | 10mil+ == 2 | No info == 3
+
+# ver como estan definidos los estratos
+table(data2$strata)
+# 1 a 6 y 1001 a 1006. Son doce grupos, combinaciones de population,
+# device_value y phone_verified
+data2$population[data2$strata>10] %>% summary()
+data2$phone_verified[data2$strata<4] %>% summary()
+data2$phone_verified[data2$strata>1003] %>% summary()
+data2$device_value[data2$strata==1 | data2$strata==1001] %>% summary()
+data2$device_value[data2$strata==2 | data2$strata==1002] %>% summary()
+# 1-6 == Never active
+# 1001-1006 == Inactive
+# 4-6 y 1004-1006 == phone_verified
+# 1, 4, 1001 y 1004: device value == [$0-$10,000]
+# 2, 5, 1002 y 1005. device value == [$10,001+]
+# 3, 6, 1003 y 1006. device value == No info
+```
+
+### 4.1 Estimador ITT para la tasa de transaccionalidad
+
+```{r}
+#ITT intention-to-treat
+# OJO, hay que ver si hay que meter heterogenous vars, cluster vars o así
+# elección de controles óptima?
+# podemos transformar alguna variable?
+
+options(scipen = 999)
+
+itt10 <- impact_eval(data=data2,
+            endogenous_vars = "transacted",
+            treatment = "treat",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register")) %>%
+  as.data.frame()
+
+names(itt10) <- c("term","estimate","std_error","statistic","p_value")
+itt10$p_value <- itt10$p_value %>% round(3)
+itt10$term <- c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register")
+
+# resultados gráficos
+itt10 %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
+  ylim(-0.001,0.12)+
+  theme_minimal() +
+  labs(title = "Efecto Promedio de Intención a Tratar, transaccionalidad",
+       x ="",
+       caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
+  theme(legend.position="none")
+
+```
+
+Se observan efectos promedio de los seis tratamientos positivos y significativos. El efecto entre tratamientos varía. El tratamiento con mayor impacto en la transaccionalidad es ofrecer un 25% de descuento en la siguiente compra, lo cual provoca un aumento de 10 puntos porcentuales. Ofrecer 4% de descuento por cada referido también tuvo un impacto mayor a 7.5 puntos porcentuales. Como es de esperarse, la magnitud del efecto es proporcional al tamaño del descuento. Esto es visible al contrastar los tratamientos 2, 4 y 6 con el 1, 3 y 5, respectivamente. Es curioso que, los descuentos en porcentaje fueran más exitosos que los \$100 y \$200. Esto podría reflejar que los usuarios aprovechan el beneficio con compras grandes, lo cual exploramos a continuación.
+
+
+### 4.2 Estimador ITT para compras totales
+
+```{r}
+itt11 <- impact_eval(data=data2,
+            endogenous_vars = "total_purchases_after",
+            treatment = "treat",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register")) %>%
+  as.data.frame()
+
+names(itt11) <- c("term","estimate","std_error","statistic","p_value")
+itt11$p_value <- itt11$p_value %>% round(3)
+itt11$term <- c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register")
+
+# resultados gráficos
+itt11 %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
+  ylim(-50,120)+
+  theme_minimal() +
+  labs(title = "Efectos Promedio de Intención a Tratar, compras totales",
+       x ="",
+       caption = "Se controla por edad, sexo, compras totales y meses desde el registro") +
+  theme(legend.position="none")
+
+```
+
+Como puede verse en la gráfica, los tratamientos 1 a 5 son negativos y ninguno de los efectos de tratamiento es significativo. Considerando estos resultados junto con los de transaccionalidad, se concluye que los incentivos de descuentos atraen a los usuarios a la app, pero no capitalizan comprando más que antes. También debe notarse que independientemente del monto de los descuentos, omitiendo los descuentos por referir personas, tienen coeficientes muy parecidos, por lo que parece no haber relación entre el monto del descuento y el impacto en compras.
+
+Esta evidencia indica que el sistema de incentivos de Rappi no es rentable, por lo menos en el periodo de estudio. De hecho, aunque estos resultados fueran positivos y significativos, aún se tendrían que considerar los costos de dichas políticas.
+
+Sin embargo, una posibilidad que no contempla este estudio es que los usuarios deban recibir más de un descuento para terminar por volverse usuarios frecuentes de la app, y que de recibir un sólo descuento el efecto sea muy débil.
+
+```{r}
+summary(data2$total_purchases)
+summary(data2$total_purchases_after)
+
+summary(data2$total_purchases[data2$treat==6])
+summary(data2$total_purchases_after[data2$treat==6])
+```
+
+El estimador de dicho tratamiento es muy grande pero su error estándar es aún más grande, por lo que no es significativo. Esto quiere decir que hay mucha variabilidad en el efecto promedio de tratamiento 6, y que así como algunos usuarios responden muy favorablemente ante dicho incentivo, otros usuarios simplemente no responden. Un escenario como éste muestra la necesidad de buscar heterogeneidad en el impacto del tratamiento.
+
+
+Probamos ahora definiendo la variable en términos porcentuales mediante una transformación logarítmica. Intuitivamente, la transformación va a mejorar la estimación, pues en logaritmos, los valores grandes se vuelven relativamente más cercanos a los valores cercanos o iguales a cero. Esto debería reducir el error estándar del coeficiente del tratamiento 6.
+
+```{r}
+data2 <- data2 %>% mutate(log_total_purchases_after = log(total_purchases_after+1))
+
+itt13 <- impact_eval(data=data2,
+            endogenous_vars = "log_total_purchases_after",
+            treatment = "treat",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register")) %>%
+  as.data.frame()
+
+names(itt13) <- c("term","estimate","std_error","statistic","p_value")
+itt13$p_value <- itt13$p_value %>% round(3)
+itt13$term <- c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register")
+
+# resultados gráficos
+itt13 %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  geom_text(aes(label=paste0("p= ",p_value)), vjust=-0.8, size=3.5)+
+  theme_minimal() +
+  ylim(0,0.2)+
+  labs(title = "Efecto Promedio de Intención a Tratar, compras totales (log)",
+       x ="",
+       caption = "Se controla por edad, sexo, compras totales
+       y meses desde el registro") +
+  theme(legend.position="none")
+```
+
+En efecto, ahora los coeficientes de los tratamientos son positivos, y los de los tratamientos 3 y 6 son estadísticamente significativos. Medir los cambios porcentuales en compras totales permite asesorar mejor la efectividad del tratamiento debido a que  se suavizan valores extremos, lo cual es más relevante dada la abundancia de ceros.
+
+Aún así, 4 de los 6 tratamientos no pueden distinguirse del grupo de control. Esto en general confirma la no rentabilidad de otorgar incentivos a los usuarios, por lo menos sin una estrategia clara de focalización y diseño del incentivo.
+
+## 5. Análisis Costo-Beneficio
+
+Ahora nos proponemos hacer un análisis costo beneficio. Para esto, debemos hacer ciertos supuestos sobre información faltante. Variables necesarias para el costo beneficio de los primeros 4 tratamientos:
+
++ Ticket promedio ($100)
++ Customer lifetime value ($1,100)
++ Costo por comunicar la promo al usuario (ya sea msj o funcionalidad en la app)
++ Promedio del margen de ganancia por ticket
++ Porcentaje de usuarios que hacen efectivas las compras
+
+También sería necesario tener mayor información sobre las variables actuales en cuanto la representatividad de esta muestra en relación a la población de usuarios completa y diferencias con los usuarios activos. Además, saber si las compras totales post-tratamiento son netas o incluyen los montos descontados. Para el ejercicio que se presenta adelante suponemos que el monto total es post-descuento.
+
+Por simplicidad, asumiremos que los cupones de \$100 y \$200 sólo aplican para compras mayores a dichos montos, y en promedio, el ticket promedio en esos grupos de tratamiento es de \$150 y \$250. Asimismo, asumimos que en promedio los usuarios refieren a una persona.
+
+Variable adicional para el costo beneficio de los últimos 2 tratamientos:
+
++ Probabilidad de que el usuario sea activo (activos/inactivos)
+
+A continuación realizamos los cálculos, proponiendo los valores necesarios.
+
+```{r}
+# Definimos algunos valores
+ticket <- 100 # ticket promedio
+clv <- 1100 # customer lifetime value
+margen <- 10 # margen de ganancia por ticket sin promo
+
+
+# Cálculos de Beneficios
+
+# margenes de ganancia por tratamiento
+ganancias <- c((itt11$estimate[itt11$term=="Treat1"]*margen*1.5),
+               (itt11$estimate[itt11$term=="Treat2"]*margen*2.5),
+               (itt11$estimate[itt11$term=="Treat3"]*margen*0.8),
+               (itt11$estimate[itt11$term=="Treat4"]*margen*0.75),
+               (itt11$estimate[itt11$term=="Treat5"]*margen*0.98),
+               (itt11$estimate[itt11$term=="Treat6"]*margen*0.96))
+
+# Aumentos en la probabilidad de que se vuelva un usuario activo = ITT transaccionalidad
+pr_activar <- itt10$estimate[2:7]
+
+# % de receptividad de la promo. tal vez sea menor para referir gente
+recep <- c(0.5,0.5,0.5,0.5,0.4,0.4)
+
+beneficios <- recep*(pr_activar*clv + ganancias)
+
+# beneficios adicionales de que la app sea referida a nuevos usuarios
+pr_new_active <- 0.6
+
+crecimientos <- recep*pr_new_active*clv
+crecimientos[1:4] <- 0
+
+# Costos
+cmsj <- 0.1 #costo por mensaje
+capp <- 0.05 # costo por poner funcionalidad en la app que notifique la promo al usuario
+
+# costo que no depende de si se usa la promo ofrecida
+costo_itt <- c(cmsj,cmsj,capp,capp,capp,capp)
+
+# costo que solo se incurre al ser usada la app
+costo_tot <- recep*c(100,200,ticket*0.2,ticket*0.25,ticket*0.98,ticket*0.96)
+
+costos <- costo_itt + costo_tot
+
+
+# Estimaciones costo-beneficio
+tratamiento <- itt10$term[2:7]
+diferencia <- beneficios + crecimientos - costos
+kbl(data.frame(tratamiento,beneficios,crecimientos,costos,diferencia),
+    booktabs = T, align = 'c', digits = 2) %>%
+  kable_styling(position = 'center',
+                latex_options=c("HOLD_position"))
+```
+
+Dados nuestros montos supuestos y los resultados obtenidos, se obtienen los beneficios y costos mostrados en la tabla. Éstos no consideran errores estándar, por lo que deberían interpretarse con cuidado, sobre todo porque se basan en las estimaciones de compras totales, las cuales tienen coeficientes grandes pero no significativos.
+
+Recomendaríamos  el 6 porque ofrecer un descuento de 4% en una compra es sustancialmente menos costoso que los otros, y porque el lifetime value del customer no es muy grande. Es más rentable apuntar al volumen que al precio, y buscar incrementar la base de usuarios parece ser una mejor estrategia. Preferimos el tratamiento 6 por encima del 5 porque el 6 tiene un efecto positivo en las compras de los clientes, mientras que no se puede asegurar lo mismo para el 5.
+
+Es posible respaldar lo anterior, ya que si un cliente desembolsara en promedio 100 pesos en cada compra; con la estrategia 6 esto implicaría que por haber referido a un nuevo usuario, se le dará un 4% de descuento en la compra siguiente, esto es 4 pesos de descuento en promedio por una nueva compra, por lo que esta estrategia resulta ser rentable. El costo de adquirir un nuevo cliente potencial es \$4 y su CLTV es de \$1100, lo que implica que su adquisición resulta lucrativa.
+
+Por el contrario, en el caso del tratamiento 4, por ejemplo, al otorgar un descuento del 25% en la siguiente compra, el costo del descuento incluso podría superar el CLTV del usuario, dependiendo del monto de la compra.
+
+## 6. Efectos Heterogéneos
+
+
+### 6.1 `population`
+```{r}
+# Estimaciones
+itt151 <- impact_eval(data=data2,
+            endogenous_vars = "transacted",
+            treatment = "treat",
+            heterogenous_vars = "population",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
+
+itt152 <- impact_eval(data=data2,
+            endogenous_vars = "log_total_purchases_after",
+            treatment = "treat",
+            heterogenous_vars = "population",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
+
+# Ediciones pre grafica
+pop_trans <- itt151$transacted_population %>% as.data.frame()
+
+pop_trans$p.value <- pop_trans$p.value %>% round(3)
+pop_trans$term <- rep(c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+pop_compras <- itt152$log_total_purchases_after_population %>% as.data.frame()
+
+pop_compras$p.value <- pop_compras$p.value %>% round(3)
+pop_compras$term <- rep(c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+
+# resultados gráficos
+
+row151 <- pop_trans %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~population)+
+  ylim(-0.02,0.2)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title = "Transaccionalidad",
+       x ="") +
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+row152 <- pop_compras %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~population)+
+  ylim(-0.15,0.3)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title="Compras totales (log)",
+       x="")+
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+grid.arrange(row151,row152, ncol=1,
+             top = "Efectos Promedio de Intención a Tratar por Población",
+             bottom = "Se controla por edad, sexo, compras totales y meses
+             desde el registro")
+
+```
+Como era de esperarse, para los usuarios que nunca estuvieron activos (never actives), el impacto del tratamiento (mensajes y descuentos) es mayor en la tasa de transacción dado que nunca habían registrado actividad en la plataforma, a diferencia de los que ya habían iteractuado pero dejaron de hacerlo (inactivos). En particular para los never actives, los tratamientos 3, 4 y 6 superan el promedio.
+
+En cuanto al impacto en las compras totales, el resultado fue híbrido, por una parte para la población que nunca estuvo activa, el impacto fue mayor en los tratamientos 3 y 6 y para la población inactiva los tratamientos que tuvieron mayor impacto fueron los 6 y 2 (por arriba del promedio).
+
+### 6.2 `phone_verified`
+
+```{r}
+
+#convertir phone_verified a factor
+summary(data2$phone_verified)
+data2$phone_verified <- data2$phone_verified %>% as.factor
+levels(data2$phone_verified) <- c("not verified", "verified")
+
+# Estimaciones
+itt161 <- impact_eval(data=data2,
+            endogenous_vars = "transacted",
+            treatment = "treat",
+            heterogenous_vars = "phone_verified",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
+
+itt162 <- impact_eval(data=data2,
+            endogenous_vars = "log_total_purchases_after",
+            treatment = "treat",
+            heterogenous_vars = "phone_verified",
+            control_vars = c("age",
+                             "gender_F",
+                             "total_purchases",
+                             "months_since_register"))
+
+# Ediciones pre grafica
+phone_trans <- itt161$transacted_phone_verified %>% as.data.frame()
+
+phone_trans$p.value <- phone_trans$p.value %>% round(3)
+phone_trans$term <- rep(c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+phone_compras <- itt162$log_total_purchases_after_phone_verified %>% as.data.frame()
+
+phone_compras$p.value <- phone_compras$p.value %>% round(3)
+phone_compras$term <- rep(c("Control",
+                "Treat1", "Treat2", "Treat3", "Treat4", "Treat5", "Treat6",
+                "age",
+                "gender_F",
+                "total_purchases",
+                "months_since_register"),2)
+
+
+# resultados gráficos
+
+row161 <- phone_trans %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~phone_verified)+
+  ylim(-0.001,0.18)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title = "Transaccionalidad",
+       x ="") +
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+row162 <- phone_compras %>%
+  filter(term!="age" & term != "gender_F" &
+           term!="total_purchases" & term != "months_since_register") %>%
+ggplot(aes(y=estimate, x=term, fill=term)) +
+  geom_bar(stat="identity") +
+  facet_wrap(~phone_verified)+
+  ylim(-0.06,0.5)+
+  geom_text(aes(label=paste0("p=",p.value)), vjust=-0.8, size=3, alpha=0.6) +
+  labs(title="Compras totales (log)",
+       x="")+
+  theme(legend.position="none",
+        plot.title = element_text(size=10, hjust=0.5))
+
+grid.arrange(row161,row162, ncol=1,
+             top = "Efectos Promedio de Intención a Tratar por
+             Verificación del Teléfono",
+             bottom = "Se controla por edad, sexo, compras totales
+             y meses desde el registro")
+```
+
+En general, para los usuarios que verificaron su celular, el impacto de los tratamientos en las transacciones es mayor que para aquellos que no, lo cual resulta lógico en el sentido de que aquellos que verificaron sus teléfonos, probablemente tenían más interés en el uso de la plataforma que los que no lo hicieron. Sólo el tratamiento 5, resultó con mayor mayor impacto para quienes no verificaron su número.
+
+En cuanto a las compras totales, se observa que el tratamiento 6 fue el que tuvo mucho mayor impacto para aquellos que verificaron su celular.
+
+
+## 7. Propuesta de focalización
+
+Una empresa debe basar su focalización en los productos y clientes estrella, es decir, en aquellos consumidores y productos que realmente sean rentables. Es indispensabe contar con una buena estrategia de focalización previo a vender, con el fin de evitar el desperdicio de medios, recursos y capacidades. En este caso los esfuerzos de la empresa Rappi deberán centrarse en implementar el tratamiento que haya provocado mayor impacto en el aumento de transacciones y compras en usuarios inactivos y que haya impactado más en el inicio de las mismas, en el caso de usuarios que nunca han estado activos; es decir, el tratamiento con el que se haya logrado reactivar o activar a los usuarios y con el que, en consecuencia, se hayan generado mayores transacciones y compras.
+
+De acuerdo a los resultados anteriores el mayor impacto de tratamiento tanto en transacciones como en compras totales, ocurrió con el tratamiento 6, esto es, al ofrecer 4% de descuento en la siguiente compra por cada usuario que refieran, con aquellos usuarios que verificaron su teléfono, por lo que la estrategia de focalización se basará en este segmento. Asimismo, fue posible observar que este tratamiento también impactó en mayor proporción en las transacciones de los usuarios que nunca estuvieron activos y en las compras de los usuarios que estaban inactivos, por lo que resulta rentable enfocarse en ambas poblaciones con este tratamiento. 
