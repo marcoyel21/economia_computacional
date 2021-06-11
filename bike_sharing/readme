@@ -32,7 +32,7 @@ Archivos:
 
 código:
 comprension.Rmd <- Comprensión de Negocio y EDA
-visualizacion_datos.Rmd <- Análisis, modelado y aplicaciones de negocio
+modelado.Rmd <- Análisis, modelado y aplicaciones de negocio
 
 entregables (en la carpeta entrega_final):
 I. Comprension y EDA.html <- Comprensión de Negocio y EDA
