@@ -1,0 +1,59 @@
+---
+title: "Visualización de los Datos"
+subtitle: "Proyecto Final"
+author: "Alfredo Lefranc Flores, Cynthia Raquel Valdivia Tirado, Rafael Sandoval Fernández, Marco Antonio Ramos Juárez y Francisco Velazquez Guadarrama"
+date: "2021"
+output:
+  html_document:
+    self_contained: false
+    graphics: yes
+    urlcolor: blue
+    theme: spacelab
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
+    toc_float: true
+---
+
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE, warning=FALSE,
+                      fig.width = 7, fig.height = 4, fig.align = "right",tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r, include=FALSE}
+
+packages <- c(
+  "networkD3","visNetwork"
+  )
+
+# instala los paquetes que no se tengan
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# cargar paquetes
+lapply(packages,
+       library,
+       character.only = TRUE)
+
+# desactiva notación científica       
+options(scipen = 999)
+
+
+```
+
+
+## EDA
+
+
+### Exploración georreferenciada
+
+```{r, out.width="100%",results='asis'}
+knitr::include_app("https://marcoyel21.github.io/gephi_vis/network/", height="1080px")
+```
+
+Podemos notar que el centro-este de la ciudad muestra mayor flujo, y las estaciones en la periferia son las de menor flujo.
+
